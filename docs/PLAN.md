@@ -335,7 +335,7 @@ Still to do before committing: a USPTO/EUIPO trademark search, and X/GitHub hand
 |---|---|---|
 | Framework | **Next.js (App Router) + TypeScript** | SSR/ISR for SEO-heavy pages. Nick Launches runs Next.js too (seen in its page source) |
 | UI | Tailwind + shadcn/ui | Fast, consistent |
-| DB | **Postgres** (Neon or Supabase) + **Drizzle ORM** | Relational data (votes, orders, checks), row-level locking for capped slot booking |
+| DB | **Supabase Postgres** + **Drizzle ORM** | Relational data (votes, orders, checks), row-level locking for capped slot booking |
 | Auth | Better Auth: magic link, Google, GitHub, X, plus an OAuth-style device approval for MCP clients | Voting needs low-friction signup. Agent connections need browser approval |
 | Payments | **Paystack (primary)** + **PayPal (secondary)**, behind our own `PaymentProvider` interface. Coupons and affiliates built in-house | Stripe doesn't serve Kenya. Merchant-of-record services ban or restrict ads and human services. See §7.5 |
 | Jobs/cron | Inngest or Trigger.dev (or pg-boss workers on Railway/Fly) | Badge checks, link monitoring, week rollover, recap drafting, emails |
@@ -347,7 +347,7 @@ Still to do before committing: a USPTO/EUIPO trademark search, and X/GitHub hand
 | Email | Resend + React Email (newsletter: Beehiiv or Resend broadcasts) | |
 | Search | Postgres full-text → Meilisearch later | |
 | Analytics | PostHog + our own events table for maker-facing stats | |
-| Hosting | Vercel (web) + Railway/Fly (workers) | |
+| Hosting | Vercel (web + cron). Long-running crawlers (Playwright) move to a worker on Railway/Fly when Phase 3 needs them | |
 | Extension (later) | Chrome MV3 (Plasmo/WXT) | Autofill + tracker sync |
 
 ### 7.2 Data model (initial)
@@ -494,7 +494,7 @@ Pricing note: until DR is above ~50, run launch-sale codes on the launch tiers a
 
 ## 9. Roadmap
 
-**Phase 0 — Foundations (week 1)**
+**Phase 0 — Foundations (week 1)** ✅ *Done Oct 26, 2026 (see README).* Submission packages are already sellable, fulfilled by hand.
 Repo setup, Next.js + Drizzle + Postgres, auth, Paystack + PayPal sandbox/test accounts and the `PaymentProvider` layer, CI (lint/typecheck/test), base design system, final name + domain.
 
 **Phase 1 — MVP launch board (weeks 2–4)**
@@ -527,15 +527,27 @@ Chrome autofill extension synced to the tracker, advanced vote-fraud detection, 
 
 ---
 
-## 11. Decisions needed from you
+## 11. Decisions
 
-1. ~~Payments~~ **Decided: Paystack primary + PayPal secondary** (§7.5). Still to do: register the business and get a KRA PIN, open a USD account at a Kenyan bank, start Paystack business verification and turn on international (USD) payments, set up a PayPal Business account, confirm USD subscription support with Paystack, and have an accountant confirm the VAT/tax treatment.
-1. ~~Name~~ **Decided: DebutYard.** Still to do: register `debutyard.com` + `.io` (+ `.app`), claim the X/GitHub handles, run a USPTO/EUIPO trademark search, and rename this repo to `debutyard`.
-2. Weekly cadence (recommended) vs. daily.
-3. Generalist (recommended; Nick, SaaSCity and Uneed all are) vs. starting with a vertical (e.g. AI tools or dev tools, like DevHunt).
-4. Who does the manual submissions at first (you vs. contractors). This decides the 48h-start / 7–14 day SLA.
-5. Hosting preference (Vercel + Railway assumed) and Postgres provider.
-6. Whether to include the money-back guarantee from day one (recommended).
+All the open questions are settled (Oct 26, 2026):
+
+| Decision | Choice |
+|---|---|
+| Name | **DebutYard** |
+| Payments | **Paystack primary + PayPal secondary** (§7.5) |
+| Cadence | **Weekly** debuts (Mon 00:00 UTC to Sun 23:59 UTC) |
+| Positioning | **Generalist** (SaaS, AI, dev tools, indie apps) with strong categories |
+| Submission service | **In-house**: the founder does submissions at launch. SLA: start within 48h of receiving product details, finish in 7–14 days. Hire contractors once volume needs it |
+| Hosting | **Vercel** (web + cron) |
+| Database | **Supabase** Postgres (transaction pooler for the app, direct connection for migrations, RLS on every table) |
+| Storage | **Cloudflare R2** |
+| Money-back guarantee | **Included from day one** on paid debuts (refund policy page live) |
+
+**Still to do (owner):**
+- Register `debutyard.com` + `.io` (+ `.app`), claim the X/GitHub handles, run a USPTO/EUIPO trademark search.
+- Register the business and get a KRA PIN, open a USD account at a Kenyan bank, complete Paystack verification and turn on international (USD) payments, open a PayPal Business account, and confirm USD subscription support with Paystack.
+- Have an accountant confirm the VAT/tax treatment, and a lawyer review the policy pages.
+- Create the Supabase project, R2 bucket, Resend domain and Vercel project (steps in the README).
 
 ---
 

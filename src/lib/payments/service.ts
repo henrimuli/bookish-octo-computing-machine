@@ -1,0 +1,411 @@
+import "server-only";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { env } from "@/env";
+import { getProvider } from "./index";
+import { runFulfillment } from "./fulfillment";
+import "./handlers";
+import { CouponError, quote, type CouponRule } from "./pricing";
+import { getSku, type OneTimeSku } from "./skus";
+import type { ProviderId, VerifiedPayment, WebhookEvent } from "./types";
+
+const { orders, coupons, paymentEvents, refunds, subscriptions, providerPlans } = schema;
+
+export type Order = typeof orders.$inferSelect;
+
+export class CheckoutError extends Error {}
+
+function siteUrl(path: string) {
+  return new URL(path, env().NEXT_PUBLIC_SITE_URL).toString();
+}
+
+async function findCoupon(code: string): Promise<CouponRule> {
+  const row = await db().query.coupons.findFirst({ where: eq(coupons.code, code.trim().toUpperCase()) });
+  if (!row) throw new CouponError("Unknown coupon code.");
+  return row;
+}
+
+/** Creates a pending order and returns the provider URL to send the buyer to. */
+export async function startCheckout(input: {
+  skuId: string;
+  provider: ProviderId;
+  email: string;
+  userId?: string | null;
+  couponCode?: string | null;
+  metadata?: Record<string, unknown>;
+}): Promise<{ orderId: string; url: string }> {
+  const sku = getSku(input.skuId);
+  if (!sku || sku.type !== "one_time") throw new CheckoutError("Unknown product.");
+
+  const coupon = input.couponCode ? await findCoupon(input.couponCode) : null;
+  const price = quote(sku as OneTimeSku, coupon);
+
+  const [order] = await db()
+    .insert(orders)
+    .values({
+      userId: input.userId ?? null,
+      email: input.email,
+      kind: sku.kind,
+      sku: sku.id,
+      listAmountCents: price.listAmountCents,
+      discountCents: price.discountCents,
+      amountCents: price.amountCents,
+      currency: "USD",
+      couponId: price.couponId,
+      provider: input.provider,
+      metadata: input.metadata ?? {},
+    })
+    .returning();
+
+  const provider = getProvider(input.provider);
+  try {
+    const session = await provider.createCheckout({
+      orderId: order.id,
+      email: input.email,
+      amountCents: price.amountCents,
+      currency: "USD",
+      description: `DebutYard: ${sku.name}`,
+      returnUrl: siteUrl(`/checkout/return?provider=${input.provider}&order=${order.id}`),
+      cancelUrl: siteUrl(`/checkout/cancelled?order=${order.id}`),
+    });
+    await db().update(orders).set({ providerRef: session.providerRef }).where(eq(orders.id, order.id));
+    return { orderId: order.id, url: session.url };
+  } catch (err) {
+    await db()
+      .update(orders)
+      .set({ status: "failed", failureReason: err instanceof Error ? err.message : "Checkout failed" })
+      .where(eq(orders.id, order.id));
+    throw err;
+  }
+}
+
+/**
+ * Applies a verified result to its order. Idempotent: the status change and
+ * fulfilment happen once, so retries, the return page and webhooks can all call this.
+ */
+export async function applyVerifiedPayment(provider: ProviderId, result: VerifiedPayment): Promise<Order | null> {
+  const order = await db().query.orders.findFirst({
+    where: and(eq(orders.provider, provider), eq(orders.providerRef, result.providerRef)),
+  });
+  if (!order) return null;
+
+  if (result.status === "pending") return order;
+
+  if (result.status === "failed") {
+    const [updated] = await db()
+      .update(orders)
+      .set({ status: "failed", failureReason: result.reason ?? "Payment failed" })
+      .where(and(eq(orders.id, order.id), eq(orders.status, "pending")))
+      .returning();
+    return updated ?? order;
+  }
+
+  if (result.orderId && result.orderId !== order.id) {
+    throw new Error(`Payment ${result.providerRef} belongs to order ${result.orderId}, not ${order.id}`);
+  }
+  if (result.amountCents !== order.amountCents || result.currency.toUpperCase() !== order.currency) {
+    const [updated] = await db()
+      .update(orders)
+      .set({
+        status: "failed",
+        failureReason: `Amount mismatch: paid ${result.amountCents} ${result.currency}, expected ${order.amountCents} ${order.currency}`,
+      })
+      .where(and(eq(orders.id, order.id), eq(orders.status, "pending")))
+      .returning();
+    return updated ?? order;
+  }
+
+  // A failed order can still become paid: buyers retry a declined card within the
+  // same checkout, and a late payment can land after we marked a checkout abandoned.
+  const [paid] = await db()
+    .update(orders)
+    .set({ status: "paid", paidAt: new Date(), providerCaptureId: result.captureId ?? null, failureReason: null })
+    .where(and(eq(orders.id, order.id), or(eq(orders.status, "pending"), eq(orders.status, "failed"))))
+    .returning();
+  if (paid?.couponId) {
+    await db()
+      .update(coupons)
+      .set({ redeemedCount: sql`${coupons.redeemedCount} + 1` })
+      .where(eq(coupons.id, paid.couponId));
+  }
+
+  // Runs on first payment, and again on later calls (webhook retries, reconciliation)
+  // if an earlier fulfilment attempt failed.
+  return fulfil(paid ?? order);
+}
+
+/**
+ * Claims the order by setting fulfilled_at, so concurrent callers (return page
+ * and webhook) can't both run it; the claim is released if the handler fails.
+ */
+async function fulfil(order: Order): Promise<Order> {
+  if (order.status !== "paid" || order.fulfilledAt) return order;
+  const [claimed] = await db()
+    .update(orders)
+    .set({ fulfilledAt: new Date() })
+    .where(and(eq(orders.id, order.id), eq(orders.status, "paid"), isNull(orders.fulfilledAt)))
+    .returning();
+  if (!claimed) return order;
+
+  try {
+    if (await runFulfillment(claimed)) return claimed;
+    // No handler for this kind yet: leave it unfulfilled for a later phase to pick up.
+    const [released] = await db().update(orders).set({ fulfilledAt: null }).where(eq(orders.id, order.id)).returning();
+    return released;
+  } catch (err) {
+    await db().update(orders).set({ fulfilledAt: null }).where(eq(orders.id, order.id));
+    throw err;
+  }
+}
+
+/** Asks the provider for the payment's status (capturing PayPal orders) and applies it. */
+export async function confirmPayment(provider: ProviderId, providerRef: string): Promise<Order | null> {
+  const result = await getProvider(provider).verifyPayment(providerRef);
+  return applyVerifiedPayment(provider, result);
+}
+
+/** Verifies, records and processes a webhook. Duplicate deliveries are ignored. */
+export async function handleWebhook(provider: ProviderId, rawBody: string, headers: Headers): Promise<WebhookEvent> {
+  const event = await getProvider(provider).parseWebhook(rawBody, headers);
+
+  const [stored] = await db()
+    .insert(paymentEvents)
+    .values({ provider, eventId: event.eventId, type: event.type, payload: JSON.parse(rawBody) })
+    .onConflictDoNothing()
+    .returning({ id: paymentEvents.id });
+  if (!stored) return event; // Already received.
+
+  try {
+    await processEvent(provider, event);
+    await db().update(paymentEvents).set({ processedAt: new Date() }).where(eq(paymentEvents.id, stored.id));
+  } catch (err) {
+    // Drop the row so the provider's retry (it re-sends on non-2xx) is processed again.
+    await db().delete(paymentEvents).where(eq(paymentEvents.id, stored.id));
+    throw err;
+  }
+  return event;
+}
+
+async function processEvent(provider: ProviderId, event: WebhookEvent) {
+  switch (event.kind) {
+    case "payment_succeeded":
+      // Never trust the payload alone: re-verify with the provider.
+      if (event.providerRef) await confirmPayment(provider, event.providerRef);
+      return;
+    case "payment_failed":
+      if (event.providerRef) {
+        await applyVerifiedPayment(provider, {
+          status: "failed",
+          providerRef: event.providerRef,
+          reason: event.reason,
+        });
+      }
+      return;
+    case "refund_processed": {
+      const order = await db().query.orders.findFirst({
+        where: and(eq(orders.provider, provider), eq(orders.providerRef, event.providerRef)),
+      });
+      await db()
+        .update(refunds)
+        .set({ status: "processed" })
+        .where(
+          and(
+            eq(refunds.status, "pending"),
+            order
+              ? or(eq(refunds.providerRef, event.providerRef), eq(refunds.orderId, order.id))
+              : eq(refunds.providerRef, event.providerRef),
+          ),
+        );
+      return;
+    }
+    case "subscription_updated":
+      await applySubscriptionUpdate(provider, event);
+      return;
+    case "ignored":
+      return;
+  }
+}
+
+async function applySubscriptionUpdate(
+  provider: ProviderId,
+  event: Extract<WebhookEvent, { kind: "subscription_updated" }>,
+) {
+  let sub = event.providerSubscriptionId
+    ? await db().query.subscriptions.findFirst({
+        where: and(
+          eq(subscriptions.provider, provider),
+          eq(subscriptions.providerSubscriptionId, event.providerSubscriptionId),
+        ),
+      })
+    : undefined;
+
+  if (!sub && event.ourSubscriptionId) {
+    sub = await db().query.subscriptions.findFirst({ where: eq(subscriptions.id, event.ourSubscriptionId) });
+  }
+
+  if (!sub && event.customerEmail && event.planId) {
+    // Paystack: match the newest pending subscription for this customer and plan.
+    const rows = await db()
+      .select({ sub: subscriptions })
+      .from(subscriptions)
+      .innerJoin(schema.user, eq(schema.user.id, subscriptions.userId))
+      .where(
+        and(
+          eq(subscriptions.provider, provider),
+          eq(subscriptions.providerPlanId, event.planId),
+          eq(subscriptions.status, "pending"),
+          eq(schema.user.email, event.customerEmail),
+        ),
+      )
+      .orderBy(sql`${subscriptions.createdAt} desc`)
+      .limit(1);
+    sub = rows[0]?.sub;
+  }
+
+  if (!sub) return;
+
+  await db()
+    .update(subscriptions)
+    .set({
+      status: event.status,
+      providerSubscriptionId: event.providerSubscriptionId ?? sub.providerSubscriptionId,
+      providerToken: event.providerToken ?? sub.providerToken,
+      currentPeriodEnd: event.currentPeriodEnd ?? sub.currentPeriodEnd,
+      cancelledAt: event.status === "cancelled" ? new Date() : sub.cancelledAt,
+    })
+    .where(eq(subscriptions.id, sub.id));
+}
+
+/** Refunds all or part of a paid order (money-back guarantee, admin refunds). */
+export async function refundOrder(orderId: string, reason: string, amountCents?: number) {
+  const order = await db().query.orders.findFirst({ where: eq(orders.id, orderId) });
+  if (!order || !order.providerRef) throw new Error("Order not found");
+  if (order.status !== "paid" && order.status !== "partially_refunded") {
+    throw new Error(`Order is ${order.status}, not refundable`);
+  }
+
+  const already = await db()
+    .select({ total: sql<number>`coalesce(sum(${refunds.amountCents}), 0)::int` })
+    .from(refunds)
+    .where(and(eq(refunds.orderId, orderId), or(eq(refunds.status, "pending"), eq(refunds.status, "processed"))));
+  const remaining = order.amountCents - (already[0]?.total ?? 0);
+  const amount = amountCents ?? remaining;
+  if (amount <= 0 || amount > remaining) throw new Error(`Refund amount must be between 1 and ${remaining} cents`);
+
+  const result = await getProvider(order.provider).refund({
+    providerRef: order.providerRef,
+    captureId: order.providerCaptureId,
+    amountCents: amount,
+    reason,
+  });
+
+  await db().insert(refunds).values({ orderId, amountCents: amount, reason, providerRef: result.providerRef });
+  const full = amount === remaining;
+  const [updated] = await db()
+    .update(orders)
+    .set({ status: full ? "refunded" : "partially_refunded", refundedAt: full ? new Date() : order.refundedAt })
+    .where(eq(orders.id, orderId))
+    .returning();
+  return updated;
+}
+
+/** Starts a subscription checkout. Plans must exist (run `pnpm payments:sync-plans`). */
+export async function startSubscription(input: { skuId: string; provider: ProviderId; userId: string; email: string }) {
+  const sku = getSku(input.skuId);
+  if (!sku || sku.type !== "recurring") throw new CheckoutError("Unknown plan.");
+
+  const plan = await db().query.providerPlans.findFirst({
+    where: and(eq(providerPlans.sku, sku.id), eq(providerPlans.provider, input.provider)),
+  });
+  if (!plan) throw new CheckoutError(`Plan ${sku.id} is not set up on ${input.provider} yet.`);
+
+  const [sub] = await db()
+    .insert(subscriptions)
+    .values({ userId: input.userId, sku: sku.id, provider: input.provider, providerPlanId: plan.planId })
+    .returning();
+
+  const session = await getProvider(input.provider).createSubscription({
+    email: input.email,
+    planId: plan.planId,
+    subscriptionId: sub.id,
+    amountCents: plan.amountCents,
+    returnUrl: siteUrl(`/checkout/return?provider=${input.provider}&subscription=${sub.id}`),
+    cancelUrl: siteUrl(`/checkout/cancelled?subscription=${sub.id}`),
+  });
+  if (session.providerSubscriptionId) {
+    await db()
+      .update(subscriptions)
+      .set({ providerSubscriptionId: session.providerSubscriptionId })
+      .where(eq(subscriptions.id, sub.id));
+  }
+  return { subscriptionId: sub.id, url: session.url };
+}
+
+export async function cancelSubscription(subscriptionId: string, userId: string) {
+  const sub = await db().query.subscriptions.findFirst({
+    where: and(eq(subscriptions.id, subscriptionId), eq(subscriptions.userId, userId)),
+  });
+  if (!sub?.providerSubscriptionId) throw new Error("Subscription not found");
+  await getProvider(sub.provider).cancelSubscription({
+    providerSubscriptionId: sub.providerSubscriptionId,
+    providerToken: sub.providerToken,
+  });
+  // Paystack keeps access until period end ("non-renewing"); PayPal cancels immediately.
+  await db()
+    .update(subscriptions)
+    .set({ status: sub.provider === "paystack" ? "non_renewing" : "cancelled", cancelledAt: new Date() })
+    .where(eq(subscriptions.id, sub.id));
+}
+
+/** Checkouts left unpaid this long are marked failed (abandoned). */
+const ABANDON_AFTER_HOURS = 24;
+
+/** Re-checks pending orders older than a few minutes, in case a webhook was missed. */
+export async function reconcilePendingOrders(olderThanMinutes = 10, limit = 50) {
+  await db()
+    .update(orders)
+    .set({ status: "failed", failureReason: "Checkout abandoned" })
+    .where(
+      and(
+        eq(orders.status, "pending"),
+        sql`${orders.createdAt} < now() - make_interval(hours => ${ABANDON_AFTER_HOURS})`,
+      ),
+    );
+
+  const stale = await db()
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "pending"),
+        sql`${orders.providerRef} is not null`,
+        sql`${orders.createdAt} < now() - make_interval(mins => ${olderThanMinutes})`,
+      ),
+    )
+    .limit(limit);
+
+  // Retry fulfilment for paid orders whose handler failed earlier.
+  const unfulfilled = await db()
+    .select()
+    .from(orders)
+    .where(and(eq(orders.status, "paid"), isNull(orders.fulfilledAt)))
+    .limit(limit);
+  for (const order of unfulfilled) {
+    try {
+      await fulfil(order);
+    } catch (err) {
+      console.error(`reconcile: fulfilment for order ${order.id}`, err);
+    }
+  }
+
+  let updated = 0;
+  for (const order of stale) {
+    try {
+      const after = await confirmPayment(order.provider, order.providerRef!);
+      if (after && after.status !== "pending") updated++;
+    } catch (err) {
+      console.error(`reconcile: order ${order.id}`, err);
+    }
+  }
+  return { checked: stale.length, updated };
+}
