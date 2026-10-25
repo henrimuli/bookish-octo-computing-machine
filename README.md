@@ -1,5 +1,12 @@
-# LaunchLedger (working name)
+# DebutYard
 
-A SaaS & startup launch directory: weekly launches, voting, winners, badge-verified free tier, paid launch tiers, featured placements, and a manual directory-submission service with a live tracking dashboard.
+> Launch, get listed, see proof.
 
-See [docs/PLAN.md](docs/PLAN.md) for the research and build plan.
+DebutYard is a launch directory for SaaS and startup products. It has:
+
+- weekly debuts with community voting and Debut of the Week/Month/Year winners
+- a free tier where your listing link is dofollow while our badge stays on your site
+- paid launch tiers and featured placements
+- a done-for-you service that submits your product to other directories, with a live tracking dashboard and ongoing link monitoring
+
+See [docs/PLAN.md](docs/PLAN.md) for the competitive research, pricing, and build plan.

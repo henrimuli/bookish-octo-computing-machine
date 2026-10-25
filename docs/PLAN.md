@@ -1,7 +1,7 @@
-# Launch Directory — Product & Build Plan
+# DebutYard — Product & Build Plan
 
-> Working repo name: `bookish-octo-computing-machine` (temporary).
-> Suggested product name: **LaunchLedger** (see §6 for alternatives and domain status).
+> Product name: **DebutYard** (chosen Oct 25, 2026; see §6). Domains: `debutyard.com` / `debutyard.io`.
+> Repo: `bookish-octo-computing-machine` (temporary name; to be renamed `debutyard`).
 >
 > **Research basis.** v1 of this plan (Oct 25, 2026) was built from web search alone. The environment's network policy blocked direct site access at the time. **v2 (this version)** re-checks the main competitors against their **live pages, fetched Oct 25, 2026**: Nick Launches, TinyLaunch, Startup Fame, SaaSCity, Startups Lab, Product Watch, Uneed, PeerPush, Fazier, DevHunt, MicroLaunch. Rows marked ✅ were verified on the live site. Unmarked figures still come from third-party reviews and may be stale.
 
@@ -19,7 +19,7 @@ The launch-directory niche has stopped being "Product Hunt clones." The sites th
 
 **Where the gap is (revised after the live-site review):** Nick Launches already has a **free DIY directory checklist/tracker** and a **report** for its done-for-you service. So "a tracking dashboard" alone isn't a differentiator. What nobody does is **automated verification and monitoring of the links**: crawl every placement, confirm it's live and dofollow and indexed, capture evidence, and keep re-checking after the job ends. Founders' top complaints are links quietly flipped to `nofollow`, listings removed, and directories that never publish. So:
 
-**Positioning:** "Launch, get listed everywhere, and see proof." A weekly launch board with honest voting (no paid vote multipliers), plus a submission service and DIY tracker where **every link is machine-verified and monitored**. That's where the name comes from.
+**Positioning:** "Launch, get listed everywhere, and see proof." A weekly launch board with honest voting (no paid vote multipliers), plus a submission service and DIY tracker where **every link is machine-verified and monitored**. Tagline: *"DebutYard — launch, get listed, see proof."*
 
 ---
 
@@ -139,7 +139,7 @@ Submit product (form with URL prefill, or via MCP agent draft)
 - **MCP server + REST API** with the same functions as the site. An agent can *draft* only, never publish or pay (copy Nick's boundary; it's the safe one).
 
 **Free tier with badge verification**
-- Maker embeds a personalised badge snippet (`<a href="https://launchledger.io/p/slug?ref=badge"><img src=".../badge/slug.svg" alt="Featured on LaunchLedger"></a>`).
+- Maker embeds a personalised badge snippet (`<a href="https://debutyard.com/p/slug?ref=badge"><img src=".../badge/slug.svg" alt="Debuted on DebutYard"></a>`).
 - Verification methods: (1) **server-side fetch** of the homepage, then parse for the anchor to our domain; (2) **DNS TXT** record fallback for bot-protected sites (a real pain point; Nick and Startup Fame don't offer it); (3) a meta tag fallback.
 - After verification, the listing link is `dofollow`. A **re-check runs weekly**. If the badge is missing: email + 7-day grace period, then the link downgrades to `nofollow` (we don't delist; that's friendlier than Nick, which removes the listing). It auto-restores when the badge returns.
 - **Weekly top 3 earn a permanent dofollow regardless of badge** (Startups Lab/TinyLaunch model). This makes voting matter.
@@ -170,7 +170,7 @@ Submit product (form with URL prefill, or via MCP agent draft)
 
 **Maker dashboard**
 - My products, launch status, queue position/ETA, badge status + last check, link rel status.
-- Analytics per product: views, outbound clicks (UTM `?ref=launchledger`), votes over time, referrers, badge impressions.
+- Analytics per product: views, outbound clicks (UTM `?ref=debutyard`), votes over time, referrers, badge impressions.
 - **DR tracking** for the maker's domain, with alerts (Uneed Pro has this; it's cheap to offer via the Ahrefs/DataForSEO API).
 - Upgrade flows, relaunch, "add directory boost" (attach a submission package to an existing launch).
 
@@ -298,26 +298,30 @@ All packages replace rejected directories. Rationale: Nick charges $99/$149/$199
 
 ## 6. Name
 
-**Primary recommendation: LaunchLedger**
-- It says what's different: a ledger of every launch and every *verified* link.
-- It works for both sides: "Launch on LaunchLedger", "Featured on LaunchLedger", "Verified by LaunchLedger".
-- Badge copy: *"#1 Product of the Week — LaunchLedger"*.
+**Chosen name: DebutYard** (written as one word, "DebutYard", camel-case Y; lowercase in URLs)
 
-**Domain status (checked via RDAP, Oct 25, 2026):**
-- `launchledger.com`: **registered** (since 2020, Namecheap). It currently redirects to a `/lander` parking page, so it is probably buyable on the aftermarket. Worth an offer.
-- `launchledger.io`: **available**. Register it now as the fallback or primary.
-- `launchledgerhq.com`, `trylaunchledger.com`, `golaunchledger.com`: available.
-- `launchledger.app` / `.dev`: registered.
+- **Meaning:** the yard where products make their debut. It's clearly about launching without using the overused word "launch", so it stands out from the 200+ "Launch-something" directories.
+- **Brand vocabulary:**
+  - A launch is a **debut**, and launch week is **debut week**.
+  - Weekly winners are **"Debut of the Week"** (also Month/Year).
+  - The maker-facing area is **"the Yard"** (dashboard).
+  - Optional names for the services: **"Yard Pass"** (Fast Track), **"Yard Monitor"** (Link Monitor).
+- **Badge copy:**
+  - "Debuted on DebutYard"
+  - "🥇 Debut of the Week — DebutYard"
+  - "Featured on DebutYard"
+  - "Verified by DebutYard" (for monitored links)
+- **Tagline:** *"Launch, get listed, see proof."* The tagline carries the verified-links positioning the name itself doesn't.
 
-**Alternatives**
+**Domain & handle status (checked Oct 25, 2026):**
+- `debutyard.com`: **available**, register it as the primary.
+- `debutyard.io`: **available**, register it and redirect to `.com`.
+- `debutyard.app`: **available**, optional defensive registration.
+- npm package name `debutyard`: available.
+- GitHub org / X handle: not verified from this environment, so check by hand.
+- A web search found no existing product, company or trademark using the name.
 
-| Name | .com | .io | Note |
-|---|---|---|---|
-| **Debutly** | taken | **available** | "Debut" = launch, friendly |
-| **ProofLaunch** | taken | **available** | Leads with "proof" (verified links, real stats) |
-| **Hatchlist** | taken | **available** | Launch + list, indie feel |
-| Launchjetty / Launchhearth / Launchcairn | **available** | — | Free .coms, but weaker names |
-| Shipboard, Launchyard, Liftlog, LaunchProof, ShipLedger | taken | taken/unclear | Drop these |
+**Runners-up** (both .com and .io were free when checked): Clapyard, Tadahall, Kudoyard, Laurelwall, Unveilery, Upvotary.
 
 Still to do before committing: a USPTO/EUIPO trademark search, and X/GitHub handles. Avoid names close to existing players: LaunchPad, LaunchPanda, LaunchIgniter, LaunchBuff, LaunchReceipt (a link-check site, close in concept), Launching Next, LaunchList, Launch Llama, LaunchPact, LaunchZone, LaunchOnIt, Smol Launch.
 
@@ -478,7 +482,7 @@ Chrome autofill extension synced to the tracker, advanced vote-fraud detection, 
 
 ## 11. Decisions needed from you
 
-1. **Name + domain** (§6): buy `launchledger.io` now, and decide whether to make an offer on the parked `.com`.
+1. ~~Name~~ **Decided: DebutYard.** Still to do: register `debutyard.com` + `.io` (+ `.app`), claim the X/GitHub handles, run a USPTO/EUIPO trademark search, and rename this repo to `debutyard`.
 2. Weekly cadence (recommended) vs. daily.
 3. Generalist (recommended; Nick, SaaSCity and Uneed all are) vs. starting with a vertical (e.g. AI tools or dev tools, like DevHunt).
 4. Who does the manual submissions at first (you vs. contractors). This decides the 48h-start / 7–14 day SLA.
