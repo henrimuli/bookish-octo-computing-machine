@@ -8,6 +8,7 @@ import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
 import { effectiveLinkType } from "@/lib/directories/service";
 import { verifySubmission } from "@/lib/directories/verify";
+import { monitorEnd, trackSubmission } from "@/lib/links/service";
 import { formatUsd } from "@/lib/payments/skus";
 import { PACKAGES, packageForSku, selectTargets, type PackageId } from "./packages";
 
@@ -400,6 +401,7 @@ export async function updateOrderSubmission(submissionId: string, raw: OpsUpdate
   }
   const checked =
     status === "live" && liveUrl && (urlChanged || !row.linkCheckedAt) ? await verifySubmission(row.id) : null;
+  await trackSubmission(row.id, now);
   return { row: checked ?? (replacement ? { ...row, status: "replaced" as const } : row), replacement };
 }
 
@@ -443,6 +445,11 @@ export async function deliverOrder(orderId: string, now = new Date()) {
     .where(and(eq(orders.id, orderId), inArray(orders.status, ["queued", "in_progress"])))
     .returning();
   if (!order) throw new SubmissionError("Only active orders can be delivered.");
+  const months = PACKAGES[order.package].monitorMonths;
+  await db()
+    .update(orders)
+    .set({ monitorUntil: monitorEnd(now, months) })
+    .where(eq(orders.id, order.id));
   const rows = await orderRows(order.id);
   const s = summarizeOrder(
     order,
@@ -454,6 +461,7 @@ export async function deliverOrder(orderId: string, now = new Date()) {
     [
       `Your ${PACKAGES[order.package].label} order is complete: ${s.live} listings are live, ${s.dofollow} of them with a verified dofollow link.`,
       "Your report lists every directory with its live URL and link check. Account logins we created are available on request.",
+      `Link Monitor is included for ${months} months: we re-check every live link and email you if one is removed or turns nofollow.`,
       "Share the read-only report with your team, or download it as CSV or PDF.",
     ],
     { label: "Open your report", href: url(`/orders/${order.intakeToken}`) },

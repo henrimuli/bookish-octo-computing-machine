@@ -759,6 +759,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
       "check_launch_readiness",
       "submit_product",
       "get_my_launches",
+      "get_my_links",
     ]);
     const submitTool = tools.find((t: { name: string }) => t.name === "submit_product");
     expect(submitTool.inputSchema.required).toEqual(

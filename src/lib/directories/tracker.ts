@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
+import { trackSubmission } from "@/lib/links/service";
 import { verifySubmission } from "./verify";
 
 const { directories, submissions, products } = schema;
@@ -79,10 +80,11 @@ export async function updateTracker(userId: string, raw: z.input<typeof trackerU
         .values({ ...values, productId: input.productId, directoryId: input.directoryId })
         .returning();
 
-  if (row.status === "live" && row.liveUrl && (urlChanged || !row.linkCheckedAt)) {
-    return (await verifySubmission(row.id)) ?? row;
-  }
-  return row;
+  const checked =
+    row.status === "live" && row.liveUrl && (urlChanged || !row.linkCheckedAt) ? await verifySubmission(row.id) : null;
+  // Live links join Link Monitor; anything else leaves it.
+  await trackSubmission(row.id, now);
+  return checked ?? row;
 }
 
 /** Re-runs the link check on one of the maker's live rows. */
@@ -90,7 +92,9 @@ export async function recheckTracker(userId: string, submissionId: string) {
   const s = await db().query.submissions.findFirst({ where: eq(submissions.id, submissionId) });
   if (!s?.productId) throw new TrackerError("Not found.");
   await ownedProduct(userId, s.productId);
-  return verifySubmission(submissionId);
+  const row = await verifySubmission(submissionId);
+  await trackSubmission(submissionId);
+  return row;
 }
 
 export type TrackerSummary = { live: number; dofollow: number; submitted: number; todo: number; total: number };

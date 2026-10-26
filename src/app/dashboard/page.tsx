@@ -46,6 +46,9 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
           <ButtonLink href="/dashboard/tracker" variant="outline">
             Directory tracker
           </ButtonLink>
+          <ButtonLink href="/dashboard/links" variant="outline">
+            Link Monitor
+          </ButtonLink>
           <ButtonLink href="/dashboard/api" variant="outline">
             API &amp; agents
           </ButtonLink>

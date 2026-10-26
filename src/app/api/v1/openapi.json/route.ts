@@ -81,6 +81,13 @@ export function GET() {
       "/me/products": {
         get: { summary: "Your listings and their stats", security: [{ token: [] }], responses: ok("Your listings") },
       },
+      "/me/links": {
+        get: {
+          summary: "Your monitored backlinks and plan usage",
+          security: [{ token: [] }],
+          responses: ok("Your links with their latest check"),
+        },
+      },
     },
   };
   return Response.json(spec, { headers: { ...CORS, "Cache-Control": "public, max-age=3600" } });

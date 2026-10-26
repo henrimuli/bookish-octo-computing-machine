@@ -79,6 +79,7 @@ export default function DocsPage() {
             ["POST", "/readiness", "Launch-readiness check for { url }"],
             ["POST", "/submissions", "Create a draft listing (token)"],
             ["GET", "/me/products", "Your listings and stats (token)"],
+            ["GET", "/me/links", "Your monitored backlinks and plan usage (token)"],
           ].map(([m, p, d]) => (
             <tr key={p}>
               <td className="py-2 pr-3 font-mono text-xs font-semibold">{m}</td>

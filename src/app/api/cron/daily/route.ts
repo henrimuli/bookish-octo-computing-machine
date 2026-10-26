@@ -3,6 +3,7 @@ import { recheckBadges } from "@/lib/badges/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
 import { settleBookings } from "@/lib/ads/service";
 import { refreshDirectoryStats } from "@/lib/directories/service";
+import { monitorLinks } from "@/lib/links/service";
 import { sendOrderDigests } from "@/lib/submissions/service";
 import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     ["submission digests", () => sendOrderDigests()],
     ["directory stats", () => refreshDirectoryStats()],
     ["badges", () => recheckBadges()],
+    ["links", () => monitorLinks()],
   ];
   for (const [name, run] of tasks) {
     try {
