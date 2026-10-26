@@ -11,6 +11,7 @@ const links: Array<{ href: string; label: string; dr?: boolean }> = [
   { href: "/advertise", label: "Advertise" },
   { href: "/submission-service", label: "Submission service" },
   { href: "/directories", label: "Directories" },
+  { href: "/launch-wall", label: "Launch wall" },
   { href: "/tools/launch-readiness", label: "Readiness check" },
   { href: "/tools/dofollow-checker", label: "Dofollow checker" },
   { href: "/tools/dr-checker", label: "DR checker", dr: true },

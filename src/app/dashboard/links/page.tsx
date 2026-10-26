@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { LaunchWallToggle } from "@/components/links/launch-wall-toggle";
 import { LinksTable } from "@/components/links/links-table";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container, Heading } from "@/components/ui/primitives";
 import { requireUser } from "@/lib/auth";
 import { linksForUser, linkUsage, pausedLinkIds } from "@/lib/links/service";
+import { onLaunchWall } from "@/lib/links/wall";
 
 export const metadata: Metadata = { title: "Link Monitor", robots: { index: false } };
 
@@ -30,7 +32,12 @@ export default function LinksPage() {
 
 async function Links() {
   const user = await requireUser("/dashboard/links");
-  const [rows, usage, paused] = await Promise.all([linksForUser(user.id), linkUsage(user.id), pausedLinkIds(user.id)]);
+  const [rows, usage, paused, wall] = await Promise.all([
+    linksForUser(user.id),
+    linkUsage(user.id),
+    pausedLinkIds(user.id),
+    onLaunchWall(user.id),
+  ]);
   const active = rows.filter((r) => r.link.active);
   const n = (v: string) => active.filter((r) => r.link.lastVerdict === v).length;
   const attention = active.filter((r) => r.link.lastVerdict && r.link.lastVerdict !== "dofollow").length;
@@ -65,6 +72,9 @@ async function Links() {
           </ButtonLink>
         </Card>
       )}
+      <Card className="p-5">
+        <LaunchWallToggle on={wall} handle={user.handle ?? null} />
+      </Card>
       <Card className="p-5">
         <LinksTable
           canAdd={usage.used < usage.limit}

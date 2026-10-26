@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ProductLogo } from "@/components/board/product-logo";
 import { SimpleList } from "@/components/board/simple-list";
+import { WallLinks } from "@/components/links/wall-links";
 import { Badge, Container, Heading } from "@/components/ui/primitives";
 import { proUserIds } from "@/lib/billing/service";
 import { builderByHandle } from "@/lib/board/queries";
+import { onLaunchWall, wallLinks } from "@/lib/links/wall";
 
 export async function generateMetadata(props: PageProps<"/builders/[handle]">): Promise<Metadata> {
   const { handle } = await props.params;
@@ -28,7 +30,9 @@ async function Builder({ params }: { params: PageProps<"/builders/[handle]">["pa
   const { handle } = await params;
   const b = await builderByHandle(handle);
   if (!b) notFound();
-  const pro = (await proUserIds([b.user.id])).has(b.user.id);
+  const [pros, wall] = await Promise.all([proUserIds([b.user.id]), onLaunchWall(b.user.id)]);
+  const pro = pros.has(b.user.id);
+  const links = wall ? await wallLinks(b.user.id) : [];
   const totalVotes = b.products.reduce((sum, p) => sum + p.votes, 0);
   return (
     <>
@@ -55,6 +59,16 @@ async function Builder({ params }: { params: PageProps<"/builders/[handle]">["pa
           <p className="text-muted-foreground">No debuts yet.</p>
         )}
       </div>
+      {links.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-xl font-semibold">Verified links</h2>
+          <p className="mt-1 mb-4 text-sm text-muted-foreground">
+            {links.filter((l) => l.verdict === "dofollow").length} dofollow of {links.length} live links, checked by
+            DebutYard.
+          </p>
+          <WallLinks links={links} />
+        </section>
+      )}
     </>
   );
 }

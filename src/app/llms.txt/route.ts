@@ -23,6 +23,7 @@ export async function GET() {
     `- [Pricing](${base}/pricing): free and paid debuts, featured placements, directory submission service`,
     `- [Blog](${base}/blog): weekly recaps of every debut`,
     `- [Launch directories](${base}/directories): where to list a product after launch, with link types we've verified`,
+    `- [Launch wall](${base}/launch-wall): makers and the directory backlinks we've verified for them`,
     `- [Submission service](${base}/submission-service): we submit a product to 40–180 directories and verify every link`,
     `- [Launch readiness check](${base}/tools/launch-readiness): free pre-launch audit of any product URL`,
     `- [Dofollow checker](${base}/tools/dofollow-checker): does a page link to a site, and is the link followed`,

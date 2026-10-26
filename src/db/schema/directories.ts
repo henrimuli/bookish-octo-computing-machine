@@ -238,3 +238,11 @@ export const linkChecks = pgTable(
     index("link_checks_tracked_link_idx").on(t.trackedLinkId, t.checkedAt),
   ],
 );
+
+/** Makers who opted in to the public launch wall (their machine-verified links on /launch-wall and their profile). */
+export const launchWallProfiles = pgTable("launch_wall_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
