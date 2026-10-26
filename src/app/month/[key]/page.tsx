@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { PeriodBoard } from "@/components/board/period-board";
 import { BoardSkeleton } from "@/components/board/week-board";
@@ -31,6 +32,7 @@ export default function MonthPage(props: PageProps<"/month/[key]">) {
 
 async function Month({ params }: { params: PageProps<"/month/[key]">["params"] }) {
   const { key } = await params;
+  await connection();
   if (!isMonthKey(key) || key > new Date().toISOString().slice(0, 7)) notFound();
   return <PeriodBoard scope="month" periodKey={key} />;
 }

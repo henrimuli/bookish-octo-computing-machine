@@ -89,8 +89,9 @@ export async function allPosts() {
   return db().select().from(posts).orderBy(desc(posts.updatedAt));
 }
 
+// Compared with Postgres's clock, so rendering a post never reads the time during prerender.
 const isLive = () =>
-  and(eq(posts.status, "published"), isNotNull(posts.publishedAt), lte(posts.publishedAt, new Date()));
+  and(eq(posts.status, "published"), isNotNull(posts.publishedAt), lte(posts.publishedAt, sql`now()`));
 
 export async function publishedPosts(limit = 50) {
   return db()

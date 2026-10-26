@@ -90,7 +90,7 @@ export async function checkReadiness(
   } catch (err) {
     const reason =
       err instanceof UnsafeUrlError
-        ? "That address isn't a public website."
+        ? err.message
         : err instanceof Error && err.name === "TimeoutError"
           ? "The site took more than 8 seconds to respond."
           : "We couldn't connect to the site.";

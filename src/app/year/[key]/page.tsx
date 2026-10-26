@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { PeriodBoard } from "@/components/board/period-board";
 import { BoardSkeleton } from "@/components/board/week-board";
@@ -31,6 +32,7 @@ export default function YearPage(props: PageProps<"/year/[key]">) {
 
 async function Year({ params }: { params: PageProps<"/year/[key]">["params"] }) {
   const { key } = await params;
+  await connection();
   if (!isYearKey(key) || Number(key) > new Date().getUTCFullYear() || Number(key) < 2026) notFound();
   return <PeriodBoard scope="year" periodKey={key} />;
 }

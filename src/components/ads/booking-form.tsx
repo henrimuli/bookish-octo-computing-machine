@@ -10,7 +10,7 @@ import type { ProviderId } from "@/lib/payments/types";
 import { addWeeks } from "@/lib/weeks";
 import { cn } from "@/lib/utils";
 
-type Week = { key: string; label: string; remaining: number };
+type Week = { key: string; label: string; range: string; remaining: number };
 
 const providerLabels: Record<ProviderId, string> = { paystack: "Pay with card (Paystack)", paypal: "PayPal" };
 const selectCls =
@@ -169,6 +169,7 @@ export function BookingForm({
                 )}
               >
                 <span className="block font-medium">{w.label.replace(/, \d{4}$/, "")}</span>
+                <span className="block text-xs text-muted-foreground">{w.range}</span>
                 <span className={cn("text-xs", w.remaining === 0 ? "text-danger" : "text-muted-foreground")}>
                   {w.remaining === 0 ? "Sold out" : `${w.remaining} left`}
                 </span>
@@ -179,7 +180,7 @@ export function BookingForm({
       </div>
 
       <div className="flex flex-wrap items-end gap-4 border-t border-border pt-5">
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-1.5">
           <Label htmlFor="coupon">Coupon</Label>
           <Input id="coupon" value={coupon} onChange={(e) => setCoupon(e.target.value)} className="w-40" />
         </div>

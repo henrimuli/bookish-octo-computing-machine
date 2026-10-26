@@ -44,7 +44,8 @@ export async function WeekBoard({
       {items.slice(0, 3).map((item) => (
         <ProductRow key={item.id} item={item} />
       ))}
-      {sponsor && <SponsoredRow ad={sponsor} />}
+      {/* Skip a sponsor that's already in the top 3 just above. */}
+      {sponsor && !items.slice(0, 3).some((i) => i.slug === sponsor.slug) && <SponsoredRow ad={sponsor} />}
       {items.slice(3).map((item) => (
         <ProductRow key={item.id} item={item} />
       ))}

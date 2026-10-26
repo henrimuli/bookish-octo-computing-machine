@@ -8,7 +8,7 @@ import { startCheckout } from "@/lib/payments/service";
 import { formatUsd } from "@/lib/payments/skus";
 import type { ProviderId } from "@/lib/payments/types";
 import { withRef } from "@/lib/board/links";
-import { addWeeks, formatWeekLabel, upcomingWeekKeys, weekBounds, weekKeyFor } from "@/lib/weeks";
+import { addWeeks, formatWeekLabel, formatWeekRange, upcomingWeekKeys, weekBounds, weekKeyFor } from "@/lib/weeks";
 import {
   BOOKING_HORIZON_WEEKS,
   cpcCents,
@@ -64,7 +64,12 @@ export async function availability(placement: Placement, categorySlug: string | 
       ),
     );
   const remaining = remainingByWeek(weeks, live, PLACEMENTS[placement].cap);
-  return weeks.map((w) => ({ key: w.key, label: formatWeekLabel(w.key), remaining: remaining[w.key] }));
+  return weeks.map((w) => ({
+    key: w.key,
+    label: formatWeekLabel(w.key),
+    range: formatWeekRange(w.key),
+    remaining: remaining[w.key],
+  }));
 }
 
 export type BookInput = {
