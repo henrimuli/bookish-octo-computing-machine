@@ -11,6 +11,7 @@ export type BoardItem = {
   tagline: string;
   logoUrl: string | null;
   tier: "free" | "fast_track" | "pro" | "premium" | "spotlight";
+  weekKey: string;
   approvedAt: Date | null;
   votes: number;
   comments: number;
@@ -20,7 +21,11 @@ export type BoardItem = {
   rank: number;
 };
 
-type Row = Omit<BoardItem, "rank" | "categories" | "score" | "votes" | "comments" | "votedByMe" | "approvedAt"> & {
+type Row = Omit<
+  BoardItem,
+  "rank" | "categories" | "score" | "votes" | "comments" | "votedByMe" | "approvedAt" | "weekKey"
+> & {
+  launch_week_key: string;
   approved_at: Date | string | null;
   logo_url: string | null;
   votes: string | number;
@@ -35,27 +40,38 @@ type Row = Omit<BoardItem, "rank" | "categories" | "score" | "votes" | "comments
  * the score if cast during the week; displayed counts are all-time.
  */
 export async function weekBoard(weekKey: string, viewerId: string | null = null): Promise<BoardItem[]> {
-  const { startsAt: start, endsAt: end } = weekBounds(weekKey);
-  // postgres-js via drizzle's raw sql doesn't serialise Date params: bind ISO strings and cast.
-  const startsAt = sql`${start.toISOString()}::timestamptz`;
-  const endsAt = sql`${end.toISOString()}::timestamptz`;
+  return boardForWeeks([weekKey], viewerId);
+}
+
+/**
+ * Products debuting in any of `weekKeys`, ranked together. Each product is
+ * scored on its own debut week's window, so month and year boards compare
+ * like with like.
+ */
+export async function boardForWeeks(weekKeys: string[], viewerId: string | null = null): Promise<BoardItem[]> {
+  if (weekKeys.length === 0) return [];
+  const keys = sql.join(
+    weekKeys.map((k) => sql`${k}`),
+    sql`, `,
+  );
   const rows = (await db().execute(sql`
-    select p.id, p.slug, p.name, p.tagline, p.logo_url, p.tier, p.approved_at,
+    select p.id, p.slug, p.name, p.tagline, p.logo_url, p.tier, p.approved_at, p.launch_week_key,
       (select count(*) from votes v where v.product_id = p.id) as votes,
       (select count(*) from comments c where c.product_id = p.id and c.status = 'visible') as comments,
       coalesce((select sum(v.weight) from votes v
                 where v.product_id = p.id and not v.flagged
-                  and v.created_at >= ${startsAt} and v.created_at < ${endsAt}), 0)
+                  and v.created_at >= lw.starts_at and v.created_at < lw.ends_at), 0)
       + ${COMMENT_BONUS}::float8 * (select count(distinct c.user_id) from comments c
                 where c.product_id = p.id and c.status = 'visible' and c.user_id <> p.created_by
                   and char_length(c.body) >= ${MIN_COMMENT_LENGTH}
-                  and c.created_at >= ${startsAt} and c.created_at < ${endsAt}) as score,
+                  and c.created_at >= lw.starts_at and c.created_at < lw.ends_at) as score,
       exists(select 1 from votes v where v.product_id = p.id and v.user_id = ${viewerId}) as voted_by_me,
       (select json_agg(json_build_object('slug', cat.slug, 'name', cat.name) order by cat.position)
          from product_categories pc join categories cat on cat.slug = pc.category_slug
         where pc.product_id = p.id) as categories
     from products p
-    where p.status = 'approved' and p.launch_week_key = ${weekKey}
+    join launch_weeks lw on lw.key = p.launch_week_key
+    where p.status = 'approved' and p.launch_week_key in (${keys})
   `)) as unknown as Row[];
 
   return rank(
@@ -66,6 +82,7 @@ export async function weekBoard(weekKey: string, viewerId: string | null = null)
       tagline: r.tagline,
       logoUrl: r.logo_url,
       tier: r.tier,
+      weekKey: r.launch_week_key,
       approvedAt: r.approved_at ? new Date(r.approved_at) : null,
       votes: Number(r.votes),
       comments: Number(r.comments),

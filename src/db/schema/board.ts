@@ -44,6 +44,8 @@ export const productTier = pgEnum("product_tier", ["free", "fast_track", "pro", 
 
 export const pricingModel = pgEnum("pricing_model", ["free", "freemium", "paid", "open_source", "trial"]);
 
+export const createdVia = pgEnum("created_via", ["web", "api", "mcp"]);
+
 export const products = pgTable(
   "products",
   {
@@ -70,6 +72,8 @@ export const products = pgTable(
     createdBy: text("created_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    /** Where the listing was drafted: the site, the REST API or an MCP agent. */
+    createdVia: createdVia("created_via").notNull().default("web"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -223,3 +227,39 @@ export const productOrders = pgTable(
   },
   (t) => [index("product_orders_product_idx").on(t.productId)],
 );
+
+/** Month and year boards that have been closed and awarded (weeks use launch_weeks.closed_at). */
+export const closedPeriods = pgTable(
+  "closed_periods",
+  {
+    scope: awardScope("scope").notNull(),
+    key: text("key").notNull(),
+    closedAt: timestamp("closed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.key] })],
+);
+
+export const subscriberStatus = pgEnum("subscriber_status", ["pending", "active", "unsubscribed"]);
+
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  status: subscriberStatus("status").notNull().default("pending"),
+  /** Random token used in confirm and unsubscribe links. */
+  token: text("token").notNull().unique(),
+  source: text("source"),
+  confirmEmailSentAt: timestamp("confirm_email_sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+});
+
+/** One weekly digest per closed week; the row is the send lock. */
+export const newsletterIssues = pgTable("newsletter_issues", {
+  weekKey: text("week_key").primaryKey(),
+  subject: text("subject").notNull(),
+  recipients: integer("recipients").notNull().default(0),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  error: text("error"),
+});

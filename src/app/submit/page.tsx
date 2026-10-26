@@ -7,7 +7,7 @@ import { listCategories, uploadsEnabled } from "@/lib/products/queries";
 
 export const metadata: Metadata = { title: "Debut your product", robots: { index: false } };
 
-export default function SubmitPage() {
+export default function SubmitPage(props: PageProps<"/submit">) {
   return (
     <Container className="max-w-3xl py-12">
       <Heading>Debut your product</Heading>
@@ -16,15 +16,24 @@ export default function SubmitPage() {
       </p>
       <Card className="mt-8">
         <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
-          <NewProduct />
+          <NewProduct searchParams={props.searchParams} />
         </Suspense>
       </Card>
     </Container>
   );
 }
 
-async function NewProduct() {
-  await requireUser("/submit");
+/** `?url=` (from the readiness check) starts the form with the website filled in. */
+async function NewProduct({ searchParams }: Pick<PageProps<"/submit">, "searchParams">) {
+  const { url } = await searchParams;
+  const websiteUrl = typeof url === "string" && /^https?:\/\//.test(url) && url.length <= 500 ? url : "";
+  await requireUser(websiteUrl ? `/submit?url=${encodeURIComponent(websiteUrl)}` : "/submit");
   const categories = await listCategories();
-  return <ProductForm categories={categories} uploadsEnabled={uploadsEnabled()} />;
+  return (
+    <ProductForm
+      categories={categories}
+      uploadsEnabled={uploadsEnabled()}
+      initialWebsiteUrl={websiteUrl || undefined}
+    />
+  );
 }

@@ -1,0 +1,163 @@
+import "server-only";
+import { z } from "zod";
+import { site as siteConfig } from "@/config/site";
+import {
+  ApiError,
+  categories,
+  draftInput,
+  draftSubmission,
+  getInput,
+  getProduct,
+  inputJsonSchema,
+  myLaunches,
+  readiness,
+  readinessInput,
+  searchInput,
+  searchProducts,
+} from "./operations";
+import type { ApiContext } from "./http";
+
+/**
+ * A stateless MCP server (Streamable HTTP, JSON responses, no SSE). Tools
+ * mirror the REST API. Agents can read and draft; they can't publish or pay.
+ */
+
+export const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
+
+type Tool = {
+  name: string;
+  title: string;
+  description: string;
+  input: z.ZodType;
+  readOnly: boolean;
+  run: (args: unknown, ctx: ApiContext) => Promise<unknown>;
+};
+
+export const TOOLS: Tool[] = [
+  {
+    name: "search_products",
+    title: "Search products",
+    description: "Search products that have debuted on DebutYard by name, tagline or category.",
+    input: searchInput,
+    readOnly: true,
+    run: (args) => searchProducts(args as z.input<typeof searchInput>),
+  },
+  {
+    name: "get_product",
+    title: "Get product",
+    description: "Full details for one live product: description, maker, categories, votes, rank and awards.",
+    input: getInput,
+    readOnly: true,
+    run: (args) => getProduct(args as z.input<typeof getInput>),
+  },
+  {
+    name: "list_categories",
+    title: "List categories",
+    description: "Category slugs to use with search_products and submit_product.",
+    input: z.object({}),
+    readOnly: true,
+    run: () => categories(),
+  },
+  {
+    name: "check_launch_readiness",
+    title: "Check launch readiness",
+    description:
+      "Audit a product URL before launch: HTTPS, title, meta description, social image, indexability, duplicates and the DebutYard badge. Returns a 0-100 score, checks with fixes, a suggested listing and the next weeks with room.",
+    input: readinessInput,
+    readOnly: true,
+    run: (args, ctx) =>
+      readiness(args as z.input<typeof readinessInput>, { user: ctx.user, clientKey: ctx.clientKey, source: "mcp" }),
+  },
+  {
+    name: "submit_product",
+    title: "Draft a product listing",
+    description:
+      "Create a DRAFT listing for the user's product (needs an API token). It is not submitted: the user opens the returned link to review it, choose a free or paid debut and submit. Run check_launch_readiness and list_categories first.",
+    input: draftInput,
+    readOnly: false,
+    run: (args, ctx) => draftSubmission(args, ctx.user, "mcp"),
+  },
+  {
+    name: "get_my_launches",
+    title: "My launches",
+    description:
+      "The user's listings with status, debut week, badge status, votes, views and clicks (needs an API token).",
+    input: z.object({}),
+    readOnly: true,
+    run: (_args, ctx) => myLaunches(ctx.user),
+  },
+];
+
+const toolList = () =>
+  TOOLS.map((t) => ({
+    name: t.name,
+    title: t.title,
+    description: t.description,
+    inputSchema: inputJsonSchema(t.input),
+    annotations: {
+      readOnlyHint: t.readOnly,
+      destructiveHint: false,
+      openWorldHint: t.name === "check_launch_readiness",
+    },
+  }));
+
+type JsonRpcRequest = { jsonrpc: "2.0"; id?: string | number | null; method: string; params?: Record<string, unknown> };
+type JsonRpcResponse =
+  | { jsonrpc: "2.0"; id: string | number | null; result: unknown }
+  | { jsonrpc: "2.0"; id: string | number | null; error: { code: number; message: string } };
+
+const rpcError = (id: JsonRpcRequest["id"], code: number, message: string): JsonRpcResponse => ({
+  jsonrpc: "2.0",
+  id: id ?? null,
+  error: { code, message },
+});
+
+/** Handles one JSON-RPC message. Returns null for notifications. */
+export async function handleMessage(msg: unknown, ctx: ApiContext): Promise<JsonRpcResponse | null> {
+  if (!msg || typeof msg !== "object" || (msg as JsonRpcRequest).jsonrpc !== "2.0") {
+    return rpcError(null, -32600, "Invalid request");
+  }
+  const { id, method, params } = msg as JsonRpcRequest;
+  if (id === undefined) return null;
+  const ok = (result: unknown): JsonRpcResponse => ({ jsonrpc: "2.0", id, result });
+
+  switch (method) {
+    case "initialize": {
+      const asked = typeof params?.protocolVersion === "string" ? params.protocolVersion : "";
+      return ok({
+        protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: "debutyard", title: siteConfig.name, version: "1.0.0" },
+        instructions:
+          "DebutYard is a weekly launch board for software products. Use check_launch_readiness before drafting, list_categories for valid slugs, and submit_product to create a draft the user finishes in their browser. Drafting and get_my_launches need the user's API token.",
+      });
+    }
+    case "ping":
+      return ok({});
+    case "tools/list":
+      return ok({ tools: toolList() });
+    case "tools/call": {
+      const tool = TOOLS.find((t) => t.name === params?.name);
+      if (!tool) return rpcError(id, -32602, `Unknown tool: ${String(params?.name)}`);
+      try {
+        const data = await tool.run(params?.arguments ?? {}, ctx);
+        const structured = Array.isArray(data) ? { items: data } : data;
+        return ok({
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+          structuredContent: structured,
+        });
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof z.ZodError
+              ? `Invalid arguments: ${err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`
+              : "Something went wrong.";
+        if (!(err instanceof ApiError) && !(err instanceof z.ZodError)) console.error("mcp tool failed", err);
+        return ok({ content: [{ type: "text", text: message }], isError: true });
+      }
+    }
+    default:
+      return rpcError(id, -32601, `Method not found: ${method}`);
+  }
+}

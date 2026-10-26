@@ -48,7 +48,7 @@ export function BadgePanel({
         Paste it as plain HTML: badges added by JavaScript can&apos;t be detected.
       </p>
       <div className="flex items-center gap-3">
-        <span className={`rounded-md p-2 ${theme === "dark" ? "bg-[#f3f1ec]" : "bg-muted"}`}>
+        <span className={`rounded-md p-2 ${theme === "dark" ? "bg-[#f3f7f5]" : "bg-[#dce6e2]"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewUrls[theme]} alt="Badge preview" width={220} height={54} />
         </span>

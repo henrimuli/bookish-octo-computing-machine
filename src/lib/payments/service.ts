@@ -306,6 +306,10 @@ export async function refundOrder(orderId: string, reason: string, amountCents?:
     .set({ status: full ? "refunded" : "partially_refunded", refundedAt: full ? new Date() : order.refundedAt })
     .where(eq(orders.id, orderId))
     .returning();
+  // A fully refunded featured slot comes down and frees its inventory.
+  if (full && order.kind === "featured") {
+    await db().update(schema.adBookings).set({ status: "cancelled" }).where(eq(schema.adBookings.orderId, orderId));
+  }
   return updated;
 }
 

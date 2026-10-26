@@ -61,3 +61,11 @@ registerFulfillment("submission", async (order) => {
     html: `<p>Buyer: ${order.email}<br>Package: ${name}<br>Paid: ${amount} via ${order.provider}<br>Order: <code>${order.id}</code></p>`,
   });
 });
+
+/** Featured slots: the held booking named in the order becomes active. */
+registerFulfillment("featured", async (order) => {
+  const bookingId = typeof order.metadata.bookingId === "string" ? order.metadata.bookingId : null;
+  if (!bookingId) throw new Error(`Featured order ${order.id} is missing its booking`);
+  const { activateBooking } = await import("@/lib/ads/service");
+  await activateBooking(bookingId);
+});

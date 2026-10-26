@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BookingStatsTable } from "@/components/ads/booking-stats";
 import { BadgePanel } from "@/components/badge-panel";
 import { ProductLogo } from "@/components/board/product-logo";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
+import { bookingsForUser } from "@/lib/ads/service";
 import { requireUser } from "@/lib/auth";
 import { dnsRecordValue } from "@/lib/badges/detect";
 import { badgeSnippet } from "@/lib/badges/svg";
@@ -38,10 +40,16 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
     <Container className="max-w-5xl py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading>Your products</Heading>
-        <ButtonLink href="/submit">Debut a product</ButtonLink>
+        <div className="flex gap-2">
+          <ButtonLink href="/dashboard/api" variant="outline">
+            API &amp; agents
+          </ButtonLink>
+          <ButtonLink href="/submit">Debut a product</ButtonLink>
+        </div>
       </div>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Products searchParams={props.searchParams} />
+        <Sponsorships />
       </Suspense>
     </Container>
   );
@@ -164,5 +172,29 @@ async function Products({ searchParams }: { searchParams: PageProps<"/dashboard"
         );
       })}
     </div>
+  );
+}
+
+async function Sponsorships() {
+  const user = await requireUser("/dashboard");
+  const rows = await bookingsForUser(user.id);
+  return (
+    <section className="mt-14">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="font-display text-2xl font-bold">Your sponsorships</h2>
+        <ButtonLink href="/advertise#book" variant="outline" size="sm">
+          Book a slot
+        </ButtonLink>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Featured slots on the leaderboard, homepage, categories and newsletter, with click stats here.
+        </p>
+      ) : (
+        <div className="mt-4">
+          <BookingStatsTable rows={rows} />
+        </div>
+      )}
+    </section>
   );
 }
