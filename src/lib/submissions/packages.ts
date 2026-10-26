@@ -1,0 +1,75 @@
+/** Done-for-you submission packages (PLAN §5.3). Pure config. */
+
+export type PackageId = "starter" | "growth" | "scale";
+
+export const PACKAGES: Record<PackageId, { sku: string; label: string; count: number; days: number }> = {
+  starter: { sku: "submission_starter", label: "Starter", count: 40, days: 7 },
+  growth: { sku: "submission_growth", label: "Growth", count: 100, days: 14 },
+  scale: { sku: "submission_scale", label: "Scale", count: 180, days: 14 },
+};
+
+export function packageForSku(sku: string): PackageId | null {
+  return (Object.keys(PACKAGES) as PackageId[]).find((p) => PACKAGES[p].sku === sku) ?? null;
+}
+
+/** Our product categories → directory niche, for matching targets. */
+const NICHE_OF_CATEGORY: Record<string, "ai" | "devtools" | "b2b"> = {
+  ai: "ai",
+  "developer-tools": "devtools",
+  devops: "devtools",
+  data: "devtools",
+  "open-source": "devtools",
+  security: "devtools",
+  sales: "b2b",
+  hr: "b2b",
+  "customer-support": "b2b",
+  finance: "b2b",
+  analytics: "b2b",
+};
+
+export function nichesFor(categories: string[]): Set<string> {
+  return new Set(categories.map((c) => NICHE_OF_CATEGORY[c]).filter(Boolean));
+}
+
+export type TargetCandidate = {
+  id: string;
+  niche: string;
+  dr: number | null;
+  linkType: string;
+  badgeRequired: boolean;
+  guided: boolean;
+  isActive: boolean;
+  acceptanceRate: number | null;
+};
+
+/**
+ * Picks directories for an order, best first: active, not guided, not known
+ * nofollow, badge-gated only if the client allows badges. Niche matches and
+ * general directories rank above other niches; then DR, then our acceptance
+ * rate. Pure.
+ */
+export function selectTargets(
+  candidates: TargetCandidate[],
+  opts: { count: number; categories: string[]; allowBadges: boolean; exclude?: Set<string> },
+): string[] {
+  const niches = nichesFor(opts.categories);
+  const fit = (c: TargetCandidate) => (niches.has(c.niche) ? 2 : c.niche === "general" || c.niche === "indie" ? 1 : 0);
+  return candidates
+    .filter(
+      (c) =>
+        c.isActive &&
+        !c.guided &&
+        c.linkType !== "nofollow" &&
+        (opts.allowBadges || !c.badgeRequired) &&
+        !opts.exclude?.has(c.id),
+    )
+    .sort(
+      (a, b) =>
+        fit(b) - fit(a) ||
+        (b.dr ?? -1) - (a.dr ?? -1) ||
+        (b.acceptanceRate ?? 0.5) - (a.acceptanceRate ?? 0.5) ||
+        a.id.localeCompare(b.id),
+    )
+    .slice(0, opts.count)
+    .map((c) => c.id);
+}

@@ -4,3 +4,4 @@ export * from "./board";
 export * from "./content";
 export * from "./ads";
 export * from "./api";
+export * from "./directories";

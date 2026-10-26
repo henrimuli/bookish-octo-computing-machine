@@ -1,4 +1,6 @@
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { db, schema } from "@/db";
 import { getCurrentUser } from "@/lib/auth";
 import { enabledProviders } from "@/lib/payments";
 import { CouponError } from "@/lib/payments/pricing";
@@ -10,6 +12,8 @@ const body = z.object({
   provider: z.enum(["paystack", "paypal"]),
   email: z.string().email().optional(),
   coupon: z.string().max(64).optional(),
+  /** Submission packages only: boost one of the buyer's own listings. */
+  productId: z.string().uuid().optional(),
 });
 
 /** Starts a checkout and returns the provider URL to redirect to. */
@@ -42,12 +46,21 @@ export async function POST(request: Request) {
     }
     // One-time purchases (e.g. the submission service) don't need an account.
     if (!email) return Response.json({ error: "Email is required." }, { status: 400 });
+    let metadata: Record<string, unknown> | undefined;
+    if (input.productId && sku.kind === "submission" && user) {
+      const owned = await db().query.products.findFirst({
+        where: and(eq(schema.products.id, input.productId), eq(schema.products.createdBy, user.id)),
+        columns: { id: true },
+      });
+      if (owned) metadata = { productId: owned.id };
+    }
     const { url } = await startCheckout({
       skuId: sku.id,
       provider: input.provider,
       email,
       userId: user?.id,
       couponCode: input.coupon || null,
+      metadata,
     });
     return Response.json({ url });
   } catch (err) {

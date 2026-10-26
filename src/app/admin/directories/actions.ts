@@ -1,0 +1,39 @@
+"use server";
+
+import { refresh } from "next/cache";
+import { z } from "zod";
+import { getCurrentUser, isStaff } from "@/lib/auth";
+import { importDirectoriesCsv, saveDirectory, type DirectoryInput } from "@/lib/directories/service";
+
+async function staffOnly() {
+  const user = await getCurrentUser();
+  return user && isStaff(user) ? user : null;
+}
+
+export async function saveDirectoryAction(
+  input: DirectoryInput,
+  id: string | null,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!(await staffOnly())) return { ok: false, error: "Not allowed." };
+  if (id && !z.string().uuid().safeParse(id).success) return { ok: false, error: "Not found." };
+  try {
+    const d = await saveDirectory(input, id ?? undefined);
+    refresh();
+    return { ok: true, id: d.id };
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const i = err.issues[0];
+      return { ok: false, error: `${i?.path.join(".")}: ${i?.message}` };
+    }
+    if (err instanceof Error && /unique/i.test(err.message)) return { ok: false, error: "That slug is taken." };
+    throw err;
+  }
+}
+
+export async function importCsvAction(text: string) {
+  if (!(await staffOnly())) return { created: 0, updated: 0, errors: ["Not allowed."] };
+  if (text.length > 500_000) return { created: 0, updated: 0, errors: ["That file is too big (500 KB max)."] };
+  const result = await importDirectoriesCsv(text);
+  refresh();
+  return result;
+}

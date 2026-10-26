@@ -10,12 +10,13 @@ const nav = [
   { href: "/vote", label: "Pick a winner" },
   { href: "/weeks", label: "Past weeks" },
   { href: "/categories", label: "Categories" },
+  { href: "/directories", label: "Directories" },
   { href: "/pricing", label: "Pricing" },
 ];
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-border bg-background/80 backdrop-blur">
+    <header className="border-b border-border bg-background/80 backdrop-blur print:hidden">
       <Container className="flex h-16 items-center justify-between gap-4">
         <div className="flex items-center gap-8">
           <Logo />

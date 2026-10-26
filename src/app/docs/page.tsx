@@ -75,6 +75,7 @@ export default function DocsPage() {
             ["GET", "/products?q=&category=", "Search live products"],
             ["GET", "/products/{slug}", "One product"],
             ["GET", "/categories", "Category slugs"],
+            ["GET", "/directories?niche=&noBadge=", "Launch directories to submit to"],
             ["POST", "/readiness", "Launch-readiness check for { url }"],
             ["POST", "/submissions", "Create a draft listing (token)"],
             ["GET", "/me/products", "Your listings and stats (token)"],
