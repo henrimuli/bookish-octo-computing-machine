@@ -92,6 +92,13 @@
       "when": 1793036348037,
       "tag": "20261026173908_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793037841176,
+      "tag": "20261026180401_domain_metrics",
+      "breakpoints": true
     }
   ]
 }

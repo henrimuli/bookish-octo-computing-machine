@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { DrChart } from "@/components/metrics/dr-chart";
 import { PrintButton } from "@/components/print-button";
 import { IntakeForm } from "@/components/submissions/intake-form";
 import { OrderReport } from "@/components/submissions/order-report";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
+import { drHistory } from "@/lib/metrics/service";
 import { listCategories } from "@/lib/products/queries";
+import { domainOf } from "@/lib/slug";
 import { PACKAGES } from "@/lib/submissions/packages";
 import { guidedChecklist, orderByIntakeToken, orderRows, summarizeOrder } from "@/lib/submissions/service";
 
@@ -62,7 +65,18 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
     );
   }
 
-  const [rows, guided] = await Promise.all([orderRows(order.id), guidedChecklist()]);
+  const domain = (() => {
+    try {
+      return order.websiteUrl ? domainOf(order.websiteUrl) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [rows, guided, dr] = await Promise.all([
+    orderRows(order.id),
+    guidedChecklist(),
+    domain ? drHistory(domain) : Promise.resolve([]),
+  ]);
   const summary = summarizeOrder(
     order,
     rows.map((r) => r.s),
@@ -99,6 +113,12 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
         </Card>
       )}
       <OrderReport order={order} rows={rows} summary={summary} />
+      {dr.length > 0 && (
+        <Card className="p-5">
+          <p className="mb-3 font-medium">Domain Rating for {domain}</p>
+          <DrChart points={dr} />
+        </Card>
+      )}
       {guided.length > 0 && (
         <Card className="p-5 print:hidden">
           <p className="font-medium">Do these yourself (they need you personally)</p>
