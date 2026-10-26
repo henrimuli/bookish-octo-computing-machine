@@ -35,3 +35,19 @@ export const readinessChecks = pgTable(
   },
   (t) => [index("readiness_client_idx").on(t.clientHash, t.createdAt)],
 );
+
+/** Free tool runs (dofollow checker, DR checker): per-tool hourly rate limits. */
+export const toolChecks = pgTable(
+  "tool_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tool: text("tool").notNull(),
+    target: text("target").notNull(),
+    /** Salted hash of the caller's IP or account, as for readiness checks. */
+    clientHash: text("client_hash").notNull(),
+    source: text("source").notNull().default("web"),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("tool_checks_client_idx").on(t.tool, t.clientHash, t.createdAt)],
+);

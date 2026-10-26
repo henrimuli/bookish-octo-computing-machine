@@ -17,7 +17,7 @@ export class ReadinessError extends Error {}
 /** Each caller (by IP, or by account) can run this many checks an hour. */
 export const CHECKS_PER_HOUR = 15;
 
-function hashClient(key: string) {
+export function hashClient(key: string) {
   return createHash("sha256")
     .update(`${env().BETTER_AUTH_SECRET ?? "dev"}:${key}`)
     .digest("hex")

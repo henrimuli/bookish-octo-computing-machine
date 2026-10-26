@@ -1,7 +1,8 @@
 import { site } from "@/config/site";
 import { env } from "@/env";
 import { CORS } from "@/lib/api/http";
-import { draftInput, inputJsonSchema, readinessInput } from "@/lib/api/operations";
+import { dofollowInput, draftInput, drInput, inputJsonSchema, readinessInput } from "@/lib/api/operations";
+import { drEnabled } from "@/lib/metrics/service";
 
 const schema = inputJsonSchema;
 
@@ -70,6 +71,24 @@ export function GET() {
           responses: ok("Score, checks, suggested listing and next weeks with room"),
         },
       },
+      "/tools/dofollow": {
+        post: {
+          summary: "Check whether a page links to a domain, and whether the link is followed",
+          requestBody: { required: true, content: { "application/json": { schema: schema(dofollowInput) } } },
+          responses: ok("Verdict (dofollow, nofollow, missing, unreachable), rel, anchor and an explanation"),
+        },
+      },
+      ...(drEnabled()
+        ? {
+            "/tools/dr": {
+              post: {
+                summary: "Domain Rating for a domain (cached 7 days)",
+                requestBody: { required: true, content: { "application/json": { schema: schema(drInput) } } },
+                responses: ok("DR 0-100, referring domains, provider and when it was measured"),
+              },
+            },
+          }
+        : {}),
       "/submissions": {
         post: {
           summary: "Create a draft listing",

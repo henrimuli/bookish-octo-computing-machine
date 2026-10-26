@@ -106,6 +106,13 @@
       "when": 1793039015602,
       "tag": "20261026182335_affiliates",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793039938615,
+      "tag": "20261026183858_free_tools",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { env } from "@/env";
+import { drEnabled } from "@/lib/metrics/service";
 import { site } from "@/config/site";
 import { weekBoard } from "@/lib/board/queries";
 import { addWeeks, formatWeekLabel, weekKeyFor } from "@/lib/weeks";
@@ -24,9 +25,11 @@ export async function GET() {
     `- [Launch directories](${base}/directories): where to list a product after launch, with link types we've verified`,
     `- [Submission service](${base}/submission-service): we submit a product to 40–180 directories and verify every link`,
     `- [Launch readiness check](${base}/tools/launch-readiness): free pre-launch audit of any product URL`,
+    `- [Dofollow checker](${base}/tools/dofollow-checker): does a page link to a site, and is the link followed`,
+    ...(drEnabled() ? [`- [DR checker](${base}/tools/dr-checker): any domain's authority score, 0�100`] : []),
     "",
     "## For agents",
-    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, submit_product drafts, get_my_launches, get_my_links)`,
+    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, check_dofollow${drEnabled() ? ", check_dr" : ""}, submit_product drafts, get_my_launches, get_my_links)`,
     `- [OpenAPI spec](${base}/api/v1/openapi.json): REST API at ${base}/api/v1`,
     "",
   ];
