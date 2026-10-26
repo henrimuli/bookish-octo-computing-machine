@@ -41,15 +41,19 @@ async function Links() {
   const active = rows.filter((r) => r.link.active);
   const n = (v: string) => active.filter((r) => r.link.lastVerdict === v).length;
   const attention = active.filter((r) => r.link.lastVerdict && r.link.lastVerdict !== "dofollow").length;
+  const indexChecked = active.filter((r) => r.link.indexed !== null);
 
   return (
     <div className="mt-8 space-y-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:auto-cols-fr lg:grid-flow-col">
         {[
           ["Monitored", usage.monitored],
           ["Dofollow", n("dofollow")],
           ["Need attention", attention],
           ["Your added links", `${usage.used} / ${usage.limit}`],
+          ...(indexChecked.length
+            ? [["Indexed by Google", `${indexChecked.filter((r) => r.link.indexed).length} / ${indexChecked.length}`]]
+            : []),
         ].map(([label, value]) => (
           <Card key={label} className="p-4">
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -91,6 +95,7 @@ async function Links() {
             statusCode: l.lastStatusCode,
             checkedAt: l.lastCheckedAt,
             nextCheckAt: l.active ? l.nextCheckAt : null,
+            indexed: l.indexed,
           }))}
         />
       </Card>

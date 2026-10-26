@@ -1,6 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { captureEvidence, evidenceKey } from "@/lib/evidence";
 import { safeFetchText, UnsafeUrlError } from "@/lib/net";
 import { domainOf } from "@/lib/slug";
 import { inspectBacklink } from "./backlink";
@@ -67,9 +68,14 @@ export async function verifySubmission(submissionId: string) {
 
   const result = await checkLink(s.liveUrl, domain);
   const now = new Date();
+  // A screenshot the first time a listing is confirmed live (staff can still paste one by hand).
+  const evidenceUrl =
+    !s.evidenceUrl && (result.verdict === "dofollow" || result.verdict === "nofollow")
+      ? await captureEvidence(s.liveUrl, evidenceKey(submissionId, now))
+      : null;
   await db()
     .insert(linkChecks)
-    .values({ submissionId, checkedAt: now, ...result });
+    .values({ submissionId, checkedAt: now, ...result, evidenceUrl });
   const [updated] = await db()
     .update(submissions)
     .set({
@@ -78,6 +84,7 @@ export async function verifySubmission(submissionId: string) {
       linkAnchor: result.anchor,
       linkHttpStatus: result.httpStatus,
       linkCheckedAt: now,
+      ...(evidenceUrl ? { evidenceUrl } : {}),
     })
     .where(eq(submissions.id, submissionId))
     .returning();

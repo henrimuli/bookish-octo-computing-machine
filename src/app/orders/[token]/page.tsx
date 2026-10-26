@@ -8,6 +8,7 @@ import { OrderReport } from "@/components/submissions/order-report";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
+import { orderIndexStats } from "@/lib/links/indexed";
 import { drHistory } from "@/lib/metrics/service";
 import { listCategories } from "@/lib/products/queries";
 import { domainOf } from "@/lib/slug";
@@ -79,13 +80,14 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
       return null;
     }
   })();
-  const [rows, guided, dr, badgeBlock, accounts] = await Promise.all([
+  const [rows, guided, dr, badgeBlock, accounts, index] = await Promise.all([
     orderRows(order.id),
     guidedChecklist(),
     domain ? drHistory(domain) : Promise.resolve([]),
     order.badgePreference === "allow" && order.status !== "delivered" ? badgeBlockFor(order.id) : null,
     // Logins are handed over with the delivery report, and only on this private page.
     order.status === "delivered" ? credentialsFor(order.id) : Promise.resolve([]),
+    orderIndexStats(order.id),
   ]);
   const summary = summarizeOrder(
     order,
@@ -138,6 +140,12 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
         </Card>
       )}
       <OrderReport order={order} rows={rows} summary={summary} />
+      {index.checked > 0 && (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{index.indexed}</span> of {index.checked} live listings we
+          checked are indexed by Google. New listings often take a few weeks; we re-check weekly.
+        </p>
+      )}
       {accounts.length > 0 && (
         <Card className="p-5">
           <p className="font-medium">Directory accounts we created</p>

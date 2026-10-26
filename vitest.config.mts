@@ -10,5 +10,7 @@ export default defineConfig({
     fileParallelism: false,
     // Integration setup drops the schema and applies every migration.
     hookTimeout: 30_000,
+    // Integration tests run many queries against a real database; 5s is tight on slow machines.
+    testTimeout: 20_000,
   },
 });

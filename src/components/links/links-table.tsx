@@ -22,6 +22,8 @@ export type LinkRow = {
   statusCode: number | null;
   checkedAt: Date | null;
   nextCheckAt: Date | null;
+  /** Google index status from the weekly SERP check; null until checked. */
+  indexed: boolean | null;
 };
 
 type Check = {
@@ -31,6 +33,7 @@ type Check = {
   httpStatus: number | null;
   rel: string | null;
   error: string | null;
+  evidenceUrl: string | null;
 };
 
 const SOURCE: Record<LinkRow["source"], string> = { tracker: "tracker", order: "order", manual: "added" };
@@ -112,6 +115,11 @@ function Row({ initial }: { initial: LinkRow }) {
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
             <LinkVerdict verdict={row.verdict} anchor={row.anchor} checkedAt={row.checkedAt} />
             {row.statusCode && <span className="text-muted-foreground">HTTP {row.statusCode}</span>}
+            {row.indexed !== null && (
+              <span className={row.indexed ? "text-success" : "text-muted-foreground"}>
+                {row.indexed ? "indexed by Google" : "not indexed yet"}
+              </span>
+            )}
             {row.nextCheckAt && <span className="text-muted-foreground">next check {day(row.nextCheckAt)}</span>}
           </div>
           {error && <p className="mt-1 text-xs text-danger">{error}</p>}
@@ -184,6 +192,11 @@ function Row({ initial }: { initial: LinkRow }) {
               {c.rel && <span className="text-muted-foreground">rel=&quot;{c.rel}&quot;</span>}
               {c.httpStatus && <span className="text-muted-foreground">HTTP {c.httpStatus}</span>}
               {c.error && <span className="text-muted-foreground">{c.error}</span>}
+              {c.evidenceUrl && (
+                <a href={c.evidenceUrl} target="_blank" rel="noopener" className="text-primary hover:underline">
+                  screenshot
+                </a>
+              )}
             </li>
           ))}
         </ol>

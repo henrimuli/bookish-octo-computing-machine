@@ -4,7 +4,9 @@ import { recheckBadges } from "@/lib/badges/service";
 import { syncSubscriptions } from "@/lib/billing/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
 import { settleBookings } from "@/lib/ads/service";
+import { auditDirectories } from "@/lib/directories/audit";
 import { refreshDirectoryStats } from "@/lib/directories/service";
+import { checkIndexed } from "@/lib/links/indexed";
 import { monitorLinks } from "@/lib/links/service";
 import { snapshotDomains } from "@/lib/metrics/service";
 import { checkBadgeBlocks, sendOrderDigests } from "@/lib/submissions/service";
@@ -36,6 +38,8 @@ export async function GET(request: Request) {
     ["directory stats", () => refreshDirectoryStats()],
     ["badges", () => recheckBadges()],
     ["links", () => monitorLinks()],
+    ["indexed", () => checkIndexed()],
+    ["directory audit", () => auditDirectories()],
     ["dr", () => snapshotDomains()],
     ["affiliates", () => approveReferrals()],
   ];
