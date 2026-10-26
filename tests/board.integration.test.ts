@@ -11,11 +11,19 @@ import { resetDatabase } from "./helpers/db";
 
 const TEST_DB = process.env.TEST_DATABASE_URL;
 
-const sent: Array<{ to: string; subject: string }> = [];
+const sent: Array<{ to: string; subject: string; text?: string; headers?: Record<string, string> }> = [];
+const batches: string[] = [];
 vi.mock("@/lib/email", () => ({
-  sendEmail: vi.fn(async (email: { to: string; subject: string }) => {
-    sent.push({ to: email.to, subject: email.subject });
+  sendEmail: vi.fn(async (email: { to: string; subject: string; text: string }) => {
+    sent.push({ to: email.to, subject: email.subject, text: email.text });
   }),
+  sendBatch: vi.fn(
+    async (emails: Array<{ to: string; subject: string; headers?: Record<string, string> }>, key: string) => {
+      batches.push(key);
+      for (const e of emails) sent.push({ to: e.to, subject: e.subject, headers: e.headers });
+      return emails.length;
+    },
+  ),
 }));
 
 class FakeProvider implements PaymentProvider {
@@ -54,6 +62,8 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
   let queries: typeof import("@/lib/board/queries");
   let rollover: typeof import("@/lib/board/rollover");
   let dashboard: typeof import("@/lib/products/dashboard");
+  let duels: typeof import("@/lib/board/duels");
+  let newsletter: typeof import("@/lib/newsletter/service");
 
   const now = new Date();
   const thisWeek = weekKeyFor(now);
@@ -73,6 +83,8 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     queries = await import("@/lib/board/queries");
     rollover = await import("@/lib/board/rollover");
     dashboard = await import("@/lib/products/dashboard");
+    duels = await import("@/lib/board/duels");
+    newsletter = await import("@/lib/newsletter/service");
   });
 
   afterAll(async () => {
@@ -81,13 +93,13 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
 
   beforeEach(async () => {
     sent.length = 0;
+    batches.length = 0;
     fake.verifyResult = null;
     fake.refunds = [];
-    await dbmod
-      .db()
-      .execute(
-        sql`truncate products, launch_weeks, votes, comments, awards, orders, payment_events, refunds, "user" cascade`,
-      );
+    await dbmod.db().execute(
+      sql`truncate products, launch_weeks, votes, comments, awards, orders, payment_events, refunds, closed_periods,
+          newsletter_subscribers, newsletter_issues, "user" cascade`,
+    );
   });
 
   let userSeq = 0;
@@ -351,5 +363,93 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
       ]);
     const [row] = await dashboard.dashboardProducts(maker);
     expect(row.stats).toMatchObject({ views_30d: 2, clicks_30d: 1, votes: 0 });
+  });
+
+  async function voteAt(productId: string, userId: string, at: Date) {
+    await dbmod.db().insert(dbmod.schema.votes).values({ productId, userId, weight: 1, createdAt: at });
+  }
+
+  it("scores each product on its own debut week and awards ended months once", async () => {
+    // September 2026 = W37..W40 (weeks whose Monday falls in September).
+    const [w37, w38] = ["2026-W37", "2026-W38"];
+    const voters = [await makeUser(), await makeUser(), await makeUser()];
+    const a = await liveProduct(await makeUser(), "sep-a.io", w37);
+    const b = await liveProduct(await makeUser(), "sep-b.io", w38);
+    const c = await liveProduct(await makeUser(), "sep-c.io", w38);
+    const inWeek = (w: string) => new Date(weekBounds(w).startsAt.getTime() + 3600_000);
+    await voteAt(a.id, voters[0], inWeek(w37));
+    await voteAt(a.id, voters[1], inWeek(w37));
+    for (const v of voters) await voteAt(b.id, v, inWeek(w38));
+    // Votes after a product's debut week show on the page but don't score.
+    for (const v of voters) await voteAt(c.id, v, inWeek("2026-W39"));
+
+    const board = await queries.boardForWeeks([w37, w38]);
+    expect(board.map((p) => [p.slug, p.votes, p.score, p.weekKey])).toEqual([
+      ["sep-b-io", 3, 3, w38],
+      ["sep-a-io", 2, 2, w37],
+      ["sep-c-io", 3, 0, w38],
+    ]);
+
+    const now = new Date("2026-10-26T01:00:00Z");
+    await rollover.closeEndedPeriods(now);
+    const monthAwards = await dbmod.db().query.awards.findMany({
+      where: eq(dbmod.schema.awards.scope, "month"),
+      orderBy: (aw, { asc }) => asc(aw.place),
+    });
+    expect(monthAwards.map((aw) => [aw.periodKey, aw.place, aw.productId])).toEqual([
+      ["2026-09", 1, b.id],
+      ["2026-09", 2, a.id],
+    ]);
+    expect(sent.filter((e) => e.subject.includes("Debut of the Month")).length).toBe(2);
+    // The year isn't over, so no yearly awards yet; a re-run changes nothing.
+    await rollover.closeEndedPeriods(now);
+    expect(await dbmod.db().select().from(dbmod.schema.awards)).toHaveLength(2);
+  });
+
+  it("serves duel pairs the viewer hasn't voted on and runs out cleanly", async () => {
+    const viewer = await makeUser();
+    const ps = [];
+    for (const d of ["d1.io", "d2.io", "d3.io"]) ps.push(await liveProduct(await makeUser(), d));
+    await voteAt(ps[0].id, viewer, new Date());
+
+    const pair = await duels.duelPair(viewer);
+    expect(pair?.map((p) => p.id).sort()).toEqual([ps[1].id, ps[2].id].sort());
+    expect(await duels.duelPair(viewer, [ps[1].id])).toBeNull();
+    // Signed-out visitors can see every live product.
+    expect(await duels.duelPair(null, [ps[0].id])).not.toBeNull();
+  });
+
+  it("runs newsletter double opt-in, sends the digest once per week, and unsubscribes", async () => {
+    expect(await newsletter.subscribe(" Reader@X.test ", "footer")).toBe("confirm_sent");
+    expect(await newsletter.subscribe("reader@x.test")).toBe("recently_sent");
+    const confirm = sent.find((e) => e.to === "reader@x.test");
+    const token = confirm?.text?.match(/token=([\w-]+)/)?.[1];
+    expect(token).toBeTruthy();
+    expect(await newsletter.confirmSubscription("nope")).toBe(false);
+    expect(await newsletter.confirmSubscription(token!)).toBe(true);
+    expect(await newsletter.subscribe("reader@x.test")).toBe("already_subscribed");
+    await newsletter.subscribe("pending@x.test");
+
+    // Nothing to send until last week has closed.
+    expect(await newsletter.sendWeeklyDigest(now)).toEqual({ skipped: "week not closed" });
+
+    const lastWeek = addWeeks(thisWeek, -1);
+    const voter = await makeUser();
+    const w = await liveProduct(await makeUser(), "digest-win.io", lastWeek);
+    await voteAt(w.id, voter, weekBounds(lastWeek).startsAt);
+    await liveProduct(await makeUser(), "digest-new.io", thisWeek);
+    await rollover.closeEndedWeeks();
+
+    sent.length = 0;
+    expect(await newsletter.sendWeeklyDigest(now)).toEqual({ week: lastWeek, sent: 1 });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe("reader@x.test");
+    expect(sent[0].subject).toContain("digest-win.io wins");
+    expect(sent[0].headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    expect(batches).toEqual([`digest-${lastWeek}`]);
+
+    expect(await newsletter.sendWeeklyDigest(now)).toEqual({ skipped: "already sent or in progress" });
+    expect(await newsletter.unsubscribe(token!)).toBe(true);
+    expect(await newsletter.subscriberCounts()).toEqual({ active: 0, pending: 1, unsubscribed: 1 });
   });
 });

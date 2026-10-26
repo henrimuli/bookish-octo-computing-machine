@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { formatPeriodLabel } from "@/lib/periods";
 import { formatWeekLabel, formatWeekRange } from "@/lib/weeks";
 
 type Product = typeof schema.products.$inferSelect;
@@ -80,6 +81,16 @@ export async function notifyWinner(p: Product, place: number, weekKey: string) {
     `Congratulations! ${p.name} finished ${medal} in ${formatWeekLabel(weekKey)} on DebutYard.`,
     "Your listing now keeps a followed link permanently, badge or not.",
     `Show it off: your winner badge snippet is in your [dashboard](${url("/dashboard")}).`,
+  ]);
+}
+
+export async function notifyPeriodWinner(p: Product, place: number, scope: "month" | "year", key: string) {
+  const medal = ["", "🥇 #1", "🥈 #2", "🥉 #3"][place] ?? `#${place}`;
+  const title = scope === "month" ? "Debut of the Month" : "Debut of the Year";
+  const label = formatPeriodLabel(scope, key);
+  await toMaker(p, `${medal} ${title}: ${p.name}`, [
+    `${p.name} finished ${medal} among every product that debuted on DebutYard in ${label}.`,
+    `It now shows on your listing and on the [${label} board](${url(`/${scope}/${key}`)}).`,
   ]);
 }
 

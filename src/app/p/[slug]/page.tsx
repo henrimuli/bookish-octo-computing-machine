@@ -12,6 +12,7 @@ import { site } from "@/config/site";
 import { getCurrentUser, isStaff } from "@/lib/auth";
 import { listingRel, withRef } from "@/lib/board/links";
 import { commentsFor, getProductPage, similarProducts, votesByDay } from "@/lib/board/queries";
+import { formatPeriodLabel } from "@/lib/periods";
 import { formatWeekLabel, formatWeekRange } from "@/lib/weeks";
 
 const pricingLabels: Record<string, string> = {
@@ -23,6 +24,7 @@ const pricingLabels: Record<string, string> = {
 };
 
 const medals = ["", "🥇", "🥈", "🥉"];
+const scopeOrder = { year: 0, month: 1, week: 2 } as const;
 
 export async function generateMetadata(props: PageProps<"/p/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -111,12 +113,15 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
               <h1 className="font-display text-3xl font-bold tracking-tight">{p.name}</h1>
               <p className="mt-1 text-lg text-muted-foreground">{p.tagline}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {data.awards
-                  .filter((a) => a.scope === "week")
+                {[...data.awards]
+                  .sort((a, b) => scopeOrder[a.scope] - scopeOrder[b.scope])
                   .map((a) => (
-                    <Badge key={a.id} tone="accent">
-                      {medals[a.place]} #{a.place} Debut of {formatWeekLabel(a.periodKey)}
-                    </Badge>
+                    <Link key={a.id} href={`/${a.scope}/${a.periodKey}`}>
+                      <Badge tone="accent">
+                        {medals[a.place]} #{a.place} Debut of {a.scope === "week" ? "the week" : `the ${a.scope}`} ·{" "}
+                        {formatPeriodLabel(a.scope, a.periodKey)}
+                      </Badge>
+                    </Link>
                   ))}
                 {data.categories.map((c) => (
                   <Link key={c.slug} href={`/category/${c.slug}`}>

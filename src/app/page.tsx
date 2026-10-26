@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ProductLogo } from "@/components/board/product-logo";
 import { FeaturedRail } from "@/components/board/featured-rail";
 import { BoardSkeleton, WeekBoard } from "@/components/board/week-board";
+import { NewsletterForm } from "@/components/newsletter-form";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container } from "@/components/ui/primitives";
 import { featuredNow } from "@/lib/board/featured";
@@ -127,6 +128,13 @@ async function Sidebar() {
         <Link href="/categories" className="mt-3 inline-block text-sm text-primary hover:underline">
           All categories
         </Link>
+      </Card>
+      <Card className="p-5">
+        <h2 className="font-display font-semibold">Get the Monday digest</h2>
+        <p className="mt-1 mb-3 text-sm text-muted-foreground">
+          Last week&apos;s winners and this week&apos;s debuts. One email, no spam.
+        </p>
+        <NewsletterForm source="home" />
       </Card>
       <Card className="p-5">
         <h2 className="font-display font-semibold">Fair by design</h2>

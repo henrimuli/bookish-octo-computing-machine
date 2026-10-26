@@ -1,6 +1,7 @@
 import { env } from "@/env";
 import { recheckBadges } from "@/lib/badges/service";
-import { closeEndedWeeks } from "@/lib/board/rollover";
+import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
+import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
 
 /**
@@ -16,6 +17,8 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
   const tasks: Array<[string, () => Promise<unknown>]> = [
     ["weeks", () => closeEndedWeeks()],
+    ["periods", () => closeEndedPeriods()],
+    ["newsletter", () => sendWeeklyDigest()],
     ["payments", () => reconcilePendingOrders()],
     ["badges", () => recheckBadges()],
   ];

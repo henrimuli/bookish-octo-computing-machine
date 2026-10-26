@@ -29,6 +29,20 @@
       "when": 1792974861959,
       "tag": "0003_board_rls_and_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793003252390,
+      "tag": "0004_closed_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793003408926,
+      "tag": "0005_newsletter",
+      "breakpoints": true
     }
   ]
 }
