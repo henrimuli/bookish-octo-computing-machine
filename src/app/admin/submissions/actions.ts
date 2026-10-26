@@ -1,12 +1,15 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { db, schema } from "@/db";
 import { getCurrentUser, isStaff } from "@/lib/auth";
 import {
   assignOrder,
   bulkUpdate,
   deliverOrder,
+  sendBadgeBlock,
   SubmissionError,
   updateOrderSubmission,
   type OpsUpdate,
@@ -52,6 +55,17 @@ export async function bulkAction(orderId: string, ids: string[], status: "submit
 export async function assignAction(orderId: string, assigneeId: string | null) {
   if (!uuid.safeParse(orderId).success) return { ok: false as const, error: "Not found." };
   return run(() => assignOrder(orderId, assigneeId || null));
+}
+
+export async function resendBadgeBlockAction(orderId: string) {
+  if (!uuid.safeParse(orderId).success) return { ok: false as const, error: "Not found." };
+  return run(async () => {
+    const order = await db().query.submissionOrders.findFirst({ where: eq(schema.submissionOrders.id, orderId) });
+    if (!order) throw new SubmissionError("Not found.");
+    return (await sendBadgeBlock(order))
+      ? "Badge block sent."
+      : "No badge snippets yet: add them to the badge directories first.";
+  });
 }
 
 export async function deliverAction(orderId: string) {

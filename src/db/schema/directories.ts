@@ -45,6 +45,8 @@ export const directories = pgTable(
     submissionNotes: text("submission_notes").notNull().default(""),
     /** Internal instructions for whoever submits. */
     instructions: text("instructions").notNull().default(""),
+    /** The badge HTML a badge-gated directory asks for, pasted by staff. Goes in the client's badge block. */
+    badgeSnippet: text("badge_snippet"),
     /** From our outcomes, refreshed daily. */
     acceptanceRate: real("acceptance_rate"),
     avgDaysToLive: real("avg_days_to_live"),
@@ -115,6 +117,10 @@ export const submissionOrders = pgTable(
     monitorEndedAt: timestamp("monitor_ended_at", { withTimezone: true }),
     /** Last status-change digest sent to the client. */
     digestAt: timestamp("digest_at", { withTimezone: true }),
+    /** Local part of the order's submission inbox ({key}@INBOUND_EMAIL_DOMAIN). */
+    inboxKey: text("inbox_key").unique(),
+    /** Badge block for clients who allow badges: when we emailed it. */
+    badgeBlockSentAt: timestamp("badge_block_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -160,6 +166,11 @@ export const submissions = pgTable(
     actionNeeded: text("action_needed"),
     evidenceUrl: text("evidence_url"),
     replacesId: uuid("replaces_id"),
+    /** Directory account we created: login in clear, password encrypted (AES-GCM, CREDENTIALS_KEY). */
+    accountLogin: text("account_login"),
+    accountSecret: text("account_secret"),
+    /** Badge-gated rows wait for the client's badge block; set when we find this directory's badge on their site. */
+    badgeSeenAt: timestamp("badge_seen_at", { withTimezone: true }),
     // Latest link check, denormalised for the dashboards.
     linkVerdict: linkVerdict("link_verdict"),
     linkRel: text("link_rel"),
@@ -246,3 +257,21 @@ export const launchWallProfiles = pgTable("launch_wall_profiles", {
     .references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Email received at an order's submission inbox (directory verification mails and the like). */
+export const submissionMessages = pgTable(
+  "submission_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionOrderId: uuid("submission_order_id")
+      .notNull()
+      .references(() => submissionOrders.id, { onDelete: "cascade" }),
+    toAddress: text("to_address").notNull(),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject").notNull().default(""),
+    text: text("text").notNull().default(""),
+    html: text("html"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("submission_messages_order_idx").on(t.submissionOrderId, t.receivedAt)],
+);

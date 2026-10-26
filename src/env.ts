@@ -51,6 +51,12 @@ const schema = z.object({
   /** DataForSEO: "login:password". Ahrefs: an API v3 key. Open PageRank: its API key. */
   DR_API_KEY: optional,
 
+  // Submission ops. Inbound mail ({key}@INBOUND_EMAIL_DOMAIN) is POSTed to /api/inbound signed with INBOUND_SECRET.
+  INBOUND_EMAIL_DOMAIN: optional,
+  INBOUND_SECRET: optional,
+  /** 32 random bytes, base64. Encrypts directory account passwords. */
+  CREDENTIALS_KEY: optional,
+
   // Vercel Cron sends this as a bearer token.
   CRON_SECRET: optional,
 });

@@ -7,7 +7,7 @@ import { settleBookings } from "@/lib/ads/service";
 import { refreshDirectoryStats } from "@/lib/directories/service";
 import { monitorLinks } from "@/lib/links/service";
 import { snapshotDomains } from "@/lib/metrics/service";
-import { sendOrderDigests } from "@/lib/submissions/service";
+import { checkBadgeBlocks, sendOrderDigests } from "@/lib/submissions/service";
 import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     ["subscriptions", () => syncSubscriptions()],
     ["ads", () => settleBookings()],
     ["submission digests", () => sendOrderDigests()],
+    ["badge blocks", () => checkBadgeBlocks()],
     ["directory stats", () => refreshDirectoryStats()],
     ["badges", () => recheckBadges()],
     ["links", () => monitorLinks()],

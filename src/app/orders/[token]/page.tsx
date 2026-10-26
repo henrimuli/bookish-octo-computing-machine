@@ -12,7 +12,14 @@ import { drHistory } from "@/lib/metrics/service";
 import { listCategories } from "@/lib/products/queries";
 import { domainOf } from "@/lib/slug";
 import { PACKAGES } from "@/lib/submissions/packages";
-import { guidedChecklist, orderByIntakeToken, orderRows, summarizeOrder } from "@/lib/submissions/service";
+import {
+  badgeBlockFor,
+  credentialsFor,
+  guidedChecklist,
+  orderByIntakeToken,
+  orderRows,
+  summarizeOrder,
+} from "@/lib/submissions/service";
 
 export const metadata: Metadata = { title: "Your submission order", robots: { index: false, follow: false } };
 
@@ -72,10 +79,13 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
       return null;
     }
   })();
-  const [rows, guided, dr] = await Promise.all([
+  const [rows, guided, dr, badgeBlock, accounts] = await Promise.all([
     orderRows(order.id),
     guidedChecklist(),
     domain ? drHistory(domain) : Promise.resolve([]),
+    order.badgePreference === "allow" && order.status !== "delivered" ? badgeBlockFor(order.id) : null,
+    // Logins are handed over with the delivery report, and only on this private page.
+    order.status === "delivered" ? credentialsFor(order.id) : Promise.resolve([]),
   ]);
   const summary = summarizeOrder(
     order,
@@ -112,7 +122,47 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
           </ul>
         </Card>
       )}
+      {badgeBlock && badgeBlock.directories.some((x) => !x.seen) && (
+        <Card className="space-y-3 p-5 print:hidden">
+          <p className="font-medium">Add your directory badges</p>
+          <p className="text-sm text-muted-foreground">
+            {badgeBlock.directories.length} of your directories only list products that show their badge. Paste this
+            into your site&apos;s footer; we check daily and submit each one once its badge is up. Waiting on:{" "}
+            {badgeBlock.directories
+              .filter((x) => !x.seen)
+              .map((x) => x.name)
+              .join(", ")}
+            .
+          </p>
+          <pre className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs">{badgeBlock.html}</pre>
+        </Card>
+      )}
       <OrderReport order={order} rows={rows} summary={summary} />
+      {accounts.length > 0 && (
+        <Card className="p-5">
+          <p className="font-medium">Directory accounts we created</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Change these passwords when you log in. This list is only on your private link, never on the shared report.
+          </p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-border">
+                {accounts.map((a) => (
+                  <tr key={a.directory}>
+                    <td className="py-2 pr-3">
+                      <a href={a.url} target="_blank" rel="noopener nofollow" className="hover:text-primary">
+                        {a.directory}
+                      </a>
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-xs break-all">{a.login}</td>
+                    <td className="py-2 font-mono text-xs break-all">{a.password ?? "Ask us"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
       {dr.length > 0 && (
         <Card className="p-5">
           <p className="mb-3 font-medium">Domain Rating for {domain}</p>
