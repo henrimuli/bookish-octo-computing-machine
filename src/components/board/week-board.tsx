@@ -1,12 +1,25 @@
 import Link from "next/link";
+import { SponsoredRow } from "@/components/ads/sponsored";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/primitives";
+import type { AdItem } from "@/lib/ads/service";
 import { getCurrentUser } from "@/lib/auth";
 import { weekBoard } from "@/lib/board/queries";
 import { ProductRow } from "./product-row";
 
-/** A week's ranked board. Request-time: reads the session for "voted" state. */
-export async function WeekBoard({ weekKey, emptyCta = true }: { weekKey: string; emptyCta?: boolean }) {
+/**
+ * A week's ranked board. Request-time: reads the session for "voted" state.
+ * `sponsor` is the rotating featured row, shown between #3 and #4.
+ */
+export async function WeekBoard({
+  weekKey,
+  emptyCta = true,
+  sponsor,
+}: {
+  weekKey: string;
+  emptyCta?: boolean;
+  sponsor?: AdItem | null;
+}) {
   const user = await getCurrentUser().catch(() => null);
   const items = await weekBoard(weekKey, user?.id ?? null);
 
@@ -28,7 +41,12 @@ export async function WeekBoard({ weekKey, emptyCta = true }: { weekKey: string;
 
   return (
     <ol className="space-y-3">
-      {items.map((item) => (
+      {items.slice(0, 3).map((item) => (
+        <ProductRow key={item.id} item={item} />
+      ))}
+      {/* Skip a sponsor that's already in the top 3 just above. */}
+      {sponsor && !items.slice(0, 3).some((i) => i.slug === sponsor.slug) && <SponsoredRow ad={sponsor} />}
+      {items.slice(3).map((item) => (
         <ProductRow key={item.id} item={item} />
       ))}
     </ol>

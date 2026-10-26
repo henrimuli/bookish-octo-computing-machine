@@ -527,7 +527,7 @@ Repo setup, Next.js + Drizzle + Postgres, auth, Paystack + PayPal sandbox/test a
 **Phase 1 — MVP launch board (weeks 2–4)** ✅ *Done Oct 26, 2026.* Also shipped early: the Phase 2 featured rail for paid debuts, so paid perks are live from day one. AI-written prefill is deferred: prefill reads the site's metadata.
 Product submission with URL prefill + moderation, product pages (rank, votes chart, same-week, similar), categories, builders, weekly launch weeks + free queue (visible ETA, 2-active cap), voting + comments, basic anti-fraud, weekly winners job + badges + top-3 dofollow, badge verification (HTML + DNS), paid tiers via Paystack + PayPal (webhooks, verification, refunds, coupons), maker dashboard v1, SEO basics (sitemap, JSON-LD, OG images, `llms.txt`), transactional email.
 
-**Phase 2 — Monetization + agent surface (weeks 5–6)**
+**Phase 2 — Monetization + agent surface (weeks 5–6)** ✅ *Done Oct 26, 2026.* Agents connect with a personal API token for now; the browser-approval (OAuth) connect flow is a follow-up. Newsletter impressions count delivered emails; open tracking isn't built.
 Featured slot calendar with capped inventory + leaderboard slot, click/impression stats, newsletter, blog/CMS + automated recap drafts, monthly/yearly boards, `/vote` duels, pricing + advertise pages, **launch-readiness check**, **MCP server + REST API** (search, get, readiness, draft submit, my launches).
 
 **Phase 3 — Directory DB, DIY tracker, submission service (weeks 7–9)**

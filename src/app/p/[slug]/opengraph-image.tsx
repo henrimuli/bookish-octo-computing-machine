@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { brand } from "@/config/brand";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 
@@ -26,21 +27,21 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         flexDirection: "column",
         justifyContent: "space-between",
         padding: 80,
-        background: "#fbfaf7",
-        color: "#17150f",
+        background: brand.dark.bg,
+        color: brand.dark.text,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 36, fontWeight: 800 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 24, background: "#e4572e" }} />
+        <div style={{ width: 48, height: 48, borderRadius: 24, background: brand.dark.primary }} />
         <span>
-          Debut<span style={{ color: "#e4572e" }}>Yard</span>
+          Debut<span style={{ color: brand.dark.primary }}>Yard</span>
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.05 }}>{name}</div>
-        <div style={{ fontSize: 40, color: "#6b6658" }}>{tagline}</div>
+        <div style={{ fontSize: 40, color: brand.dark.muted }}>{tagline}</div>
       </div>
-      <div style={{ fontSize: 28, color: "#6b6658" }}>Debuting this week · vote at debutyard.com</div>
+      <div style={{ fontSize: 28, color: brand.dark.muted }}>Debuting this week · vote at debutyard.com</div>
     </div>,
     size,
   );

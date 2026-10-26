@@ -13,29 +13,36 @@ The research, pricing and roadmap are in [docs/PLAN.md](docs/PLAN.md).
 
 ## Status
 
-**Phase 0 (foundations) and Phase 1 (launch board) are done.**
+**Phases 0 (foundations), 1 (launch board) and 2 (monetization + agent surface) are done.** The UI uses an evergreen-and-black palette (tokens in `src/app/globals.css`, raw values for SVGs/OG images in `src/config/brand.ts`).
 
-| Area            | What's there                                                                                                                                                                                                                                                                       |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Launch board    | Weekly debuts (Mon–Sun UTC), a ranked board on the homepage, past weeks, categories, builder profiles, product pages (week rank, votes-per-day chart, same-week and similar products, discussion)                                                                                  |
-| Submitting      | `/submit`: fill details from the product's URL, logo upload to R2, up to 3 categories, then a plan: free (queue, max 2 waiting per maker) or Fast Track / Pro / Premium / Spotlight through Paystack or PayPal                                                                     |
-| Moderation      | `/admin` review queue (paid listings first). Approving schedules the listing; rejecting a paid listing refunds it automatically (money-back guarantee)                                                                                                                             |
-| Voting          | One vote per account. New accounts (<72h) and repeat votes from the same network count less. Rate limits. Substantive comments add a little to the score. Rules published at `/how-ranking-works`                                                                                  |
-| Winners         | A daily cron closes finished weeks: top 3 (with votes) get awards, a permanent followed link and an email                                                                                                                                                                          |
-| Badges          | Light/dark SVG badges (`/badge/{slug}`, winner variant, optional live vote count). Verification by fetching the site (HTML) or a DNS TXT record. Weekly re-check, 7-day grace period, then nofollow                                                                                |
-| Featured        | Pro (7 days), Premium and Spotlight (30 days) appear in the homepage featured rail. Spotlight is the hero during its debut week, capped at 3 per week. Manual perks (newsletter, social posts, launch post, Spotlight's directory bundle) arrive as a to-do email to `ADMIN_EMAIL` |
-| Maker dashboard | Status, debut week and queue position, badge snippet and one-click check, views, clicks, votes and comments                                                                                                                                                                        |
-| SEO             | Sitemap, robots, JSON-LD per product, generated Open Graph images, `llms.txt`                                                                                                                                                                                                      |
-| Foundations     | Next.js 16 (Cache Components), Supabase Postgres + Drizzle (RLS on every table), Better Auth magic link + Google/GitHub, Paystack + PayPal behind one `PaymentProvider`, R2, Resend, CI                                                                                            |
+| Area            | What's there                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Launch board    | Weekly debuts (Mon–Sun UTC), a ranked board on the homepage, past weeks, categories, builder profiles, product pages (week rank, votes-per-day chart, same-week and similar products, discussion)                                                                                                                                                                                     |
+| Submitting      | `/submit`: fill details from the product's URL, logo upload to R2, up to 3 categories, then a plan: free (queue, max 2 waiting per maker) or Fast Track / Pro / Premium / Spotlight through Paystack or PayPal                                                                                                                                                                        |
+| Moderation      | `/admin` review queue (paid listings first). Approving schedules the listing; rejecting a paid listing refunds it automatically (money-back guarantee)                                                                                                                                                                                                                                |
+| Voting          | One vote per account. New accounts (<72h) and repeat votes from the same network count less. Rate limits. Substantive comments add a little to the score. Rules published at `/how-ranking-works`                                                                                                                                                                                     |
+| Winners         | A daily cron closes finished weeks: top 3 (with an in-week score) get awards, a permanent followed link and an email                                                                                                                                                                                                                                                                  |
+| Badges          | Light/dark SVG badges (`/badge/{slug}`, winner variant, optional live vote count). Verification by fetching the site (HTML) or a DNS TXT record. Weekly re-check, 7-day grace period, then nofollow                                                                                                                                                                                   |
+| Featured        | Pro (7 days), Premium and Spotlight (30 days) appear in the homepage featured rail. Spotlight is the hero during its debut week, capped at 3 per week. Manual perks (newsletter, social posts, launch post, Spotlight's directory bundle) arrive as a to-do email to `ADMIN_EMAIL`                                                                                                    |
+| Maker dashboard | Status, debut week and queue position, badge snippet and one-click check, views, clicks, votes and comments                                                                                                                                                                                                                                                                           |
+| Boards          | Monthly and yearly boards (`/month/2026-10`, `/year/2026`) rank every debut of the period on its own debut-week score; the top 3 get Debut of the Month/Year awards when the period ends. `/vote` shows two debuts side by side; a pick is a normal vote                                                                                                                              |
+| Featured slots  | `/advertise`: book the leaderboard slot (between #3 and #4), homepage rail, top sponsor, a category banner or the newsletter sponsor. Capped per week, an unpaid booking holds for an hour, payment activates it. Impressions and clicks on the dashboard; CPC guarantee (over $1/click at the end → another week free, up to 4) and a results email. Admin inventory at `/admin/ads` |
+| Newsletter      | Double opt-in signup (footer, home, blog). After each week closes the cron sends the Monday digest (winners, new debuts with paid tiers first, sponsor) in Resend batches, once. One-click unsubscribe. Stats and a preview at `/admin/newsletter`                                                                                                                                    |
+| Blog            | `/blog` with RSS. Markdown editor at `/admin/blog` (raw HTML escaped). After each week closes the cron drafts a recap and emails you to finish and publish it                                                                                                                                                                                                                         |
+| Readiness check | `/tools/launch-readiness`: scores a URL on HTTPS, reachability, title, description, social image, icon, noindex, duplicates and the badge, with fixes, a suggested listing and the next weeks with room                                                                                                                                                                               |
+| API & MCP       | Personal tokens at `/dashboard/api`. REST at `/api/v1` (OpenAPI at `/api/v1/openapi.json`) and an MCP server at `/api/mcp` with `search_products`, `get_product`, `list_categories`, `check_launch_readiness`, `submit_product` (drafts only) and `get_my_launches`. Docs at `/docs`                                                                                                  |
+| SEO             | Sitemap, robots, JSON-LD per product, generated Open Graph images, `llms.txt`                                                                                                                                                                                                                                                                                                         |
+| Foundations     | Next.js 16 (Cache Components), Supabase Postgres + Drizzle (RLS on every table), Better Auth magic link + Google/GitHub, Paystack + PayPal behind one `PaymentProvider`, R2, Resend, CI                                                                                                                                                                                               |
 
 **Admin access:** the account whose email matches `ADMIN_EMAIL` becomes an admin when it signs up.
 
 **What can be bought today:**
 
 - paid debuts, during submission;
+- featured slots, from the `/advertise` calendar;
 - the three directory-submission packages ($99 / $179 / $299), delivered by hand: the buyer gets an email saying we'll collect their product details within 24 hours, and you get an order notification.
 
-Standalone featured slots and subscriptions show "Opening soon" until Phases 2–4.
+Subscriptions show "Opening soon" until their features ship (Phase 4).
 
 ## Local development
 
@@ -103,7 +110,7 @@ Verify `debutyard.com` in Resend, then set `RESEND_API_KEY`, `EMAIL_FROM` and `A
 1. Import the GitHub repo. The framework preset is Next.js and needs no build settings.
 2. Add every variable from `.env.example` under **Settings → Environment Variables** (Production and Preview), with `NEXT_PUBLIC_SITE_URL=https://debutyard.com`.
 3. Add the domain. Pages like `/pricing` are prerendered, so **redeploy after changing payment keys**.
-4. `vercel.json` schedules one daily job, `/api/cron/daily`, at 00:10 UTC, so each week closes just after Monday 00:00. It closes finished weeks and awards winners, reconciles payments, and re-checks badges. The Hobby plan allows this. Vercel sends `CRON_SECRET` automatically.
+4. `vercel.json` schedules one daily job, `/api/cron/daily`, at 00:10 UTC, so each week closes just after Monday 00:00. It closes finished weeks, months and years and awards winners, sends the newsletter, drafts the weekly recap, reconciles payments, settles featured slots (CPC guarantee) and re-checks badges. The Hobby plan allows this. Vercel sends `CRON_SECRET` automatically.
 
 ## How payments flow
 
@@ -123,6 +130,12 @@ src/
   db/                  Drizzle client and schema
   lib/auth.ts          Better Auth server config (auth-client.ts for the browser)
   lib/payments/        SKUs, pricing, providers, service, fulfilment
+  lib/board/           ranking, rollover (weeks, months, years), duels
+  lib/ads/             featured slot placements, booking, stats, CPC guarantee
+  lib/newsletter/      subscribers and the weekly digest
+  lib/blog/            posts, safe markdown, recap drafts
+  lib/readiness/       launch-readiness checks
+  lib/api/             tokens, shared operations, MCP server
   lib/storage.ts       Cloudflare R2
   env.ts               environment validation
 drizzle/               SQL migrations

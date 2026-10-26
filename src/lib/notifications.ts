@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { formatPeriodLabel } from "@/lib/periods";
 import { formatWeekLabel, formatWeekRange } from "@/lib/weeks";
 
 type Product = typeof schema.products.$inferSelect;
@@ -83,6 +84,16 @@ export async function notifyWinner(p: Product, place: number, weekKey: string) {
   ]);
 }
 
+export async function notifyPeriodWinner(p: Product, place: number, scope: "month" | "year", key: string) {
+  const medal = ["", "🥇 #1", "🥈 #2", "🥉 #3"][place] ?? `#${place}`;
+  const title = scope === "month" ? "Debut of the Month" : "Debut of the Year";
+  const label = formatPeriodLabel(scope, key);
+  await toMaker(p, `${medal} ${title}: ${p.name}`, [
+    `${p.name} finished ${medal} among every product that debuted on DebutYard in ${label}.`,
+    `It now shows on your listing and on the [${label} board](${url(`/${scope}/${key}`)}).`,
+  ]);
+}
+
 export async function notifyBadgeMissing(p: Product, graceUntil: Date) {
   await toMaker(p, `Your DebutYard badge is missing on ${p.domain}`, [
     `Our weekly check couldn't find the DebutYard badge on ${p.websiteUrl}.`,
@@ -114,6 +125,17 @@ export async function notifyAdminPaidTier(p: Product, tier: string) {
       `${p.name} bought ${tier}. These perks are delivered by hand:`,
       ...todo.map((t) => `• ${t}`),
       `Listing: [${url(`/p/${p.slug}`)}](${url(`/p/${p.slug}`)})`,
+    ]),
+  });
+}
+
+export async function notifyRecapDrafted(post: { id: string; title: string }) {
+  await sendEmail({
+    to: env().ADMIN_EMAIL ?? site.supportEmail,
+    subject: `Recap draft ready: ${post.title}`,
+    ...compose([
+      "The weekly recap is drafted from last week's board. Add a line about each winner, then publish.",
+      `[Edit the draft](${url(`/admin/blog/${post.id}`)})`,
     ]),
   });
 }

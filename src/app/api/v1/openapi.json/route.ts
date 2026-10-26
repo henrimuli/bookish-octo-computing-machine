@@ -1,0 +1,71 @@
+import { site } from "@/config/site";
+import { env } from "@/env";
+import { CORS } from "@/lib/api/http";
+import { draftInput, inputJsonSchema, readinessInput } from "@/lib/api/operations";
+
+const schema = inputJsonSchema;
+
+const ok = (description: string) => ({
+  200: { description, content: { "application/json": { schema: { type: "object", properties: { data: {} } } } } },
+  default: {
+    description: "Error",
+    content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+  },
+});
+
+export function GET() {
+  const spec = {
+    openapi: "3.1.0",
+    info: {
+      title: `${site.name} API`,
+      version: "1.0.0",
+      description:
+        "Search debuts, check launch readiness, and draft listings. Drafts are finished (plan, payment, submit) in the browser.",
+    },
+    servers: [{ url: `${env().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/api/v1` }],
+    components: {
+      securitySchemes: { token: { type: "http", scheme: "bearer", description: "Create a token at /dashboard/api" } },
+      schemas: { Error: { type: "object", properties: { error: { type: "string" } }, required: ["error"] } },
+    },
+    paths: {
+      "/products": {
+        get: {
+          summary: "Search live products",
+          parameters: [
+            { name: "q", in: "query", schema: { type: "string" } },
+            { name: "category", in: "query", schema: { type: "string" } },
+            { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+          ],
+          responses: ok("Matching products"),
+        },
+      },
+      "/products/{slug}": {
+        get: {
+          summary: "Get a live product",
+          parameters: [{ name: "slug", in: "path", required: true, schema: { type: "string" } }],
+          responses: ok("The product"),
+        },
+      },
+      "/categories": { get: { summary: "List categories", responses: ok("Categories") } },
+      "/readiness": {
+        post: {
+          summary: "Check launch readiness",
+          requestBody: { required: true, content: { "application/json": { schema: schema(readinessInput) } } },
+          responses: ok("Score, checks, suggested listing and next weeks with room"),
+        },
+      },
+      "/submissions": {
+        post: {
+          summary: "Create a draft listing",
+          security: [{ token: [] }],
+          requestBody: { required: true, content: { "application/json": { schema: schema(draftInput) } } },
+          responses: ok("The draft and the link to finish it"),
+        },
+      },
+      "/me/products": {
+        get: { summary: "Your listings and their stats", security: [{ token: [] }], responses: ok("Your listings") },
+      },
+    },
+  };
+  return Response.json(spec, { headers: { ...CORS, "Cache-Control": "public, max-age=3600" } });
+}

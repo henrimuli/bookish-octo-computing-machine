@@ -1,10 +1,12 @@
+import { brand } from "@/config/brand";
+
 /** Badge artwork as SVG. Pure, so it can be tested and served from a route. */
 
 export type BadgeVariant = { kind: "featured" | "winner"; theme: "light" | "dark"; place?: number; votes?: number };
 
 const palette = {
-  light: { bg: "#ffffff", border: "#e6e2d8", text: "#17150f", muted: "#6b6658" },
-  dark: { bg: "#17150f", border: "#2c2a24", text: "#f2efe7", muted: "#a39d8e" },
+  light: { ...brand.light, bg: brand.light.surface },
+  dark: { ...brand.dark, bg: brand.dark.bg },
 };
 
 function esc(s: string) {
@@ -18,7 +20,7 @@ export function badgeSvg(v: BadgeVariant): string {
   const c = palette[v.theme];
   const winner = v.kind === "winner" && v.place && v.place <= 3;
   const top = winner ? `#${v.place} DEBUT OF THE WEEK` : "FEATURED ON";
-  const accent = winner ? ["", "#d4a017", "#9aa0a6", "#b8733d"][v.place!] : "#e4572e";
+  const accent = winner ? brand.medals[v.place! - 1] : c.primary;
   const votes =
     typeof v.votes === "number"
       ? `<text x="198" y="33" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="${c.text}">${v.votes}</text>
@@ -28,9 +30,9 @@ export function badgeSvg(v: BadgeVariant): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" viewBox="0 0 ${BADGE_WIDTH} ${BADGE_HEIGHT}" role="img" aria-label="${esc(top.toLowerCase())} DebutYard">
   <rect x="0.5" y="0.5" width="${BADGE_WIDTH - 1}" height="${BADGE_HEIGHT - 1}" rx="10" fill="${c.bg}" stroke="${c.border}"/>
   <circle cx="27" cy="27" r="15" fill="${accent}"/>
-  <path d="M20.5 32 27 19.5 33.5 32z" fill="#ffffff"/>
+  <path d="M20.5 32 27 19.5 33.5 32z" fill="${winner ? "#ffffff" : c.primaryInk}"/>
   <text x="52" y="22" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="9" font-weight="600" letter-spacing="0.6" fill="${c.muted}">${esc(top)}</text>
-  <text x="52" y="40" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="17" font-weight="800" fill="${c.text}">Debut<tspan fill="#e4572e">Yard</tspan></text>
+  <text x="52" y="40" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="17" font-weight="800" fill="${c.text}">Debut<tspan fill="${c.primary}">Yard</tspan></text>
   ${votes}
 </svg>`;
 }
