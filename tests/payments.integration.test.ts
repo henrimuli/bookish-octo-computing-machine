@@ -65,7 +65,7 @@ describe.skipIf(!TEST_DB)("payment service (Postgres)", () => {
     await admin.unsafe(
       "drop schema if exists public cascade; drop schema if exists drizzle cascade; create schema public;",
     );
-    await migrate(drizzle(admin), { migrationsFolder: "drizzle" });
+    await migrate(drizzle(admin), { migrationsFolder: "supabase/migrations" });
     await admin.end();
 
     const payments = await import("@/lib/payments");

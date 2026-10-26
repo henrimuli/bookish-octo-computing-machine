@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx scripts/supabase-db.ts db push",
+    "db:status": "tsx scripts/supabase-db.ts migration list",
     "db:studio": "drizzle-kit studio",
     "payments:sync-plans": "tsx scripts/sync-plans.ts",
     "db:seed": "tsx scripts/seed-dev.ts"
@@ -45,6 +46,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "prettier": "^3.9.10",
+    "supabase": "^2.122.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
