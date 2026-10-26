@@ -530,7 +530,7 @@ Product submission with URL prefill + moderation, product pages (rank, votes cha
 **Phase 2 — Monetization + agent surface (weeks 5–6)** ✅ *Done Oct 26, 2026.* Agents connect with a personal API token for now; the browser-approval (OAuth) connect flow is a follow-up. Newsletter impressions count delivered emails; open tracking isn't built.
 Featured slot calendar with capped inventory + leaderboard slot, click/impression stats, newsletter, blog/CMS + automated recap drafts, monthly/yearly boards, `/vote` duels, pricing + advertise pages, **launch-readiness check**, **MCP server + REST API** (search, get, readiness, draft submit, my launches).
 
-**Phase 3 — Directory DB, DIY tracker, submission service (weeks 7–9)**
+**Phase 3 — Directory DB, DIY tracker, submission service (weeks 7–9)** ✅ *Done Oct 26, 2026.* Still to come: automatic evidence screenshots (needs the Playwright worker; ops paste a screenshot URL for now), per-order submission inboxes (Cloudflare Email Routing), the badge-block generator for clients who allow badges, and indexed/DR-before-after checks (SERP and DR APIs).
 Directory database (admin editor + public pages), DIY tracker with automatic link verification, submission order checkout (no account needed) + "boost" on existing launches, ops console (kanban, per-directory checklists, QA), client live-tracking dashboard, evidence screenshots, CSV/PDF export, shareable reports, status emails.
 
 **Phase 4 — Link Monitor & subscriptions (weeks 10–11)**

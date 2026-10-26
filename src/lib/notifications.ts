@@ -107,12 +107,7 @@ const MANUAL_PERKS: Record<string, string[]> = {
   fast_track: [],
   pro: ["Include in this week's newsletter"],
   premium: ["Include in this week's newsletter", "Post on X, LinkedIn and Bluesky", "Write the launch post (blog)"],
-  spotlight: [
-    "Top newsletter slot",
-    "Post on X, LinkedIn and Bluesky",
-    "Write the launch post (blog)",
-    "Run the bundled 40-directory submission",
-  ],
+  spotlight: ["Top newsletter slot", "Post on X, LinkedIn and Bluesky", "Write the launch post (blog)"],
 };
 
 export async function notifyAdminPaidTier(p: Product, tier: string) {

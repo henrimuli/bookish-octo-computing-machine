@@ -47,6 +47,22 @@ export function GET() {
         },
       },
       "/categories": { get: { summary: "List categories", responses: ok("Categories") } },
+      "/directories": {
+        get: {
+          summary: "List launch directories",
+          parameters: [
+            {
+              name: "niche",
+              in: "query",
+              schema: { type: "string", enum: ["general", "devtools", "ai", "indie", "b2b"] },
+            },
+            { name: "pricing", in: "query", schema: { type: "string", enum: ["free", "freemium", "paid"] } },
+            { name: "noBadge", in: "query", schema: { type: "boolean" } },
+            { name: "dofollow", in: "query", schema: { type: "boolean" } },
+          ],
+          responses: ok("Directories"),
+        },
+      },
       "/readiness": {
         post: {
           summary: "Check launch readiness",

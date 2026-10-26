@@ -143,3 +143,10 @@ body {
   border: 1px solid var(--border);
   padding: 0.4em 0.7em;
 }
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

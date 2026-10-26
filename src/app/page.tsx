@@ -31,7 +31,7 @@ export default function Home() {
             <ButtonLink href="/submit" size="lg">
               Debut your product
             </ButtonLink>
-            <ButtonLink href="/pricing#submissions" size="lg" variant="outline">
+            <ButtonLink href="/submission-service" size="lg" variant="outline">
               Get listed on 40+ directories
             </ButtonLink>
           </div>

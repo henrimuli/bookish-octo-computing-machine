@@ -8,6 +8,8 @@ const links = [
   { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
   { href: "/advertise", label: "Advertise" },
+  { href: "/submission-service", label: "Submission service" },
+  { href: "/directories", label: "Directories" },
   { href: "/tools/launch-readiness", label: "Readiness check" },
   { href: "/docs", label: "API & MCP" },
   { href: "/refund-policy", label: "Refund policy" },
@@ -17,7 +19,7 @@ const links = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-border">
+    <footer className="mt-24 border-t border-border print:hidden">
       <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
           <Logo className="text-lg" />

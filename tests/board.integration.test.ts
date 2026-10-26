@@ -755,6 +755,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
       "search_products",
       "get_product",
       "list_categories",
+      "list_launch_directories",
       "check_launch_readiness",
       "submit_product",
       "get_my_launches",

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { env } from "@/env";
 import { getProvider } from "./index";
@@ -306,6 +306,13 @@ export async function refundOrder(orderId: string, reason: string, amountCents?:
     .set({ status: full ? "refunded" : "partially_refunded", refundedAt: full ? new Date() : order.refundedAt })
     .where(eq(orders.id, orderId))
     .returning();
+  // A full refund also stops a submission order bought (or bundled) with it.
+  if (full) {
+    await db()
+      .update(schema.submissionOrders)
+      .set({ status: "cancelled" })
+      .where(and(eq(schema.submissionOrders.orderId, orderId), ne(schema.submissionOrders.status, "delivered")));
+  }
   // A fully refunded featured slot comes down and frees its inventory.
   if (full && order.kind === "featured") {
     await db().update(schema.adBookings).set({ status: "cancelled" }).where(eq(schema.adBookings.orderId, orderId));

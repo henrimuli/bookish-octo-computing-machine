@@ -8,6 +8,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { bookingsForUser } from "@/lib/ads/service";
+import { PACKAGES } from "@/lib/submissions/packages";
+import { ordersForUser } from "@/lib/submissions/service";
 import { requireUser } from "@/lib/auth";
 import { dnsRecordValue } from "@/lib/badges/detect";
 import { badgeSnippet } from "@/lib/badges/svg";
@@ -40,7 +42,10 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
     <Container className="max-w-5xl py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading>Your products</Heading>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/dashboard/tracker" variant="outline">
+            Directory tracker
+          </ButtonLink>
           <ButtonLink href="/dashboard/api" variant="outline">
             API &amp; agents
           </ButtonLink>
@@ -49,6 +54,7 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
       </div>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Products searchParams={props.searchParams} />
+        <SubmissionOrders />
         <Sponsorships />
       </Suspense>
     </Container>
@@ -195,6 +201,35 @@ async function Sponsorships() {
           <BookingStatsTable rows={rows} />
         </div>
       )}
+    </section>
+  );
+}
+
+async function SubmissionOrders() {
+  const user = await requireUser("/dashboard");
+  const orders = await ordersForUser(user.id, user.email);
+  if (orders.length === 0) return null;
+  return (
+    <section className="mt-14">
+      <h2 className="font-display text-2xl font-bold">Directory submission orders</h2>
+      <ul className="mt-4 space-y-2">
+        {orders.map(({ o, live, total }) => (
+          <li key={o.id}>
+            <Link
+              href={`/orders/${o.intakeToken}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-4 hover:border-primary/50"
+            >
+              <span className="font-medium">{o.productName ?? "Waiting for your product details"}</span>
+              <span className="text-sm text-muted-foreground">
+                {PACKAGES[o.package].label} ·{" "}
+                {o.status === "awaiting_intake"
+                  ? "Add your details →"
+                  : `${live}/${total} live · ${o.status.replace("_", " ")}`}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

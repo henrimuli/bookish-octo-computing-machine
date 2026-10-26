@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container, Heading } from "@/components/ui/primitives";
+import { eq } from "drizzle-orm";
 import { site } from "@/config/site";
+import { db, schema } from "@/db";
 import { confirmPayment } from "@/lib/payments/service";
 
 export const metadata: Metadata = { title: "Payment", robots: { index: false } };
@@ -54,6 +56,21 @@ async function Result({ searchParams }: { searchParams: PageProps<"/checkout/ret
     console.error("checkout return: confirm failed", err);
   }
 
+  if (order?.status === "paid" && order.kind === "submission") {
+    const sub = await db().query.submissionOrders.findFirst({ where: eq(schema.submissionOrders.orderId, order.id) });
+    if (sub) {
+      return (
+        <div className="space-y-4">
+          <Heading className="text-2xl sm:text-2xl">Payment received. One more step</Heading>
+          <p className="text-muted-foreground">
+            Tell us about your product so we can start submitting. It takes about five minutes. We&apos;ve also emailed
+            this link to {order.email}.
+          </p>
+          <ButtonLink href={`/orders/${sub.intakeToken}`}>Add your product details</ButtonLink>
+        </div>
+      );
+    }
+  }
   if (order?.status === "paid") {
     return (
       <Message

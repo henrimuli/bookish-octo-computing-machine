@@ -24,6 +24,7 @@ describe("extractPrefill", () => {
       logoUrl: "https://acme.app/apple.png",
       imageUrl: "https://acme.app/og.png",
       twitterUrl: "https://x.com/acmenotes",
+      categories: ["productivity"],
     });
   });
 

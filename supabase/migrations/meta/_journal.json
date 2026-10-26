@@ -64,6 +64,20 @@
       "when": 1793004666063,
       "tag": "20261026085106_api",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793028253053,
+      "tag": "20261026152413_directories",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793028254071,
+      "tag": "20261026152414_directories_seed",
+      "breakpoints": true
     }
   ]
 }

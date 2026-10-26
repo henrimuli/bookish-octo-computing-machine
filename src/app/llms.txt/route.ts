@@ -21,10 +21,12 @@ export async function GET() {
     `- [How ranking works](${base}/how-ranking-works): scoring and anti-manipulation rules`,
     `- [Pricing](${base}/pricing): free and paid debuts, featured placements, directory submission service`,
     `- [Blog](${base}/blog): weekly recaps of every debut`,
+    `- [Launch directories](${base}/directories): where to list a product after launch, with link types we've verified`,
+    `- [Submission service](${base}/submission-service): we submit a product to 40–180 directories and verify every link`,
     `- [Launch readiness check](${base}/tools/launch-readiness): free pre-launch audit of any product URL`,
     "",
     "## For agents",
-    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, check_launch_readiness, submit_product drafts, get_my_launches)`,
+    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, submit_product drafts, get_my_launches)`,
     `- [OpenAPI spec](${base}/api/v1/openapi.json): REST API at ${base}/api/v1`,
     "",
   ];

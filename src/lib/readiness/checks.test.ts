@@ -50,8 +50,14 @@ describe("pageChecks", () => {
   });
 
   it("suggests a listing within the form's limits", () => {
-    const s = suggestedListing({ url: "x", name: "A".repeat(70), tagline: "Short", description: undefined });
+    const s = suggestedListing({
+      url: "x",
+      name: "A".repeat(70),
+      tagline: "Short",
+      description: undefined,
+      categories: ["ai"],
+    });
     expect(s.name).toHaveLength(60);
-    expect(s).toMatchObject({ tagline: "Short", description: null });
+    expect(s).toMatchObject({ tagline: "Short", description: null, categories: ["ai"] });
   });
 });

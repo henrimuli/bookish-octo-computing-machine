@@ -4,10 +4,12 @@ import { site as siteConfig } from "@/config/site";
 import {
   ApiError,
   categories,
+  directoriesInput,
   draftInput,
   draftSubmission,
   getInput,
   getProduct,
+  launchDirectories,
   inputJsonSchema,
   myLaunches,
   readiness,
@@ -57,6 +59,15 @@ export const TOOLS: Tool[] = [
     input: z.object({}),
     readOnly: true,
     run: () => categories(),
+  },
+  {
+    name: "list_launch_directories",
+    title: "List launch directories",
+    description:
+      "Directories and launch boards to submit a product to after launch, with DR, pricing, link type (marked when verified by our own checks) and whether a badge or the maker personally is needed.",
+    input: directoriesInput,
+    readOnly: true,
+    run: (args) => launchDirectories(args as z.input<typeof directoriesInput>),
   },
   {
     name: "check_launch_readiness",

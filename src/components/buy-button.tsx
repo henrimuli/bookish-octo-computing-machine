@@ -8,10 +8,17 @@ import { cn } from "@/lib/utils";
 
 const labels: Record<ProviderId, string> = { paystack: "Pay with card", paypal: "PayPal" };
 
-type Props = { sku: string; recurring: boolean; providers: ProviderId[]; className?: string };
+type Props = {
+  sku: string;
+  recurring: boolean;
+  providers: ProviderId[];
+  className?: string;
+  /** Attach a submission package to one of the buyer's listings (a "boost"). */
+  productId?: string;
+};
 
 /** Expands into email + coupon + provider choice, then redirects to the provider's checkout. */
-export function BuyButton({ sku, recurring, providers, className }: Props) {
+export function BuyButton({ sku, recurring, providers, className, productId }: Props) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [coupon, setCoupon] = useState("");
@@ -41,7 +48,7 @@ export function BuyButton({ sku, recurring, providers, className }: Props) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sku, provider, email: email || undefined, coupon: coupon || undefined }),
+        body: JSON.stringify({ sku, provider, email: email || undefined, coupon: coupon || undefined, productId }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error ?? "Checkout failed");

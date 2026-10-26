@@ -178,3 +178,31 @@ export function inputJsonSchema(s: z.ZodType): Record<string, unknown> {
   delete out.$schema;
   return out;
 }
+
+export const directoriesInput = z.object({
+  niche: z.enum(["general", "devtools", "ai", "indie", "b2b"]).optional().describe("Directory niche"),
+  pricing: z.enum(["free", "freemium", "paid"]).optional(),
+  noBadge: z.boolean().optional().describe("Only directories that don't require a badge"),
+  dofollow: z.boolean().optional().describe("Only directories that give a dofollow link"),
+});
+
+/** Launch directories from our database, with what we've verified about them. */
+export async function launchDirectories(raw: z.input<typeof directoriesInput>) {
+  const { listDirectories, effectiveLinkType } = await import("@/lib/directories/service");
+  const rows = await listDirectories(directoriesInput.parse(raw));
+  return rows.map((d) => ({
+    slug: d.slug,
+    name: d.name,
+    url: d.url,
+    submitUrl: d.submitUrl ?? d.url,
+    niche: d.niche,
+    pricing: d.pricing,
+    dr: d.dr,
+    linkType: effectiveLinkType(d),
+    linkTypeVerified: d.linkTypeObserved !== "unknown",
+    badgeRequired: d.badgeRequired,
+    needsMakerPersonally: d.guided,
+    acceptanceRate: d.acceptanceRate,
+    info: site(`/directories/${d.slug}`),
+  }));
+}
