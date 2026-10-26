@@ -2,37 +2,38 @@
 
 /* DebutYard design tokens. Light is the default; dark follows the OS. */
 :root {
-  --background: #fbfaf7;
-  --foreground: #17150f;
+  /* Evergreen and black, shared with the Cleanly design language. */
+  --background: #f3f7f5;
+  --foreground: #10201b;
   --card: #ffffff;
-  --muted: #f3f1ec;
-  --muted-foreground: #6b6658;
-  --border: #e6e2d8;
-  --primary: #e4572e;
+  --muted: #edf4f1;
+  --muted-foreground: #52675f;
+  --border: #dce6e2;
+  --primary: #0e9f6a;
   --primary-foreground: #ffffff;
-  --accent: #f2b544;
-  --accent-foreground: #17150f;
-  --success: #2f8f5b;
-  --danger: #c2372b;
-  --ring: #e4572e;
+  --accent: #f2b84b;
+  --accent-foreground: #10201b;
+  --success: #0e9f6a;
+  --danger: #c9412f;
+  --ring: #0e9f6a;
   --radius: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #12110e;
-    --foreground: #f2efe7;
-    --card: #1b1a16;
-    --muted: #22211c;
-    --muted-foreground: #a39d8e;
-    --border: #2c2a24;
-    --primary: #f06a44;
-    --primary-foreground: #12110e;
-    --accent: #f2b544;
-    --accent-foreground: #12110e;
-    --success: #4cb67c;
-    --danger: #e5574a;
-    --ring: #f06a44;
+    --background: #0d1714;
+    --foreground: #e9f3ef;
+    --card: #13211d;
+    --muted: #182a25;
+    --muted-foreground: #8fa89f;
+    --border: #233832;
+    --primary: #3be0a0;
+    --primary-foreground: #04251a;
+    --accent: #f2b84b;
+    --accent-foreground: #10201b;
+    --success: #3be0a0;
+    --danger: #ff7a6b;
+    --ring: #3be0a0;
   }
 }
 
