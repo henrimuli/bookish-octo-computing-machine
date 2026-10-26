@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProductLogo } from "@/components/board/product-logo";
 import { ButtonLink } from "@/components/ui/button";
@@ -29,6 +30,8 @@ export default function LaunchWallPage() {
 }
 
 async function Wall() {
+  // Read at request time: the wall changes as makers opt in, and the build has no database.
+  await connection();
   const makers = await launchWall();
   if (makers.length === 0) {
     return (
