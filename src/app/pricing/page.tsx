@@ -4,7 +4,7 @@ import { BuyButton } from "@/components/buy-button";
 import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
 import { enabledProviders, formatUsd, SKUS, type Sku } from "@/lib/payments";
 import { isPurchasable } from "@/lib/payments/skus";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -81,7 +81,11 @@ export default function PricingPage() {
                   )}
                 </p>
                 <p className="mt-2 flex-1 text-sm text-muted-foreground">{sku.description}</p>
-                {isPurchasable(sku) ? (
+                {sku.type === "one_time" && (sku.kind === "launch" || sku.kind === "relaunch") ? (
+                  <ButtonLink href="/submit" className="mt-6" variant={sku.kind === "relaunch" ? "outline" : "primary"}>
+                    {sku.kind === "relaunch" ? "From your dashboard" : "Choose when you submit"}
+                  </ButtonLink>
+                ) : isPurchasable(sku) ? (
                   <BuyButton sku={sku.id} recurring={sku.type === "recurring"} providers={providers} className="mt-6" />
                 ) : (
                   <Button className="mt-6" variant="outline" disabled>

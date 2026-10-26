@@ -15,6 +15,20 @@
       "when": 1792971253375,
       "tag": "0001_enable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792974849280,
+      "tag": "0002_board",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792974861959,
+      "tag": "0003_board_rls_and_categories",
+      "breakpoints": true
     }
   ]
 }

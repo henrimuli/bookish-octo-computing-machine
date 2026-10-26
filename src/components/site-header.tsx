@@ -7,6 +7,8 @@ import { UserMenu } from "@/components/user-menu";
 
 const nav = [
   { href: "/", label: "This week" },
+  { href: "/weeks", label: "Past weeks" },
+  { href: "/categories", label: "Categories" },
   { href: "/pricing", label: "Pricing" },
 ];
 

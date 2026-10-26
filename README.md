@@ -13,19 +13,29 @@ The research, pricing and roadmap are in [docs/PLAN.md](docs/PLAN.md).
 
 ## Status
 
-**Phase 0 (foundations) is done.**
+**Phase 0 (foundations) and Phase 1 (launch board) are done.**
 
-| Area     | What's there                                                                                                                                                                                                          |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| App      | Next.js 16 (App Router, Cache Components), TypeScript, Tailwind v4, the DebutYard design tokens and UI primitives                                                                                                     |
-| Database | Supabase Postgres via Drizzle ORM. Migrations in `drizzle/`, including row-level security on every table                                                                                                              |
-| Auth     | Better Auth: email magic link, plus Google and GitHub when their keys are set                                                                                                                                         |
-| Payments | Paystack (primary) and PayPal behind one `PaymentProvider` interface. One-time checkout, server-side verification, signed webhooks, idempotent processing, refunds, coupons, subscriptions and nightly reconciliation |
-| Storage  | Cloudflare R2 helpers (presigned uploads)                                                                                                                                                                             |
-| Pages    | Home, pricing, sign-in, checkout return/cancel, terms, privacy, refund policy (with the money-back guarantee)                                                                                                         |
-| CI       | Format, lint, typecheck, migration drift check, unit and Postgres integration tests, and build                                                                                                                        |
+| Area            | What's there                                                                                                                                                                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Launch board    | Weekly debuts (Mon–Sun UTC), a ranked board on the homepage, past weeks, categories, builder profiles, product pages (week rank, votes-per-day chart, same-week and similar products, discussion)                                                                                  |
+| Submitting      | `/submit`: fill details from the product's URL, logo upload to R2, up to 3 categories, then a plan: free (queue, max 2 waiting per maker) or Fast Track / Pro / Premium / Spotlight through Paystack or PayPal                                                                     |
+| Moderation      | `/admin` review queue (paid listings first). Approving schedules the listing; rejecting a paid listing refunds it automatically (money-back guarantee)                                                                                                                             |
+| Voting          | One vote per account. New accounts (<72h) and repeat votes from the same network count less. Rate limits. Substantive comments add a little to the score. Rules published at `/how-ranking-works`                                                                                  |
+| Winners         | A daily cron closes finished weeks: top 3 (with votes) get awards, a permanent followed link and an email                                                                                                                                                                          |
+| Badges          | Light/dark SVG badges (`/badge/{slug}`, winner variant, optional live vote count). Verification by fetching the site (HTML) or a DNS TXT record. Weekly re-check, 7-day grace period, then nofollow                                                                                |
+| Featured        | Pro (7 days), Premium and Spotlight (30 days) appear in the homepage featured rail. Spotlight is the hero during its debut week, capped at 3 per week. Manual perks (newsletter, social posts, launch post, Spotlight's directory bundle) arrive as a to-do email to `ADMIN_EMAIL` |
+| Maker dashboard | Status, debut week and queue position, badge snippet and one-click check, views, clicks, votes and comments                                                                                                                                                                        |
+| SEO             | Sitemap, robots, JSON-LD per product, generated Open Graph images, `llms.txt`                                                                                                                                                                                                      |
+| Foundations     | Next.js 16 (Cache Components), Supabase Postgres + Drizzle (RLS on every table), Better Auth magic link + Google/GitHub, Paystack + PayPal behind one `PaymentProvider`, R2, Resend, CI                                                                                            |
 
-**What can be bought today:** only the three directory-submission packages ($99 / $179 / $299), because they're delivered by hand. After payment, the buyer gets an email saying we'll collect their product details within 24 hours, and you get an order notification at `ADMIN_EMAIL`. Launch tiers, featured slots and plans show "Opening soon" until their features ship (Phases 1–4).
+**Admin access:** the account whose email matches `ADMIN_EMAIL` becomes an admin when it signs up.
+
+**What can be bought today:**
+
+- paid debuts, during submission;
+- the three directory-submission packages ($99 / $179 / $299), delivered by hand: the buyer gets an email saying we'll collect their product details within 24 hours, and you get an order notification.
+
+Standalone featured slots and subscriptions show "Opening soon" until Phases 2–4.
 
 ## Local development
 
@@ -51,6 +61,7 @@ Without `RESEND_API_KEY`, sign-in links and order emails are printed to the term
 | `pnpm db:migrate`                            | Apply migrations (uses `DIRECT_DATABASE_URL`)                                                             |
 | `pnpm db:studio`                             | Browse the database                                                                                       |
 | `pnpm payments:sync-plans`                   | Create the subscription plans on Paystack/PayPal and store their ids                                      |
+| `pnpm db:seed`                               | Fill a local database with sample makers, products, votes and comments (refuses to run in production)     |
 
 ## Setting up the services
 
@@ -92,7 +103,7 @@ Verify `debutyard.com` in Resend, then set `RESEND_API_KEY`, `EMAIL_FROM` and `A
 1. Import the GitHub repo. The framework preset is Next.js and needs no build settings.
 2. Add every variable from `.env.example` under **Settings → Environment Variables** (Production and Preview), with `NEXT_PUBLIC_SITE_URL=https://debutyard.com`.
 3. Add the domain. Pages like `/pricing` are prerendered, so **redeploy after changing payment keys**.
-4. `vercel.json` schedules `/api/cron/reconcile-payments` daily, which the Hobby plan allows. On Pro, change it to hourly. Vercel sends `CRON_SECRET` automatically.
+4. `vercel.json` schedules one daily job, `/api/cron/daily`, at 00:10 UTC, so each week closes just after Monday 00:00. It closes finished weeks and awards winners, reconciles payments, and re-checks badges. The Hobby plan allows this. Vercel sends `CRON_SECRET` automatically.
 
 ## How payments flow
 

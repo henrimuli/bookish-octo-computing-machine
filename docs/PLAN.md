@@ -206,6 +206,33 @@ All three share one data model, so a link looks the same whether the maker submi
 - Target list = our directory DB, scored by DR, verified link type, acceptance rate, and time-to-live, then matched to the product's niche. Our own outcomes improve that data over time, which is a moat.
 - Promise to match the market: start within **48h**, finish in **7–14 days**, and replace rejected or dead directories so the count holds. Be honest that some directories reject for editorial reasons.
 
+### 4.2a Badges, accounts and how much the client is involved (researched Oct 26, 2026)
+
+**How common badge requirements are:** in Nick Launches' public catalog (its API, first 100 directories by DR, DR 64–93), only **9 of 100 require a badge**: Startup Fame, Fazier, Turbo0, Launch Llama, TinyLaunch, Neeed, ScrollLaunch, Maidensail, BetterLaunch. Almost all are *launch platforms* where the badge is the price of the free tier (paying skips it). 87 of 100 are dofollow with no badge. Badge-gated directories get more common further down, among lower-DR launch boards.
+
+**How services handle it:**
+- skip badge-gated directories entirely (e.g. SubmitDirs);
+- have the client paste one footer block containing all the badges, which the service then keeps verified (Submitator, SaaSCity: "every badge we find on your site adds a directory");
+- or pay the directory's skip fee, which only works for a few at $15–40 each.
+
+Vendors also warn against walls of reciprocal badges, since hundreds of them hurt the client's SEO.
+
+**DebutYard's approach.** The client sets this once at intake, so there's no back-and-forth:
+
+1. **Badge preference** (intake form):
+   - **No badges** (default): we only target no-badge directories and swap badge-gated ones for equivalents.
+   - **Up to N badges** (we recommend at most 5, the highest-DR launch platforms): we generate **one static HTML footer block** containing all the badges.
+2. **The badge block must be plain HTML pasted into the site**, not a script that injects badges. Directories verify by fetching the page server-side, and most don't run JavaScript, so script-injected badges look missing.
+3. **One email, once.** After intake we send the snippet. Our badge checker (the same one as the free tier, §3.2) confirms it's live, then the badge-gated submissions go out. If the client never adds it, those directories are replaced automatically after 7 days.
+4. **Link Monitor** re-checks the client's footer weekly. If a redesign drops the badges, the client gets an alert before directories downgrade the links.
+5. **Paid skips** are used only in Scale/Agency packages, with the cost built into the price.
+
+**Accounts and email verification (the bigger contact issue):** most directories need an account and a confirmed email.
+- Each order gets a **dedicated submission inbox**, e.g. `{order}@submit.debutyard.com`, using Cloudflare Email Routing or Resend inbound. Verification emails land there, the ops console shows them, and we click through without asking the client.
+- Credentials for every account we create are stored per order and **handed over in the final report**, so the client owns their listings.
+- The intake form asks permission to create accounts in the product's name.
+- A few sites need the maker personally: Product Hunt and Hacker News (personal accounts), and G2/Capterra (vendor verification). These are offered as **"guided" items** with a checklist, not counted in the package total.
+
 ### 4.3 Live tracking dashboard (client-facing) — the differentiator
 
 Per order, one row per target directory:
@@ -497,7 +524,7 @@ Pricing note: until DR is above ~50, run launch-sale codes on the launch tiers a
 **Phase 0 — Foundations (week 1)** ✅ *Done Oct 26, 2026 (see README).* Submission packages are already sellable, fulfilled by hand.
 Repo setup, Next.js + Drizzle + Postgres, auth, Paystack + PayPal sandbox/test accounts and the `PaymentProvider` layer, CI (lint/typecheck/test), base design system, final name + domain.
 
-**Phase 1 — MVP launch board (weeks 2–4)**
+**Phase 1 — MVP launch board (weeks 2–4)** ✅ *Done Oct 26, 2026.* Also shipped early: the Phase 2 featured rail for paid debuts, so paid perks are live from day one. AI-written prefill is deferred: prefill reads the site's metadata.
 Product submission with URL prefill + moderation, product pages (rank, votes chart, same-week, similar), categories, builders, weekly launch weeks + free queue (visible ETA, 2-active cap), voting + comments, basic anti-fraud, weekly winners job + badges + top-3 dofollow, badge verification (HTML + DNS), paid tiers via Paystack + PayPal (webhooks, verification, refunds, coupons), maker dashboard v1, SEO basics (sitemap, JSON-LD, OG images, `llms.txt`), transactional email.
 
 **Phase 2 — Monetization + agent surface (weeks 5–6)**

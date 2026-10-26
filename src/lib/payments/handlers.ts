@@ -1,9 +1,31 @@
 import "server-only";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { notifyAdminPaidTier, notifyPaidTierApplied, notifyProductSubmitted } from "@/lib/notifications";
+import { TIERS, tierForSku } from "@/lib/products/input";
+import { applyPaidTier } from "@/lib/products/service";
 import { registerFulfillment } from "./fulfillment";
 import { formatUsd, getSku } from "./skus";
+
+/** Paid debut tiers: upgrade the listing named in the order and (re)schedule it. */
+registerFulfillment("launch", async (order) => {
+  const productId = typeof order.metadata.productId === "string" ? order.metadata.productId : null;
+  const weekKey = typeof order.metadata.weekKey === "string" ? order.metadata.weekKey : null;
+  const tier = tierForSku(order.sku);
+  if (!productId || !tier) throw new Error(`Launch order ${order.id} is missing its product or tier`);
+
+  const before = await db().query.products.findFirst({
+    where: eq(schema.products.id, productId),
+    columns: { status: true },
+  });
+  const product = await applyPaidTier(productId, tier, weekKey);
+  await notifyPaidTierApplied(product, TIERS[tier].label);
+  await notifyAdminPaidTier(product, tier);
+  if (before?.status !== "pending" && product.status === "pending") await notifyProductSubmitted(product);
+});
 
 /**
  * Submission packages are delivered by hand. Until the Phase 3 intake form and
