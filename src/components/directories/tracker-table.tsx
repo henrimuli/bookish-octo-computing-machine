@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { recheckAction, updateTrackerAction } from "@/app/dashboard/tracker/actions";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ const LABELS: Record<string, string> = {
 };
 
 function Row({ productId, initial }: { productId: string; initial: TrackerRow }) {
+  const router = useRouter();
   const [row, setRow] = useState(initial);
   const [url, setUrl] = useState(initial.submission?.liveUrl ?? "");
   const [editingUrl, setEditingUrl] = useState(false);
@@ -66,6 +68,8 @@ function Row({ productId, initial }: { productId: string; initial: TrackerRow })
       if (!res.ok) return setError(res.error);
       setRow((r) => ({ ...r, submission: res.row }));
       setEditingUrl(false);
+      // Refresh the summary counts above the table.
+      router.refresh();
     });
   }
 
