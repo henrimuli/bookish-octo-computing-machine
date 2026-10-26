@@ -165,7 +165,7 @@ Submit product (form with URL prefill, or via MCP agent draft)
 - Homepage "Featured" rail and a **rotating paid slot inside the leaderboard** between ranks 3 and 4 (TinyLaunch's best idea; clearly labelled "Featured").
 - **Hard-capped premium slots** (e.g. 3 concurrent Spotlights) shown as "N spots left".
 - Category sponsor slots, in-feed sponsored cards, newsletter sponsorship.
-- Self-serve booking calendar with Stripe checkout.
+- Self-serve booking calendar with checkout (Paystack or PayPal, §7.5).
 - Click/impression stats for every slot, plus the TinyLaunch-style CPC guarantee (if CPC > $1, the slot extends for free).
 
 **Maker dashboard**
@@ -335,9 +335,9 @@ Still to do before committing: a USPTO/EUIPO trademark search, and X/GitHub hand
 |---|---|---|
 | Framework | **Next.js (App Router) + TypeScript** | SSR/ISR for SEO-heavy pages. Nick Launches runs Next.js too (seen in its page source) |
 | UI | Tailwind + shadcn/ui | Fast, consistent |
-| DB | **Postgres** (Neon or Supabase) + **Drizzle ORM** | Relational data (votes, orders, checks), row-level locking for capped slot booking |
+| DB | **Supabase Postgres** + **Drizzle ORM** | Relational data (votes, orders, checks), row-level locking for capped slot booking |
 | Auth | Better Auth: magic link, Google, GitHub, X, plus an OAuth-style device approval for MCP clients | Voting needs low-friction signup. Agent connections need browser approval |
-| Payments | **Stripe** Checkout + Billing + webhooks | One-time + subscriptions + coupons + affiliates (Rewardful/PromoteKit) |
+| Payments | **Paystack (primary)** + **PayPal (secondary)**, behind our own `PaymentProvider` interface. Coupons and affiliates built in-house | Stripe doesn't serve Kenya. Merchant-of-record services ban or restrict ads and human services. See §7.5 |
 | Jobs/cron | Inngest or Trigger.dev (or pg-boss workers on Railway/Fly) | Badge checks, link monitoring, week rollover, recap drafting, emails |
 | Crawling | `fetch`/cheerio first, Playwright workers for JS/bot-protected pages and evidence screenshots | Badge verification, link checks, URL prefill |
 | AI | Claude API for URL-prefill drafting, readiness suggestions, recap drafts, and audience reports | |
@@ -347,7 +347,7 @@ Still to do before committing: a USPTO/EUIPO trademark search, and X/GitHub hand
 | Email | Resend + React Email (newsletter: Beehiiv or Resend broadcasts) | |
 | Search | Postgres full-text → Meilisearch later | |
 | Analytics | PostHog + our own events table for maker-facing stats | |
-| Hosting | Vercel (web) + Railway/Fly (workers) | |
+| Hosting | Vercel (web + cron). Long-running crawlers (Playwright) move to a worker on Railway/Fly when Phase 3 needs them | |
 | Extension (later) | Chrome MV3 (Plasmo/WXT) | Autofill + tracker sync |
 
 ### 7.2 Data model (initial)
@@ -383,8 +383,18 @@ featured_slots(id, placement[home_rail|home_top|leaderboard|category|newsletter|
 slot_inventory(placement, max_concurrent)
 
 orders(id, user_id NULL, email, kind[launch|relaunch|featured|submission|subscription], sku,
-       amount_cents, currency, coupon, stripe_session_id, status, refunded_at, created_at)
-subscriptions(id, user_id, plan, stripe_subscription_id, status, current_period_end)
+       amount_cents, currency, coupon_id NULL, discount_cents,
+       provider[paystack|paypal], provider_ref, provider_customer_id,
+       status[pending|paid|failed|refunded|partially_refunded], paid_at, refunded_at, created_at)
+payment_events(id, provider, event_id UNIQUE, type, payload_json, received_at, processed_at)  -- webhook log, idempotency
+refunds(id, order_id, amount_cents, reason, provider_ref, status, created_at)
+subscriptions(id, user_id, plan, provider[paystack|paypal], provider_subscription_id,
+              provider_plan_id, status[active|non_renewing|past_due|cancelled],
+              current_period_end, cancel_at_period_end)
+coupons(id, code UNIQUE, percent_off NULL, amount_off_cents NULL, applies_to_skus, max_redemptions,
+        redeemed_count, expires_at)
+affiliates(id, user_id, code UNIQUE, commission_pct, payout_method[paypal|bank], created_at)
+affiliate_referrals(id, affiliate_id, order_id, commission_cents, status[pending|approved|paid], paid_at)
 
 directories(id, slug, name, url, submit_url, dr, traffic_band, pricing[free|freemium|paid],
             link_type_claimed, link_type_observed, badge_required, queue_estimate_days, niche,
@@ -417,6 +427,9 @@ newsletter_subscribers, posts (blog/CMS), audit_log
 | `directories.audit` | monthly | Re-verify the public directory DB (alive? link type observed?) |
 | `slots.expire` | hourly | Rotate featured slots, send performance reports, apply the CPC guarantee |
 | `digests` | daily/weekly | Maker + client status emails |
+| `payments.reconcile` | hourly | Re-verify pending orders against the Paystack/PayPal APIs, in case a webhook was missed |
+| `subscriptions.sync` | daily | Pull subscription status from both providers, handle `past_due` (dunning emails) and expiries |
+| `affiliates.approve` | daily | Approve commissions on orders older than the refund window (30 days) |
 
 ### 7.4 Pages / routes
 
@@ -425,6 +438,40 @@ newsletter_subscribers, posts (blog/CMS), audit_log
 - **Admin/ops:** `/admin/moderation`, `/admin/votes`, `/admin/slots`, `/admin/directories`, `/ops/submissions` (kanban)
 - **Machine:** `/api/mcp` (MCP), `/api/v1/*` (REST), `/api/v1/openapi.json`, `/connect` (agent approval)
 - **Public share:** `/r/[token]` read-only submission report
+
+### 7.5 Payments: Paystack primary, PayPal secondary
+
+**Why not Stripe or a merchant of record (MoR):** Stripe doesn't serve Kenya. Paddle, Lemon Squeezy and Polar all pay out to Kenya, but their acceptable-use policies ban **advertising/sponsorship** (featured slots, newsletter ads) and **human-delivered services** (the done-for-you submission service). Creem puts both in a "restricted" category that needs a proven processing history. Dodo Payments doesn't accept Kenyan sellers. As the merchant on Paystack/PayPal, all our product lines are allowed. The cost: we handle tax ourselves (see below).
+
+**Paystack (primary checkout)**
+- Kenya-based businesses can charge international Visa, Mastercard, Amex and Apple Pay **in USD** and settle **in USD** to a USD account at a Kenyan bank. About **3.8%** per international card transaction, settled in ~2 working days (T+2). Local cards and M-Pesa are available too (KES) if we ever price locally.
+- Integration:
+  - One-time payments: Initialize Transaction → Popup/redirect → verify via webhook (`charge.success`) **and** a server-side `GET /transaction/verify/:reference`.
+  - Subscriptions (Link Monitor, Maker Pro, Always Featured, Agency): Paystack Plans + Subscriptions. Handle `subscription.create`, `invoice.create`, `invoice.payment_failed`, `subscription.not_renew` and `subscription.disable`. Customers manage cards through Paystack's subscription management link.
+  - Refunds via the Refund API (needed for the money-back guarantee).
+  - Webhooks verified with the `x-paystack-signature` HMAC-SHA512 header.
+- **Verify before building:** that recurring Plans can be priced in **USD** on a Kenyan account (the docs confirm USD for one-time charges). If they can't, bill subscriptions through PayPal, or charge a saved card authorization in USD on our own schedule (`charge_authorization`).
+
+**PayPal (secondary checkout button)**
+- Many indie founders prefer PayPal, and it covers buyers whose cards get declined on cross-border charges. Kenyan accounts can receive payments and withdraw to a local bank or M-Pesa.
+- Integration: PayPal Orders v2 (one-time) + PayPal Subscriptions (billing plans), webhooks verified via the verify-webhook-signature API, and refunds via the Payments API.
+
+**Our own payment layer** (`lib/payments/`)
+- A `PaymentProvider` interface: `createCheckout(order)`, `verifyPayment(ref)`, `createSubscription(plan, customer)`, `cancelSubscription(id)`, `refund(order, amount)`, `parseWebhook(req)`. It has Paystack and PayPal implementations, and later Stripe (if we form a US LLC) or Creem (for SaaS plans) without touching the rest of the app.
+- Prices are defined once in a `skus` config in USD cents. Both providers read from it. Product and plan IDs on each provider are mapped in config.
+- **Coupons** (launch sales, founding-maker discount) are computed by us before creating the charge. Paystack has no Stripe-style coupon object.
+- **Affiliates** are tracked in-house (`?ref=` cookie → `affiliate_referrals`) and paid monthly via PayPal Payouts or bank transfer. Rewardful and PromoteKit are Stripe-only.
+- Fulfilment happens **only** from verified webhooks or server-side verification, never from the client redirect. Webhook events are stored in `payment_events` for idempotency, plus hourly reconciliation.
+- Checkout shows "Pay with card" (Paystack) and "PayPal". Receipts/invoices come from our own system (PDF via React Email/react-pdf) with a sequential invoice number.
+
+**Tax & compliance (to confirm with a Kenyan accountant before launch)**
+- Without a merchant of record, DebutYard is the seller. Register the business, get a KRA PIN, and confirm how VAT applies to exported digital services/advertising, and whether turnover tax or income tax applies.
+- Most buyers are businesses (B2B), which keeps foreign VAT exposure low. Collect the buyer's country and an optional VAT ID at checkout, so a later move to an MoR or to EU/UK VAT registration is straightforward if B2C volume grows.
+- Terms of Service, Refund Policy (with the money-back guarantee), Privacy Policy and a visible support email are needed for Paystack's business review anyway.
+
+**Later options**
+- **US LLC + Stripe** (Stripe Atlas ~$500, then ~$100/yr registered agent + ~$300–1,500/yr Delaware tax and accounting) once revenue justifies the overhead. Most competitors (Nick Launches, Startup Fame) run on Stripe.
+- **Creem** for the SaaS subscriptions, or for everything, once we have a few months of clean processing history (Uneed sells ads through Creem, so a directory can pass its review).
 
 ---
 
@@ -447,11 +494,11 @@ Pricing note: until DR is above ~50, run launch-sale codes on the launch tiers a
 
 ## 9. Roadmap
 
-**Phase 0 — Foundations (week 1)**
-Repo setup, Next.js + Drizzle + Postgres, auth, Stripe test mode, CI (lint/typecheck/test), base design system, final name + domain.
+**Phase 0 — Foundations (week 1)** ✅ *Done Oct 26, 2026 (see README).* Submission packages are already sellable, fulfilled by hand.
+Repo setup, Next.js + Drizzle + Postgres, auth, Paystack + PayPal sandbox/test accounts and the `PaymentProvider` layer, CI (lint/typecheck/test), base design system, final name + domain.
 
 **Phase 1 — MVP launch board (weeks 2–4)**
-Product submission with URL prefill + moderation, product pages (rank, votes chart, same-week, similar), categories, builders, weekly launch weeks + free queue (visible ETA, 2-active cap), voting + comments, basic anti-fraud, weekly winners job + badges + top-3 dofollow, badge verification (HTML + DNS), paid tiers via Stripe with refunds, maker dashboard v1, SEO basics (sitemap, JSON-LD, OG images, `llms.txt`), transactional email.
+Product submission with URL prefill + moderation, product pages (rank, votes chart, same-week, similar), categories, builders, weekly launch weeks + free queue (visible ETA, 2-active cap), voting + comments, basic anti-fraud, weekly winners job + badges + top-3 dofollow, badge verification (HTML + DNS), paid tiers via Paystack + PayPal (webhooks, verification, refunds, coupons), maker dashboard v1, SEO basics (sitemap, JSON-LD, OG images, `llms.txt`), transactional email.
 
 **Phase 2 — Monetization + agent surface (weeks 5–6)**
 Featured slot calendar with capped inventory + leaderboard slot, click/impression stats, newsletter, blog/CMS + automated recap drafts, monthly/yearly boards, `/vote` duels, pricing + advertise pages, **launch-readiness check**, **MCP server + REST API** (search, get, readiness, draft submit, my launches).
@@ -460,7 +507,7 @@ Featured slot calendar with capped inventory + leaderboard slot, click/impressio
 Directory database (admin editor + public pages), DIY tracker with automatic link verification, submission order checkout (no account needed) + "boost" on existing launches, ops console (kanban, per-directory checklists, QA), client live-tracking dashboard, evidence screenshots, CSV/PDF export, shareable reports, status emails.
 
 **Phase 4 — Link Monitor & subscriptions (weeks 10–11)**
-Tracked links for any URL, weekly monitoring + alerts, DR snapshots + before/after charts, Maker Pro + Always Featured + Link Monitor plans, affiliate program, free tools (dofollow checker, DR checker), launch wall.
+Tracked links for any URL, weekly monitoring + alerts, DR snapshots + before/after charts, Maker Pro + Always Featured + Link Monitor plans (Paystack/PayPal subscriptions + dunning emails), in-house affiliate program, free tools (dofollow checker, DR checker), launch wall.
 
 **Phase 5 — Scale & moat (ongoing)**
 Chrome autofill extension synced to the tracker, advanced vote-fraud detection, alternatives/comparison SEO pages, agency plan + white-label, audience-finder tool, Distribution Suite (AI-visibility prompt tracking, rankings, written posts), a gamified homepage element (optional).
@@ -480,14 +527,27 @@ Chrome autofill extension synced to the tracker, advanced vote-fraud detection, 
 
 ---
 
-## 11. Decisions needed from you
+## 11. Decisions
 
-1. ~~Name~~ **Decided: DebutYard.** Still to do: register `debutyard.com` + `.io` (+ `.app`), claim the X/GitHub handles, run a USPTO/EUIPO trademark search, and rename this repo to `debutyard`.
-2. Weekly cadence (recommended) vs. daily.
-3. Generalist (recommended; Nick, SaaSCity and Uneed all are) vs. starting with a vertical (e.g. AI tools or dev tools, like DevHunt).
-4. Who does the manual submissions at first (you vs. contractors). This decides the 48h-start / 7–14 day SLA.
-5. Hosting preference (Vercel + Railway assumed) and Postgres provider.
-6. Whether to include the money-back guarantee from day one (recommended).
+All the open questions are settled (Oct 26, 2026):
+
+| Decision | Choice |
+|---|---|
+| Name | **DebutYard** |
+| Payments | **Paystack primary + PayPal secondary** (§7.5) |
+| Cadence | **Weekly** debuts (Mon 00:00 UTC to Sun 23:59 UTC) |
+| Positioning | **Generalist** (SaaS, AI, dev tools, indie apps) with strong categories |
+| Submission service | **In-house**: the founder does submissions at launch. SLA: start within 48h of receiving product details, finish in 7–14 days. Hire contractors once volume needs it |
+| Hosting | **Vercel** (web + cron) |
+| Database | **Supabase** Postgres (transaction pooler for the app, direct connection for migrations, RLS on every table) |
+| Storage | **Cloudflare R2** |
+| Money-back guarantee | **Included from day one** on paid debuts (refund policy page live) |
+
+**Still to do (owner):**
+- Register `debutyard.com` + `.io` (+ `.app`), claim the X/GitHub handles, run a USPTO/EUIPO trademark search.
+- Register the business and get a KRA PIN, open a USD account at a Kenyan bank, complete Paystack verification and turn on international (USD) payments, open a PayPal Business account, and confirm USD subscription support with Paystack.
+- Have an accountant confirm the VAT/tax treatment, and a lawyer review the policy pages.
+- Create the Supabase project, R2 bucket, Resend domain and Vercel project (steps in the README).
 
 ---
 
@@ -505,3 +565,8 @@ Chrome autofill extension synced to the tracker, advanced vote-fraud detection, 
 - Submission services: [Arahi comparison](https://arahi.ai/blog/directory-submission-services), [StartupSubmit](https://startupsubmit.app/), [ListingBott (Dodo index)](https://index.dodopayments.com/listingbott)
 - Badges & link integrity: [DEV — half of "dofollow" directories serve nofollow](https://dev.to/convertica/half-the-directories-promising-you-a-dofollow-backlink-are-serving-nofollow-ikn), [DEV — followed link worth ten upvotes](https://dev.to/blueticks/a-directory-told-me-exactly-what-my-followed-link-is-worth-ten-upvotes-82o), [ns-ui badge PR](https://github.com/nikolas-sapa/ns-ui/pull/63)
 - Boilerplates: [Dirstarter review](https://boilerplatehub.com/detail/Dirstarter/review)
+
+**Payments (checked Oct 25, 2026)**
+- [Paystack: accepting USD (Kenya/Nigeria)](https://support.paystack.com/hc/en-us/articles/360009973799-Can-I-accept-payments-in-USD-), [Paystack Kenya pricing](https://dr.paystack.com/ke/pricing)
+- [Paddle: what you can't sell](https://www.paddle.com/help/start/intro-to-paddle/what-am-i-not-allowed-to-sell-on-paddle), [Lemon Squeezy: prohibited products](https://docs.lemonsqueezy.com/help/getting-started/prohibited-products), [Polar: acceptable use](https://docs.polar.sh/merchant-of-record/acceptable-use), [Creem: account reviews / restricted products](https://docs.creem.io/merchant-of-record/account-reviews/account-reviews), [Creem: supported countries](https://docs.creem.io/merchant-of-record/supported-countries), [Dodo: supported countries](https://docs.dodopayments.com/api-reference/misc/supported-countries)
+- [AgentaOS: selling from Kenya (provider-by-provider)](https://agentaos.ai/countries/kenya), [Stripe Atlas cost (Rho)](https://www.rho.co/blog/stripe-atlas-review)
