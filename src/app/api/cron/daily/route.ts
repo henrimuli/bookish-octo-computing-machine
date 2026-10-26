@@ -1,6 +1,7 @@
 import { env } from "@/env";
 import { recheckBadges } from "@/lib/badges/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
+import { settleBookings } from "@/lib/ads/service";
 import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
     ["newsletter", () => sendWeeklyDigest()],
     ["recap", () => draftWeeklyRecap()],
     ["payments", () => reconcilePendingOrders()],
+    ["ads", () => settleBookings()],
     ["badges", () => recheckBadges()],
   ];
   for (const [name, run] of tasks) {

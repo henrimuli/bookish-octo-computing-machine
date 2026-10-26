@@ -7,6 +7,7 @@ import { site } from "@/config/site";
 const links = [
   { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/advertise", label: "Advertise" },
   { href: "/refund-policy", label: "Refund policy" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },

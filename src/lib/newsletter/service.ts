@@ -3,19 +3,13 @@ import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db, schema } from "@/db";
 import { env } from "@/env";
+import { addImpressions, newsletterSponsor } from "@/lib/ads/service";
 import { sendBatch, sendEmail } from "@/lib/email";
 import { weekBoard } from "@/lib/board/queries";
 import { addWeeks, formatWeekLabel, weekKeyFor } from "@/lib/weeks";
 import { renderDigest, type DigestData } from "./render";
 
 const { newsletterSubscribers: subs, newsletterIssues: issues, launchWeeks } = schema;
-
-/** Lets other features (sponsor bookings) put a sponsor in a week's issue. */
-type SponsorLookup = (weekKey: string) => Promise<DigestData["sponsor"]>;
-let sponsorLookup: SponsorLookup = async () => null;
-export function setNewsletterSponsorLookup(fn: SponsorLookup) {
-  sponsorLookup = fn;
-}
 
 function url(path: string) {
   return new URL(path, env().NEXT_PUBLIC_SITE_URL).toString();
@@ -122,7 +116,7 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
       .slice(0, 7)
       .map((p) => ({ name: p.name, tagline: p.tagline, url: url(`/p/${p.slug}`), votes: p.votes })),
     debutingNow: debuting,
-    sponsor: await sponsorLookup(newWeek),
+    sponsor: await newsletterSponsor(newWeek),
     siteUrl: url("/"),
   };
 }
@@ -176,6 +170,7 @@ export async function sendWeeklyDigest(now = new Date()) {
     });
     const sent = emails.length ? await sendBatch(emails, `digest-${closedWeek}`) : 0;
     await db().update(issues).set({ sentAt: new Date(), recipients: sent }).where(eq(issues.weekKey, closedWeek));
+    if (data.sponsor) await addImpressions(data.sponsor.bookingId, sent);
     return { week: closedWeek, sent };
   } catch (err) {
     await db()

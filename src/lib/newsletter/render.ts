@@ -10,7 +10,7 @@ export type DigestData = {
   winners: DigestProduct[];
   topOfWeek: DigestProduct[];
   debutingNow: Array<DigestProduct & { featured: boolean }>;
-  sponsor: { name: string; tagline: string; url: string } | null;
+  sponsor: { bookingId: string; name: string; tagline: string; url: string } | null;
   siteUrl: string;
 };
 

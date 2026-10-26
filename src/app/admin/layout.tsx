@@ -3,6 +3,7 @@ import { Container } from "@/components/ui/primitives";
 
 const links = [
   { href: "/admin", label: "Review queue" },
+  { href: "/admin/ads", label: "Ads" },
   { href: "/admin/blog", label: "Blog" },
   { href: "/admin/newsletter", label: "Newsletter" },
 ];

@@ -147,9 +147,9 @@ export function getSku(id: string): Sku | undefined {
 }
 
 /**
- * What can be bought directly today. Launch tiers move into the submit flow
- * (Phase 1), featured slots need booking (Phase 2) and plans need their
- * features (Phase 4); until then only the hand-delivered submission service is sold.
+ * What can be bought directly from /api/checkout. Launch tiers are sold in the
+ * submit flow and featured slots through the /advertise booking calendar;
+ * plans wait for their features (Phase 4).
  */
 export function isPurchasable(sku: Sku): boolean {
   return sku.type === "one_time" && sku.kind === "submission";

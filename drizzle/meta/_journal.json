@@ -50,6 +50,13 @@
       "when": 1793003806165,
       "tag": "0006_blog",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793004125543,
+      "tag": "0007_ad_bookings",
+      "breakpoints": true
     }
   ]
 }

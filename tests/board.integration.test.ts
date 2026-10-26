@@ -65,6 +65,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
   let duels: typeof import("@/lib/board/duels");
   let newsletter: typeof import("@/lib/newsletter/service");
   let blog: typeof import("@/lib/blog/service");
+  let ads: typeof import("@/lib/ads/service");
 
   const now = new Date();
   const thisWeek = weekKeyFor(now);
@@ -87,6 +88,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     duels = await import("@/lib/board/duels");
     newsletter = await import("@/lib/newsletter/service");
     blog = await import("@/lib/blog/service");
+    ads = await import("@/lib/ads/service");
   });
 
   afterAll(async () => {
@@ -100,7 +102,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     fake.refunds = [];
     await dbmod.db().execute(
       sql`truncate products, launch_weeks, votes, comments, awards, orders, payment_events, refunds, closed_periods,
-          newsletter_subscribers, newsletter_issues, posts, "user" cascade`,
+          newsletter_subscribers, newsletter_issues, posts, ad_bookings, "user" cascade`,
     );
   });
 
@@ -503,5 +505,138 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(html).not.toContain('href="javascript');
     expect(html).toContain("Evil [x](javascript:alert(1))");
     expect(sent.some((e) => e.subject.startsWith("Recap draft ready"))).toBe(true);
+  });
+
+  async function pay(orderUrl: string, cents: number) {
+    const orderId = orderUrl.split("/").pop()!;
+    fake.verifyResult = { status: "paid", providerRef: `ref-${orderId}`, orderId, amountCents: cents, currency: "USD" };
+    return payments.confirmPayment("paystack", `ref-${orderId}`);
+  }
+
+  it("books capped featured slots, activates them on payment and serves them", async () => {
+    const u = await makeUser();
+    const p = await liveProduct(u, "sponsor.io");
+    const other = await makeUser();
+    const q = await liveProduct(other, "sponsor2.io");
+    const week = addWeeks(thisWeek, 1);
+    const book = (userId: string, productId: string, extra: Partial<Parameters<typeof ads.bookSlot>[0]> = {}) =>
+      ads.bookSlot({
+        userId,
+        email: `${userId}@x.test`,
+        placement: "home_top",
+        duration: "week",
+        productId,
+        categorySlug: null,
+        weekKey: week,
+        provider: "paystack",
+        ...extra,
+      });
+
+    await expect(book(other, p.id)).rejects.toThrow("Pick one of your listings");
+    await expect(book(u, p.id, { weekKey: addWeeks(thisWeek, 20) })).rejects.toThrow("Pick a week");
+    await expect(book(u, p.id, { weekKey: thisWeek })).rejects.toThrow("Pick a week");
+
+    // Top sponsor is one at a time: an unpaid hold blocks the week too.
+    const first = await book(u, p.id);
+    await expect(book(other, q.id)).rejects.toThrow("sold out");
+    expect((await ads.availability("home_top", null)).find((w) => w.key === week)?.remaining).toBe(0);
+    // A month booking can't cover a sold-out week.
+    await book(u, p.id, { weekKey: addWeeks(week, 2) });
+    await expect(book(other, q.id, { weekKey: addWeeks(week, 1), duration: "month" })).rejects.toThrow(
+      `${addWeeks(week, 2).replace(/^(\d{4})-W0?(\d+)$/, "Week $2, $1")} is sold out`,
+    );
+
+    const order = await pay(first.url, 5900);
+    expect(order?.fulfilledAt).toBeInstanceOf(Date);
+    const booking = await dbmod
+      .db()
+      .query.adBookings.findFirst({ where: eq(dbmod.schema.adBookings.id, first.bookingId) });
+    expect(booking).toMatchObject({ status: "active", heldUntil: null });
+    expect(sent.some((e) => e.to === `${u}@x.test` && e.subject.startsWith("Booked:"))).toBe(true);
+
+    const during = new Date(weekBounds(week).startsAt.getTime() + 3600_000);
+    expect(await ads.liveAds("home_top", { now })).toEqual([]);
+    const [live] = await ads.liveAds("home_top", { now: during });
+    expect(live).toMatchObject({ bookingId: first.bookingId, slug: p.slug, href: `/api/ads/${first.bookingId}/click` });
+
+    await ads.recordImpressions([first.bookingId]);
+    expect(await ads.recordClick(first.bookingId, true)).toBe("https://sponsor.io/?ref=debutyard");
+    expect(await ads.recordClick(first.bookingId, false)).toBe("https://sponsor.io/?ref=debutyard");
+    const counted = await dbmod
+      .db()
+      .query.adBookings.findFirst({ where: eq(dbmod.schema.adBookings.id, first.bookingId) });
+    expect([counted?.impressions, counted?.clicks]).toEqual([1, 1]);
+
+    // A full refund takes the slot down and frees the week.
+    await payments.refundOrder(order!.id, "changed plans");
+    expect(await ads.liveAds("home_top", { now: during })).toEqual([]);
+    expect((await ads.availability("home_top", null)).find((w) => w.key === week)?.remaining).toBe(1);
+  });
+
+  it("extends slots under the CPC guarantee, then reports and completes", async () => {
+    const u = await makeUser();
+    const p = await liveProduct(u, "cpc.io");
+    const { bookingId, url } = await ads.bookSlot({
+      userId: u,
+      email: `${u}@x.test`,
+      placement: "leaderboard",
+      duration: "week",
+      productId: p.id,
+      categorySlug: null,
+      weekKey: addWeeks(thisWeek, 1),
+      provider: "paystack",
+    });
+    await pay(url, 1500);
+    const end = weekBounds(addWeeks(thisWeek, 1)).endsAt;
+    const after = new Date(end.getTime() + 60_000);
+
+    // 3 clicks on $15 = $5/click: runs another week free.
+    await dbmod
+      .db()
+      .update(dbmod.schema.adBookings)
+      .set({ clicks: 3 })
+      .where(eq(dbmod.schema.adBookings.id, bookingId));
+    expect(await ads.settleBookings(after)).toEqual({ extended: 1, completed: 0 });
+    let b = await dbmod.db().query.adBookings.findFirst({ where: eq(dbmod.schema.adBookings.id, bookingId) });
+    expect(b?.endsAt.getTime()).toBe(end.getTime() + 7 * 86_400_000);
+    expect(b?.paidEndsAt.getTime()).toBe(end.getTime());
+    // Extensions don't use inventory: the next week still has all 3 leaderboard slots.
+    expect(
+      (await ads.availability("leaderboard", null, now)).find((w) => w.key === addWeeks(thisWeek, 2))?.remaining,
+    ).toBe(3);
+
+    // 15 clicks = $1/click: done, with a report.
+    await dbmod
+      .db()
+      .update(dbmod.schema.adBookings)
+      .set({ clicks: 15 })
+      .where(eq(dbmod.schema.adBookings.id, bookingId));
+    const later = new Date(end.getTime() + 8 * 86_400_000);
+    expect(await ads.settleBookings(later)).toEqual({ extended: 0, completed: 1 });
+    b = await dbmod.db().query.adBookings.findFirst({ where: eq(dbmod.schema.adBookings.id, bookingId) });
+    expect(b?.status).toBe("completed");
+    expect(sent.some((e) => e.subject === "Your Leaderboard slot results: 15 clicks")).toBe(true);
+    expect(await ads.settleBookings(later)).toEqual({ extended: 0, completed: 0 });
+  });
+
+  it("puts a booked newsletter sponsor in that week's digest", async () => {
+    const u = await makeUser();
+    const p = await liveProduct(u, "news-sponsor.io");
+    const next = addWeeks(thisWeek, 1);
+    const { bookingId, url } = await ads.bookSlot({
+      userId: u,
+      email: `${u}@x.test`,
+      placement: "newsletter",
+      duration: "week",
+      productId: p.id,
+      categorySlug: null,
+      weekKey: next,
+      provider: "paystack",
+    });
+    await pay(url, 4900);
+    const digest = await newsletter.buildDigest(thisWeek);
+    expect(digest.sponsor).toMatchObject({ bookingId, name: p.name });
+    expect(digest.sponsor?.url).toBe(`https://debutyard.test/api/ads/${bookingId}/click`);
+    expect((await newsletter.buildDigest(addWeeks(thisWeek, -1))).sponsor).toBeNull();
   });
 });

@@ -85,6 +85,10 @@ export default function PricingPage() {
                   <ButtonLink href="/submit" className="mt-6" variant={sku.kind === "relaunch" ? "outline" : "primary"}>
                     {sku.kind === "relaunch" ? "From your dashboard" : "Choose when you submit"}
                   </ButtonLink>
+                ) : sku.type === "one_time" && sku.kind === "featured" ? (
+                  <ButtonLink href="/advertise#book" className="mt-6" variant="outline">
+                    Pick dates
+                  </ButtonLink>
                 ) : isPurchasable(sku) ? (
                   <BuyButton sku={sku.id} recurring={sku.type === "recurring"} providers={providers} className="mt-6" />
                 ) : (
