@@ -12,6 +12,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "",
     "/pricing",
     "/weeks",
+    "/blog",
+    "/vote",
     "/categories",
     "/how-ranking-works",
     "/terms",
@@ -32,11 +34,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where status = 'approved' and launch_week_key <= ${current}
     `)) as unknown as Array<{ key: string }>;
     const categories = (await db().execute(sql`select slug from categories`)) as unknown as Array<{ slug: string }>;
+    const posts = (await db().execute(sql`
+      select slug, updated_at from posts where status = 'published' and published_at <= now()
+    `)) as unknown as Array<{ slug: string; updated_at: Date | string }>;
 
     entries.push(
       ...products.map((p) => ({ url: `${base}/p/${p.slug}`, lastModified: new Date(p.updated_at) })),
       ...weeks.map((w) => ({ url: `${base}/week/${w.key}` })),
       ...categories.map((c) => ({ url: `${base}/category/${c.slug}` })),
+      ...posts.map((p) => ({ url: `${base}/blog/${p.slug}`, lastModified: new Date(p.updated_at) })),
     );
   } catch (err) {
     console.error("sitemap: database unavailable", err);

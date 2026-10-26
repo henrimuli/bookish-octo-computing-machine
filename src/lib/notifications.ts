@@ -128,3 +128,14 @@ export async function notifyAdminPaidTier(p: Product, tier: string) {
     ]),
   });
 }
+
+export async function notifyRecapDrafted(post: { id: string; title: string }) {
+  await sendEmail({
+    to: env().ADMIN_EMAIL ?? site.supportEmail,
+    subject: `Recap draft ready: ${post.title}`,
+    ...compose([
+      "The weekly recap is drafted from last week's board. Add a line about each winner, then publish.",
+      `[Edit the draft](${url(`/admin/blog/${post.id}`)})`,
+    ]),
+  });
+}

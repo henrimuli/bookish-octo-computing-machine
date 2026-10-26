@@ -1,6 +1,7 @@
 import { env } from "@/env";
 import { recheckBadges } from "@/lib/badges/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
+import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
 
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
     ["weeks", () => closeEndedWeeks()],
     ["periods", () => closeEndedPeriods()],
     ["newsletter", () => sendWeeklyDigest()],
+    ["recap", () => draftWeeklyRecap()],
     ["payments", () => reconcilePendingOrders()],
     ["badges", () => recheckBadges()],
   ];

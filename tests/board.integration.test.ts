@@ -64,6 +64,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
   let dashboard: typeof import("@/lib/products/dashboard");
   let duels: typeof import("@/lib/board/duels");
   let newsletter: typeof import("@/lib/newsletter/service");
+  let blog: typeof import("@/lib/blog/service");
 
   const now = new Date();
   const thisWeek = weekKeyFor(now);
@@ -85,6 +86,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     dashboard = await import("@/lib/products/dashboard");
     duels = await import("@/lib/board/duels");
     newsletter = await import("@/lib/newsletter/service");
+    blog = await import("@/lib/blog/service");
   });
 
   afterAll(async () => {
@@ -98,7 +100,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     fake.refunds = [];
     await dbmod.db().execute(
       sql`truncate products, launch_weeks, votes, comments, awards, orders, payment_events, refunds, closed_periods,
-          newsletter_subscribers, newsletter_issues, "user" cascade`,
+          newsletter_subscribers, newsletter_issues, posts, "user" cascade`,
     );
   });
 
@@ -451,5 +453,55 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(await newsletter.sendWeeklyDigest(now)).toEqual({ skipped: "already sent or in progress" });
     expect(await newsletter.unsubscribe(token!)).toBe(true);
     expect(await newsletter.subscriberCounts()).toEqual({ active: 0, pending: 1, unsubscribed: 1 });
+  });
+
+  it("saves, publishes and hides blog posts", async () => {
+    const author = await makeUser();
+    const a = await blog.savePost(author, { title: "Launch tips", body: "Hello **world**." });
+    const b = await blog.savePost(author, { title: "Launch tips", body: "" });
+    expect([a.slug, b.slug]).toEqual(["launch-tips", "launch-tips-2"]);
+    expect(a.excerpt).toBe("Hello world.");
+
+    expect(await blog.publishedPost("launch-tips")).toBeNull();
+    await expect(blog.setPublished(b.id, true)).rejects.toThrow("Write something");
+    await blog.setPublished(a.id, true);
+    expect((await blog.publishedPost("launch-tips"))?.authorName).toBe(`User ${author}`);
+    expect((await blog.publishedPosts()).map((p) => p.slug)).toEqual(["launch-tips"]);
+
+    await blog.setPublished(a.id, false);
+    expect(await blog.publishedPosts()).toEqual([]);
+  });
+
+  it("drafts one recap per closed week with maker text escaped", async () => {
+    const lastWeek = addWeeks(thisWeek, -1);
+    expect(await blog.draftWeeklyRecap(now)).toEqual({ skipped: "week not closed" });
+
+    const voter = await makeUser();
+    const p = await products.saveProduct(await makeUser(), {
+      ...input("recap-a.io", "Evil [x](javascript:alert(1))"),
+    });
+    await products.ensureWeek(lastWeek);
+    await dbmod
+      .db()
+      .update(dbmod.schema.products)
+      .set({ status: "approved", launchWeekKey: lastWeek, approvedAt: new Date() })
+      .where(eq(dbmod.schema.products.id, p.id));
+    await liveProduct(await makeUser(), "recap-b.io", lastWeek);
+    await voteAt(p.id, voter, weekBounds(lastWeek).startsAt);
+    await rollover.closeEndedWeeks();
+
+    const res = await blog.draftWeeklyRecap(now);
+    expect(res).toHaveProperty("drafted");
+    expect(await blog.draftWeeklyRecap(now)).toEqual({ skipped: "already drafted" });
+
+    const [post] = await dbmod.db().select().from(dbmod.schema.posts);
+    expect(post).toMatchObject({ kind: "recap", weekKey: lastWeek, status: "draft" });
+    expect(post.body).toContain("## Debut of the Week");
+    expect(post.body).toContain("## Also debuting");
+    const { renderMarkdown } = await import("@/lib/blog/markdown");
+    const html = renderMarkdown(post.body);
+    expect(html).not.toContain('href="javascript');
+    expect(html).toContain("Evil [x](javascript:alert(1))");
+    expect(sent.some((e) => e.subject.startsWith("Recap draft ready"))).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/primitives";
 import { site } from "@/config/site";
 
 const links = [
+  { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
   { href: "/refund-policy", label: "Refund policy" },
   { href: "/terms", label: "Terms" },
