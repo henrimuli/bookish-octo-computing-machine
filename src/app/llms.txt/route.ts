@@ -20,6 +20,12 @@ export async function GET() {
     `- [Categories](${base}/categories): products by category`,
     `- [How ranking works](${base}/how-ranking-works): scoring and anti-manipulation rules`,
     `- [Pricing](${base}/pricing): free and paid debuts, featured placements, directory submission service`,
+    `- [Blog](${base}/blog): weekly recaps of every debut`,
+    `- [Launch readiness check](${base}/tools/launch-readiness): free pre-launch audit of any product URL`,
+    "",
+    "## For agents",
+    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, check_launch_readiness, submit_product drafts, get_my_launches)`,
+    `- [OpenAPI spec](${base}/api/v1/openapi.json): REST API at ${base}/api/v1`,
     "",
   ];
 

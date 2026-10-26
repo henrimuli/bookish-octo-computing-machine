@@ -26,6 +26,19 @@ vi.mock("@/lib/email", () => ({
   ),
 }));
 
+/** Readiness checks fetch this page instead of the network. */
+const fakePage = { body: "", status: 200 };
+vi.mock("@/lib/net", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/net")>();
+  return {
+    ...actual,
+    safeFetchText: vi.fn(async (url: string) => {
+      if (url.includes("down.test")) throw new Error("connect ECONNREFUSED");
+      return { url, status: fakePage.status, contentType: "text/html", body: fakePage.body };
+    }),
+  };
+});
+
 class FakeProvider implements PaymentProvider {
   readonly id = "paystack" as const;
   verifyResult: VerifiedPayment | null = null;
@@ -102,7 +115,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     fake.refunds = [];
     await dbmod.db().execute(
       sql`truncate products, launch_weeks, votes, comments, awards, orders, payment_events, refunds, closed_periods,
-          newsletter_subscribers, newsletter_issues, posts, ad_bookings, "user" cascade`,
+          newsletter_subscribers, newsletter_issues, posts, ad_bookings, readiness_checks, api_tokens, "user" cascade`,
     );
   });
 
@@ -638,5 +651,147 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(digest.sponsor).toMatchObject({ bookingId, name: p.name });
     expect(digest.sponsor?.url).toBe(`https://debutyard.test/api/ads/${bookingId}/click`);
     expect((await newsletter.buildDigest(addWeeks(thisWeek, -1))).sponsor).toBeNull();
+  });
+
+  it("checks launch readiness, flags duplicates, and rate limits per caller", async () => {
+    const { checkReadiness, CHECKS_PER_HOUR } = await import("@/lib/readiness/service");
+    fakePage.body = `<title>Acme | invoices that chase themselves</title>
+      <meta name="description" content="Acme sends polite, automatic reminders so your clients pay on time.">
+      <meta property="og:image" content="/og.png"><link rel="icon" href="/i.png">`;
+    const report = await checkReadiness("acme.io", { clientKey: "1.2.3.4", source: "web" });
+    expect(report).toMatchObject({ url: "https://acme.io/", domain: "acme.io", ready: true });
+    expect(report.checks.find((c) => c.id === "badge")?.status).toBe("warn");
+    expect(report.suggested?.name).toBe("Acme");
+    expect(report.nextWeeks.paid[0].key).toBe(addWeeks(thisWeek, 1));
+
+    await liveProduct(await makeUser(), "listed.io");
+    const dup = await checkReadiness("https://listed.io", { clientKey: "1.2.3.4", source: "web" });
+    expect(dup.ready).toBe(false);
+    expect(dup.checks.find((c) => c.id === "unique")?.status).toBe("fail");
+
+    const down = await checkReadiness("https://down.test", { clientKey: "1.2.3.4", source: "web" });
+    expect(down.checks.find((c) => c.id === "reachable")?.status).toBe("fail");
+
+    for (let i = 3; i < CHECKS_PER_HOUR; i++) await checkReadiness("acme.io", { clientKey: "1.2.3.4", source: "web" });
+    await expect(checkReadiness("acme.io", { clientKey: "1.2.3.4", source: "web" })).rejects.toThrow("an hour");
+    // Other callers aren't affected.
+    await checkReadiness("acme.io", { clientKey: "5.6.7.8", source: "web" });
+  });
+
+  it("serves the REST API with token auth, and agents can only draft", async () => {
+    const tokens = await import("@/lib/api/tokens");
+    const u = await makeUser();
+    await liveProduct(await makeUser(), "searchable.io", thisWeek);
+    const { token, id } = await tokens.createToken(u, "CLI");
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const search = await import("@/app/api/v1/products/route");
+    const res = await search.GET(new Request("https://debutyard.test/api/v1/products?q=searchable"));
+    expect((await res.json()).data.map((p: { slug: string }) => p.slug)).toEqual(["searchable-io"]);
+
+    const submissions = await import("@/app/api/v1/submissions/route");
+    const draft = (body: unknown, headers: Record<string, string> = auth) =>
+      submissions.POST(
+        new Request("https://debutyard.test/api/v1/submissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify(body),
+        }),
+      );
+    expect((await draft(input("agent.io"), {})).status).toBe(401);
+    expect((await draft(input("agent.io"), { Authorization: "Bearer dy_not-a-real-token-at-all" })).status).toBe(401);
+    expect((await draft({ ...input("agent.io"), categories: ["nope"] })).status).toBe(400);
+    const ok = await draft(input("agent.io"));
+    expect(ok.status).toBe(200);
+    const created = (await ok.json()).data;
+    expect(created).toMatchObject({ status: "draft", slug: "agent-io" });
+    expect(created.nextStep).toContain(`/submit/${created.id}`);
+    const row = await dbmod.db().query.products.findFirst({ where: eq(dbmod.schema.products.id, created.id) });
+    expect(row).toMatchObject({ createdVia: "api", createdBy: u, status: "draft" });
+
+    const mine = await import("@/app/api/v1/me/products/route");
+    const list = await (
+      await mine.GET(new Request("https://debutyard.test/api/v1/me/products", { headers: auth }))
+    ).json();
+    expect(list.data.map((p: { slug: string }) => p.slug)).toEqual(["agent-io"]);
+
+    await tokens.revokeToken(u, id);
+    expect((await draft(input("agent2.io"))).status).toBe(401);
+  });
+
+  it("speaks MCP: initialize, list tools, call tools", async () => {
+    const tokens = await import("@/lib/api/tokens");
+    const route = await import("@/app/api/mcp/route");
+    const u = await makeUser();
+    const { token } = await tokens.createToken(u, "Agent");
+    let seq = 0;
+    const rpc = async (method: string, params?: unknown, headers: Record<string, string> = {}) => {
+      const res = await route.POST(
+        new Request("https://debutyard.test/api/mcp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...headers },
+          body: JSON.stringify({ jsonrpc: "2.0", id: ++seq, method, params }),
+        }),
+      );
+      return res.json();
+    };
+
+    const init = await rpc("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "t", version: "1" },
+    });
+    expect(init.result).toMatchObject({ protocolVersion: "2025-06-18", serverInfo: { name: "debutyard" } });
+    const note = await route.POST(
+      new Request("https://debutyard.test/api/mcp", {
+        method: "POST",
+        body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+      }),
+    );
+    expect(note.status).toBe(202);
+
+    const tools = (await rpc("tools/list")).result.tools;
+    expect(tools.map((t: { name: string }) => t.name)).toEqual([
+      "search_products",
+      "get_product",
+      "list_categories",
+      "check_launch_readiness",
+      "submit_product",
+      "get_my_launches",
+    ]);
+    const submitTool = tools.find((t: { name: string }) => t.name === "submit_product");
+    expect(submitTool.inputSchema.required).toEqual(
+      expect.arrayContaining(["websiteUrl", "name", "tagline", "description", "categories", "pricingModel"]),
+    );
+
+    const anon = await rpc("tools/call", { name: "submit_product", arguments: input("mcp.io") });
+    expect(anon.result.isError).toBe(true);
+    expect(anon.result.content[0].text).toContain("API token");
+
+    const bad = await rpc(
+      "tools/call",
+      { name: "submit_product", arguments: { name: "x" } },
+      { Authorization: `Bearer ${token}` },
+    );
+    expect(bad.result.isError).toBe(true);
+
+    const made = await rpc(
+      "tools/call",
+      { name: "submit_product", arguments: input("mcp.io") },
+      { Authorization: `Bearer ${token}` },
+    );
+    expect(made.result.structuredContent).toMatchObject({ slug: "mcp-io", status: "draft" });
+    const row = await dbmod.db().query.products.findFirst({ where: eq(dbmod.schema.products.slug, "mcp-io") });
+    expect(row?.createdVia).toBe("mcp");
+
+    const mine = await rpc(
+      "tools/call",
+      { name: "get_my_launches", arguments: {} },
+      { Authorization: `Bearer ${token}` },
+    );
+    expect(mine.result.structuredContent.items).toHaveLength(1);
+    expect((await rpc("tools/call", { name: "nope" })).error.code).toBe(-32602);
+    expect((await rpc("resources/list")).error.code).toBe(-32601);
+    expect(route.GET().status).toBe(405);
   });
 });

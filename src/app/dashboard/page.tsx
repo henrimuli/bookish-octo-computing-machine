@@ -40,7 +40,12 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
     <Container className="max-w-5xl py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading>Your products</Heading>
-        <ButtonLink href="/submit">Debut a product</ButtonLink>
+        <div className="flex gap-2">
+          <ButtonLink href="/dashboard/api" variant="outline">
+            API &amp; agents
+          </ButtonLink>
+          <ButtonLink href="/submit">Debut a product</ButtonLink>
+        </div>
       </div>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Products searchParams={props.searchParams} />

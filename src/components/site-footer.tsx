@@ -8,6 +8,8 @@ const links = [
   { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
   { href: "/advertise", label: "Advertise" },
+  { href: "/tools/launch-readiness", label: "Readiness check" },
+  { href: "/docs", label: "API & MCP" },
   { href: "/refund-policy", label: "Refund policy" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },

@@ -35,14 +35,18 @@ export function ProductForm({
   initial,
   productId,
   uploadsEnabled,
+  initialWebsiteUrl,
 }: {
   categories: Category[];
   initial?: ProductInput;
   productId?: string;
   uploadsEnabled: boolean;
+  initialWebsiteUrl?: string;
 }) {
   const router = useRouter();
-  const [values, setValues] = useState<ProductInput>(initial ?? empty);
+  const [values, setValues] = useState<ProductInput>(
+    initial ?? (initialWebsiteUrl ? { ...empty, websiteUrl: initialWebsiteUrl } : empty),
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [prefilling, startPrefill] = useTransition();

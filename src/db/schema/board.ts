@@ -44,6 +44,8 @@ export const productTier = pgEnum("product_tier", ["free", "fast_track", "pro", 
 
 export const pricingModel = pgEnum("pricing_model", ["free", "freemium", "paid", "open_source", "trial"]);
 
+export const createdVia = pgEnum("created_via", ["web", "api", "mcp"]);
+
 export const products = pgTable(
   "products",
   {
@@ -70,6 +72,8 @@ export const products = pgTable(
     createdBy: text("created_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    /** Where the listing was drafted: the site, the REST API or an MCP agent. */
+    createdVia: createdVia("created_via").notNull().default("web"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
