@@ -1,4 +1,5 @@
 import { decodeEntities, findTags, pageTitle } from "@/lib/html";
+import { suggestCategories } from "./categorize";
 
 export type Prefill = {
   url: string;
@@ -8,7 +9,18 @@ export type Prefill = {
   logoUrl?: string;
   imageUrl?: string;
   twitterUrl?: string;
+  /** Suggested category slugs, best first (up to 3). */
+  categories: string[];
 };
+
+/** Text of the page's first few h1–h3 headings, tags stripped. */
+function headings(html: string): string {
+  const out: string[] = [];
+  const re = /<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < 12) out.push(decodeEntities(m[1].replace(/<[^>]+>/g, " ")));
+  return out.join(" \n ");
+}
 
 function clean(s: string | undefined, max: number): string | undefined {
   if (!s) return undefined;
@@ -60,13 +72,20 @@ export function extractPrefill(html: string, pageUrl: string): Prefill {
     (split?.rest && split.rest.length <= 80 ? split.rest : undefined) ??
     clean(description?.split(/(?<=[.!?])\s/)[0], 80);
 
+  const cleanName = clean(name, 60);
   return {
     url: pageUrl,
-    name: clean(name, 60),
+    name: cleanName,
     tagline,
     description,
     logoUrl: absolute(icon?.href, pageUrl) ?? absolute("/favicon.ico", pageUrl),
     imageUrl: absolute(meta("og:image") ?? meta("twitter:image"), pageUrl),
     twitterUrl: handle && /^[A-Za-z0-9_]{1,15}$/.test(handle) ? `https://x.com/${handle}` : undefined,
+    categories: suggestCategories({
+      name: cleanName,
+      tagline,
+      description,
+      extra: [meta("keywords"), title, headings(html)].filter(Boolean).join(" \n "),
+    }),
   };
 }

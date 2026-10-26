@@ -62,16 +62,28 @@ export function ProductForm({
       const res = await prefillAction(values.websiteUrl);
       if (!res.ok) return setMessage(res.error);
       const d = res.data;
-      setValues((v) => ({
-        ...v,
-        websiteUrl: d.url,
-        name: v.name || d.name || "",
-        tagline: v.tagline || d.tagline || "",
-        description: v.description || d.description || "",
-        logoUrl: v.logoUrl || d.logoUrl || "",
-        twitterUrl: v.twitterUrl || d.twitterUrl || "",
-      }));
-      setMessage("We filled in what we could find. Check everything before continuing.");
+      // Pre-tick suggested categories only if the maker hasn't picked any yet.
+      const known = new Set(categories.map((c) => c.slug));
+      const suggested = d.categories.filter((c) => known.has(c)).slice(0, MAX_CATEGORIES);
+      const picked = values.categories.length ? [] : suggested;
+      setValues((v) => {
+        return {
+          ...v,
+          websiteUrl: d.url,
+          name: v.name || d.name || "",
+          tagline: v.tagline || d.tagline || "",
+          description: v.description || d.description || "",
+          logoUrl: v.logoUrl || d.logoUrl || "",
+          twitterUrl: v.twitterUrl || d.twitterUrl || "",
+          categories: v.categories.length ? v.categories : suggested,
+        };
+      });
+      const names = picked.map((s) => categories.find((c) => c.slug === s)?.name).filter(Boolean);
+      setMessage(
+        names.length
+          ? `We filled in what we could find and picked ${names.join(", ")} as categories. Check everything before continuing.`
+          : "We filled in what we could find. Check everything before continuing.",
+      );
     });
   }
 

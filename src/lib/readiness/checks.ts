@@ -162,5 +162,6 @@ export function suggestedListing(prefill: Prefill) {
     tagline: cut(prefill.tagline, 80) ?? null,
     description: cut(prefill.description, 2000) ?? null,
     logoUrl: prefill.logoUrl ?? null,
+    categories: prefill.categories,
   };
 }
