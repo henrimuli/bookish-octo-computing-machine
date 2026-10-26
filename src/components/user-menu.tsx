@@ -1,6 +1,6 @@
 import { ButtonLink } from "@/components/ui/button";
 import { SignOutButton } from "@/components/sign-out-button";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 
 export async function UserMenu() {
   const user = await getCurrentUser().catch(() => null);
@@ -10,15 +10,22 @@ export async function UserMenu() {
         <ButtonLink href="/sign-in" variant="ghost" size="sm">
           Sign in
         </ButtonLink>
-        <ButtonLink href="/pricing" size="sm" className="hidden sm:inline-flex">
+        <ButtonLink href="/submit" size="sm" className="hidden sm:inline-flex">
           Debut your product
         </ButtonLink>
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="hidden text-muted-foreground sm:inline">{user.email}</span>
+    <div className="flex items-center gap-2 text-sm">
+      {isStaff(user) && (
+        <ButtonLink href="/admin" variant="ghost" size="sm">
+          Admin
+        </ButtonLink>
+      )}
+      <ButtonLink href="/dashboard" variant="ghost" size="sm">
+        Dashboard
+      </ButtonLink>
       <SignOutButton />
     </div>
   );

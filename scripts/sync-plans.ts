@@ -6,7 +6,8 @@
  *
  *   pnpm payments:sync-plans
  */
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: [".env.local", ".env"], quiet: true });
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
