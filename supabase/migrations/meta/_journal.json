@@ -6,28 +6,28 @@
       "idx": 0,
       "version": "7",
       "when": 1792971242453,
-      "tag": "0000_init",
+      "tag": "20261025233402_init",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
       "when": 1792971253375,
-      "tag": "0001_enable_rls",
+      "tag": "20261025233413_enable_rls",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
       "when": 1792974849280,
-      "tag": "0002_board",
+      "tag": "20261026003409_board",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
       "when": 1792974861959,
-      "tag": "0003_board_rls_and_categories",
+      "tag": "20261026003421_board_rls_and_categories",
       "breakpoints": true
     }
   ]
