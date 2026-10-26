@@ -1,5 +1,6 @@
 import { env } from "@/env";
 import { recheckBadges } from "@/lib/badges/service";
+import { syncSubscriptions } from "@/lib/billing/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
 import { settleBookings } from "@/lib/ads/service";
 import { refreshDirectoryStats } from "@/lib/directories/service";
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
     ["newsletter", () => sendWeeklyDigest()],
     ["recap", () => draftWeeklyRecap()],
     ["payments", () => reconcilePendingOrders()],
+    ["subscriptions", () => syncSubscriptions()],
     ["ads", () => settleBookings()],
     ["submission digests", () => sendOrderDigests()],
     ["directory stats", () => refreshDirectoryStats()],

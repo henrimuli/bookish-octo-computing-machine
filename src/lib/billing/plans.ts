@@ -54,3 +54,11 @@ export function combine(plans: Plan[]): { features: Set<Feature>; limits: Record
     limits: { links: Math.max(FREE_LIMITS.links, ...plans.map((p) => p.limits.links)) },
   };
 }
+
+/** "2026-Q4": the period for quarterly perks (UTC). */
+export function quarterKey(d: Date): string {
+  return `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+}
+
+/** Featured slots can be booked this many weeks ahead; Maker Pro adds `PRO_EXTRA_WEEKS`. */
+export const PRO_EXTRA_WEEKS = 4;

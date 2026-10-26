@@ -6,23 +6,27 @@ import { combine, planForSku, type Feature, type Limit, type Plan } from "./plan
 const { subscriptions } = schema;
 
 /**
- * The user's current plans. A subscription counts while it's active or
- * non-renewing and its paid period hasn't ended.
+ * A subscription counts while it's active or non-renewing and its paid period
+ * hasn't ended, and while past due (dunning ends it after 7 days).
  */
+export const entitled = (now: Date) =>
+  or(
+    eq(subscriptions.status, "past_due"),
+    and(
+      inArray(subscriptions.status, ["active", "non_renewing"]),
+      or(
+        isNull(subscriptions.currentPeriodEnd),
+        gt(subscriptions.currentPeriodEnd, sql`${now.toISOString()}::timestamptz`),
+      ),
+    ),
+  );
+
+/** The user's current plans. */
 export async function plansFor(userId: string, now = new Date()): Promise<Plan[]> {
   const rows = await db()
     .select({ sku: subscriptions.sku })
     .from(subscriptions)
-    .where(
-      and(
-        eq(subscriptions.userId, userId),
-        inArray(subscriptions.status, ["active", "non_renewing"]),
-        or(
-          isNull(subscriptions.currentPeriodEnd),
-          gt(subscriptions.currentPeriodEnd, sql`${now.toISOString()}::timestamptz`),
-        ),
-      ),
-    );
+    .where(and(eq(subscriptions.userId, userId), entitled(now)));
   return rows.map((r) => planForSku(r.sku)).filter((p): p is Plan => p !== null);
 }
 

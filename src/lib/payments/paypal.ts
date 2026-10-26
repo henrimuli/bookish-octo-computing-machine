@@ -6,6 +6,7 @@ import {
   type PaymentProvider,
   type PlanRequest,
   type SubscriptionRequest,
+  type SubscriptionState,
   type SubscriptionSession,
   type VerifiedPayment,
   type WebhookEvent,
@@ -226,6 +227,22 @@ export class PaypalProvider implements PaymentProvider {
       method: "POST",
       body: JSON.stringify({ reason: "Cancelled by customer" }),
     });
+  }
+
+  async getSubscription(id: string): Promise<SubscriptionState> {
+    const sub = await this.call<{ status: string; billing_info?: { next_billing_time?: string } }>(
+      `/v1/billing/subscriptions/${encodeURIComponent(id)}`,
+    );
+    const status: Record<string, SubscriptionState["status"]> = {
+      APPROVAL_PENDING: "pending",
+      APPROVED: "pending",
+      ACTIVE: "active",
+      SUSPENDED: "past_due",
+      CANCELLED: "cancelled",
+      EXPIRED: "cancelled",
+    };
+    const next = sub.billing_info?.next_billing_time;
+    return { status: status[sub.status] ?? "past_due", currentPeriodEnd: next ? new Date(next) : undefined };
   }
 
   async parseWebhook(rawBody: string, headers: Headers): Promise<WebhookEvent> {

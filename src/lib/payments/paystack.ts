@@ -7,6 +7,7 @@ import {
   type PaymentProvider,
   type PlanRequest,
   type SubscriptionRequest,
+  type SubscriptionState,
   type SubscriptionSession,
   type VerifiedPayment,
   type WebhookEvent,
@@ -144,6 +145,25 @@ export class PaystackProvider implements PaymentProvider {
       method: "POST",
       body: JSON.stringify({ code: args.providerSubscriptionId, token: args.providerToken }),
     });
+  }
+
+  async getSubscription(code: string): Promise<SubscriptionState> {
+    const { data } = await this.call<{ status: string; next_payment_date?: string | null; email_token?: string }>(
+      `/subscription/${encodeURIComponent(code)}`,
+    );
+    const status: Record<string, SubscriptionState["status"]> = {
+      active: "active",
+      "non-renewing": "non_renewing",
+      attention: "past_due",
+      completed: "cancelled",
+      complete: "cancelled",
+      cancelled: "cancelled",
+    };
+    return {
+      status: status[data.status] ?? "past_due",
+      currentPeriodEnd: data.next_payment_date ? new Date(data.next_payment_date) : undefined,
+      providerToken: data.email_token,
+    };
   }
 
   async parseWebhook(rawBody: string, headers: Headers): Promise<WebhookEvent> {

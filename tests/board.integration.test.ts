@@ -60,6 +60,9 @@ class FakeProvider implements PaymentProvider {
     return { url: "https://pay.test/sub" };
   }
   async cancelSubscription() {}
+  async getSubscription() {
+    return { status: "active" as const };
+  }
   async parseWebhook(): Promise<WebhookEvent> {
     throw new Error("unused");
   }

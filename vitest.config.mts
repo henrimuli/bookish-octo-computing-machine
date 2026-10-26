@@ -8,5 +8,7 @@ export default defineConfig({
     setupFiles: ["tests/setup.ts"],
     // Integration tests share one database.
     fileParallelism: false,
+    // Integration setup drops the schema and applies every migration.
+    hookTimeout: 30_000,
   },
 });

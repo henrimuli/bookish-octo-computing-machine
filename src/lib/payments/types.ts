@@ -45,6 +45,13 @@ export type SubscriptionRequest = {
 
 export type SubscriptionSession = { url: string; providerSubscriptionId?: string; providerRef?: string };
 
+/** A subscription's status as the provider sees it now. `pending`: not paid for yet. */
+export type SubscriptionState = {
+  status: "pending" | "active" | "non_renewing" | "past_due" | "cancelled";
+  currentPeriodEnd?: Date;
+  providerToken?: string;
+};
+
 export type PlanRequest = { sku: string; name: string; amountCents: number; interval: Interval };
 
 /** Normalised webhook event; `kind: "ignored"` for events we don't act on. */
@@ -81,6 +88,8 @@ export interface PaymentProvider {
   createPlan(req: PlanRequest): Promise<{ planId: string }>;
   createSubscription(req: SubscriptionRequest): Promise<SubscriptionSession>;
   cancelSubscription(args: { providerSubscriptionId: string; providerToken?: string | null }): Promise<void>;
+  /** Fetches the subscription's current status (daily sync, in case a webhook was missed). */
+  getSubscription(providerSubscriptionId: string): Promise<SubscriptionState>;
   /** Verifies the signature and normalises the event. Throws WebhookSignatureError when invalid. */
   parseWebhook(rawBody: string, headers: Headers): Promise<WebhookEvent>;
 }
