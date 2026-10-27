@@ -16,8 +16,38 @@ export const apiTokens = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Set when the token came from the browser-approval (OAuth) flow for this client. */
+    clientId: text("client_id").references(() => oauthClients.id, { onDelete: "set null" }),
   },
   (t) => [index("api_tokens_user_idx").on(t.userId)],
+);
+
+/** MCP clients registered through OAuth dynamic client registration (RFC 7591). Public clients: no secret. */
+export const oauthClients = pgTable("oauth_clients", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  redirectUris: text("redirect_uris").array().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One-time authorization codes (5 minutes, PKCE S256). Only a hash is stored. */
+export const oauthCodes = pgTable(
+  "oauth_codes",
+  {
+    codeHash: text("code_hash").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    codeChallenge: text("code_challenge").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("oauth_codes_client_idx").on(t.clientId)],
 );
 
 /** Launch-readiness runs: rate limiting and readiness → submit conversion. */

@@ -5,7 +5,7 @@ import { Card, Container, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireStaff } from "@/lib/auth";
 import { renderDigest } from "@/lib/newsletter/render";
-import { buildDigest, subscriberCounts } from "@/lib/newsletter/service";
+import { buildDigest, engagementByIssue, subscriberCounts } from "@/lib/newsletter/service";
 import { addWeeks, formatWeekLabel, weekKeyFor } from "@/lib/weeks";
 
 export const metadata: Metadata = { title: "Newsletter · Admin", robots: { index: false } };
@@ -31,6 +31,8 @@ async function Body() {
     buildDigest(previewWeek),
   ]);
   const preview = renderDigest(data, "#unsubscribe");
+  const engagement = await engagementByIssue(issues.map((i) => i.weekKey));
+  const pct = (n: number, of: number) => (of > 0 ? ` (${Math.round((n / of) * 100)}%)` : "");
 
   return (
     <div className="mt-8 space-y-8">
@@ -45,6 +47,9 @@ async function Body() {
 
       <section>
         <h2 className="font-display text-xl font-semibold">Sent issues</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Unique opens and clicks from Resend webhooks. Opens are approximate: some mail apps load images for privacy.
+        </p>
         {issues.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
             Nothing sent yet. The digest goes out automatically after each week closes.
@@ -58,6 +63,14 @@ async function Body() {
                 <span className={i.error ? "text-danger" : "text-muted-foreground"}>
                   {i.sentAt ? `${i.recipients} sent` : i.error ? `failed: ${i.error}` : "sending…"}
                 </span>
+                {i.sentAt && (
+                  <span className="w-full text-xs text-muted-foreground sm:w-auto">
+                    {(() => {
+                      const e = engagement.get(i.weekKey) ?? { opens: 0, clicks: 0 };
+                      return `${e.opens} opened${pct(e.opens, i.recipients)} · ${e.clicks} clicked${pct(e.clicks, i.recipients)}`;
+                    })()}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

@@ -2,7 +2,15 @@ import "server-only";
 import { Resend } from "resend";
 import { env } from "@/env";
 
-export type Email = { to: string; subject: string; html: string; text: string; headers?: Record<string, string> };
+export type Email = {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  headers?: Record<string, string>;
+  /** Resend tags, echoed back on webhook events (ASCII letters, digits, `_` and `-`). */
+  tags?: Array<{ name: string; value: string }>;
+};
 
 let client: Resend | undefined;
 
