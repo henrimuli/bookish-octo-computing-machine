@@ -46,6 +46,26 @@ const schema = z.object({
   R2_BUCKET: optional,
   R2_PUBLIC_URL: optional,
 
+  // Domain Rating provider for DR snapshots and the DR checker. Unset hides the features.
+  DR_PROVIDER: z.enum(["dataforseo", "ahrefs", "openpagerank"]).optional().catch(undefined),
+  /** DataForSEO: "login:password". Ahrefs: an API v3 key. Open PageRank: its API key. */
+  DR_API_KEY: optional,
+
+  // Submission ops. Inbound mail ({key}@INBOUND_EMAIL_DOMAIN) is POSTed to /api/inbound signed with INBOUND_SECRET.
+  INBOUND_EMAIL_DOMAIN: optional,
+  INBOUND_SECRET: optional,
+  /** 32 random bytes, base64. Encrypts directory account passwords. */
+  CREDENTIALS_KEY: optional,
+
+  // Screenshot worker (workers/screenshot) for listing evidence. Unset: staff paste evidence URLs by hand.
+  WORKER_URL: optional,
+  WORKER_SECRET: optional,
+
+  // SERP API for the weekly "is this listing indexed by Google?" check. Unset hides it.
+  SERP_PROVIDER: z.enum(["serpapi", "dataforseo"]).optional().catch(undefined),
+  /** SerpApi: its API key. DataForSEO: "login:password". */
+  SERP_API_KEY: optional,
+
   // Vercel Cron sends this as a bearer token.
   CRON_SECRET: optional,
 });

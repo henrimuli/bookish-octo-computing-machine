@@ -18,6 +18,11 @@ export type OpsRow = {
   linkAnchor: string | null;
   linkCheckedAt: Date | null;
   replaces: boolean;
+  accountLogin: string | null;
+  hasPassword: boolean;
+  /** Badge-gated and the client's badge isn't on their site yet. */
+  held: boolean;
+  badgeSeen: boolean;
   directory: {
     name: string;
     url: string;
@@ -39,6 +44,9 @@ function RowEditor({ row, onMessage }: { row: OpsRow; onMessage: (m: { ok: boole
   const [notes, setNotes] = useState(row.notes);
   const [action, setAction] = useState(row.actionNeeded ?? "");
   const [evidence, setEvidence] = useState(row.evidenceUrl ?? "");
+  const [login, setLogin] = useState(row.accountLogin ?? "");
+  const [password, setPassword] = useState("");
+  const [badgeSeen, setBadgeSeen] = useState(row.badgeSeen);
   const [pending, start] = useTransition();
 
   function save() {
@@ -49,6 +57,9 @@ function RowEditor({ row, onMessage }: { row: OpsRow; onMessage: (m: { ok: boole
         notes,
         actionNeeded: action,
         evidenceUrl: evidence,
+        accountLogin: login,
+        accountPassword: password || undefined,
+        ...(row.directory.badgeRequired ? { badgeSeen } : {}),
       });
       onMessage(
         res.ok
@@ -76,6 +87,11 @@ function RowEditor({ row, onMessage }: { row: OpsRow; onMessage: (m: { ok: boole
         {row.directory.badgeRequired && <Badge tone="accent">badge</Badge>}
         {row.directory.needsAccount && <Badge>account</Badge>}
         {row.replaces && <Badge>replacement</Badge>}
+        {row.held && (
+          <Badge tone="accent" title="Waiting for the client's badge on their site">
+            held: badge
+          </Badge>
+        )}
         <Badge tone={row.status === "live" ? "success" : row.status === "needs_action" ? "accent" : "default"}>
           {row.status}
         </Badge>
@@ -127,13 +143,40 @@ function RowEditor({ row, onMessage }: { row: OpsRow; onMessage: (m: { ok: boole
               placeholder="https:// screenshot URL"
               className="h-9 text-sm"
             />
+            <span className="self-center text-xs text-muted-foreground">Account</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                placeholder="Login email or username"
+                className="h-9 text-sm"
+                autoComplete="off"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={row.hasPassword ? "Password saved (type to replace)" : "Password (encrypted)"}
+                className="h-9 text-sm"
+                autoComplete="new-password"
+              />
+            </div>
+            {row.directory.badgeRequired && (
+              <>
+                <span className="self-center text-xs text-muted-foreground">Badge</span>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={badgeSeen} onChange={(e) => setBadgeSeen(e.target.checked)} />
+                  The client&apos;s badge for this directory is on their site
+                </label>
+              </>
+            )}
             <span className="self-center text-xs text-muted-foreground">Internal notes</span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               className="rounded-md border border-border bg-card p-2 text-sm"
-              placeholder="Login email, captcha, verification…"
+              placeholder="Captcha, verification, anything odd…"
             />
           </div>
           <Button size="sm" onClick={save} disabled={pending}>

@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge, Card, Container } from "@/components/ui/primitives";
 import { site } from "@/config/site";
 import { getCurrentUser, isStaff } from "@/lib/auth";
+import { proUserIds } from "@/lib/billing/service";
 import { listingRel, withRef } from "@/lib/board/links";
 import { commentsFor, getProductPage, similarProducts, votesByDay } from "@/lib/board/queries";
 import { formatPeriodLabel } from "@/lib/periods";
@@ -56,10 +57,11 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
   if (!data) notFound();
 
   const p = data.product;
-  const [comments, similar, days] = await Promise.all([
+  const [comments, similar, days, pro] = await Promise.all([
     commentsFor(p.id),
     similarProducts(p.id),
     p.launchWeekKey && data.live ? votesByDay(p.id, p.launchWeekKey) : Promise.resolve(null),
+    proUserIds([p.createdBy]),
   ]);
   const rel = listingRel({ tier: p.tier, isWinner: p.isWinner, badgeStatus: data.badgeStatus });
   const href = withRef(p.websiteUrl);
@@ -174,6 +176,11 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
                   </Link>
                 ) : (
                   data.maker.name
+                )}
+                {pro.has(p.createdBy) && (
+                  <Badge tone="primary" className="ml-2" title="Maker Pro member">
+                    Pro
+                  </Badge>
                 )}
               </Row>
             )}

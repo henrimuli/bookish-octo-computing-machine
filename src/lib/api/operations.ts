@@ -9,6 +9,7 @@ import { productInput } from "@/lib/products/input";
 import { listCategories } from "@/lib/products/queries";
 import { isLiveCondition, ProductError, saveProduct } from "@/lib/products/service";
 import { checkReadiness, ReadinessError } from "@/lib/readiness/service";
+import { checkDofollow, checkDr, ToolError } from "@/lib/tools/service";
 import { formatWeekLabel } from "@/lib/weeks";
 import type { ApiUser } from "./tokens";
 
@@ -114,6 +115,42 @@ export async function readiness(
   }
 }
 
+export const dofollowInput = z.object({
+  pageUrl: z.string().max(500).describe("The page that should contain the link, e.g. a directory listing"),
+  target: z.string().max(500).describe("The domain (or any URL on it) the link should point to"),
+});
+
+const toolCall = async <T>(run: () => Promise<T>) => {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof ToolError) throw new ApiError(err.message, err.rateLimited ? 429 : 400);
+    throw err;
+  }
+};
+
+export async function dofollow(
+  raw: z.input<typeof dofollowInput>,
+  caller: { clientKey: string; user: ApiUser | null; source: "api" | "mcp" },
+) {
+  const { pageUrl, target } = dofollowInput.parse(raw);
+  return toolCall(() =>
+    checkDofollow(pageUrl, target, { clientKey: caller.clientKey, userId: caller.user?.id, source: caller.source }),
+  );
+}
+
+export const drInput = z.object({ domain: z.string().max(500).describe("A domain, like example.com") });
+
+export async function domainRating(
+  raw: z.input<typeof drInput>,
+  caller: { clientKey: string; user: ApiUser | null; source: "api" | "mcp" },
+) {
+  const { domain } = drInput.parse(raw);
+  return toolCall(() =>
+    checkDr(domain, { clientKey: caller.clientKey, userId: caller.user?.id, source: caller.source }),
+  );
+}
+
 export const draftInput = productInput.pick({
   websiteUrl: true,
   name: true,
@@ -170,6 +207,29 @@ export async function myLaunches(user: ApiUser | null) {
     url: p.status === "approved" ? site(`/p/${p.slug}`) : site(`/submit/${p.id}`),
     rejectionReason: p.rejectionReason,
   }));
+}
+
+export async function myLinks(user: ApiUser | null) {
+  if (!user) throw new ApiError("This needs an API token. Create one at " + site("/dashboard/api"), 401);
+  const { linksForUser, linkUsage } = await import("@/lib/links/service");
+  const [rows, usage] = await Promise.all([linksForUser(user.id), linkUsage(user.id)]);
+  return {
+    usage: { manualLinks: usage.used, limit: usage.limit, monitored: usage.monitored },
+    links: rows.map(({ link: l, directory }) => ({
+      id: l.id,
+      url: l.url,
+      target: l.targetDomain,
+      directory,
+      source: l.source,
+      monitored: l.active,
+      verdict: l.lastVerdict,
+      rel: l.lastRel,
+      anchor: l.lastAnchor,
+      httpStatus: l.lastStatusCode,
+      lastCheckedAt: l.lastCheckedAt?.toISOString() ?? null,
+      nextCheckAt: l.active ? l.nextCheckAt.toISOString() : null,
+    })),
+  };
 }
 
 /** JSON Schema for an input, without the `$schema` key (MCP and OpenAPI embed it). */

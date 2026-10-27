@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { env } from "@/env";
+import { drEnabled } from "@/lib/metrics/service";
 import { weekKeyFor } from "@/lib/weeks";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -16,8 +17,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/vote",
     "/advertise",
     "/tools/launch-readiness",
+    "/tools/dofollow-checker",
+    ...(drEnabled() ? ["/tools/dr-checker"] : []),
     "/docs",
     "/directories",
+    "/launch-wall",
     "/submission-service",
     "/categories",
     "/how-ranking-works",

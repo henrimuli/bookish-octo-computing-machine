@@ -64,6 +64,11 @@ async function List() {
                 {d.guided && <Badge tone="accent">guided</Badge>}
                 {d.instructions && <Badge>instructions</Badge>}
                 {!d.isActive && <Badge>inactive</Badge>}
+                {d.auditFailures > 0 && (
+                  <Badge tone="accent" title={d.auditError ?? undefined}>
+                    {d.isActive ? `audit failed ×${d.auditFailures}` : "down (audit)"}
+                  </Badge>
+                )}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
                 {d.acceptanceRate !== null ? `${Math.round(d.acceptanceRate * 100)}%` : "–"}

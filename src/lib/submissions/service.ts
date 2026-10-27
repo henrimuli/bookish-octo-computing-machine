@@ -6,9 +6,17 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { decryptSecret, encryptSecret } from "@/lib/crypto";
+import { inspectBacklink } from "@/lib/directories/backlink";
 import { effectiveLinkType } from "@/lib/directories/service";
 import { verifySubmission } from "@/lib/directories/verify";
+import { monitorEnd, trackSubmission } from "@/lib/links/service";
+import { baselineSnapshot } from "@/lib/metrics/service";
+import { safeFetchText } from "@/lib/net";
 import { formatUsd } from "@/lib/payments/skus";
+import { domainOf } from "@/lib/slug";
+import { BADGE_WAIT_DAYS, badgeBlockHtml, MAX_BADGES } from "./badge-block";
+import { newInboxKey } from "./inbox-rules";
 import { PACKAGES, packageForSku, selectTargets, type PackageId } from "./packages";
 
 const { submissionOrders: orders, submissions, directories } = schema;
@@ -74,6 +82,7 @@ export async function openOrderFromPayment(payment: Payment, bundled?: PackageId
       targetCount: PACKAGES[pkg].count,
       intakeToken: token(),
       reportToken: token(),
+      inboxKey: newInboxKey(),
       ...(product
         ? {
             productName: product.name,
@@ -180,6 +189,7 @@ export async function submitIntake(intakeToken: string, raw: IntakeInput, now = 
     count: order.targetCount,
     categories: input.categories,
     allowBadges: input.badgePreference === "allow",
+    maxBadges: MAX_BADGES,
   });
   const [updated] = await db()
     .update(orders)
@@ -199,6 +209,9 @@ export async function submitIntake(intakeToken: string, raw: IntakeInput, now = 
       .values(targets.map((directoryId) => ({ directoryId, submissionOrderId: order.id })))
       .onConflictDoNothing();
   }
+  // DR before/after: the "before".
+  await baselineSnapshot(input.websiteUrl, now);
+  if (updated.badgePreference === "allow") await sendBadgeBlock(updated, now);
 
   await mail(
     input.contactEmail,
@@ -331,11 +344,16 @@ export const opsUpdate = z.object({
     .max(500)
     .refine((u) => u === "" || /^https:\/\/\S+$/.test(u), "Use an https:// URL")
     .optional(),
+  /** Directory account we created. An empty password keeps the stored one. */
+  accountLogin: z.string().trim().max(200).optional(),
+  accountPassword: z.string().max(200).optional(),
+  /** Staff confirm the client's badge for this directory is on their site. */
+  badgeSeen: z.boolean().optional(),
 });
 export type OpsUpdate = z.input<typeof opsUpdate>;
 
 /** Adds the next best unused directory to an order. Returns the new row, or null when none are left. */
-async function addReplacement(order: SubmissionOrder, replacesId: string) {
+async function addReplacement(order: SubmissionOrder, replacesId: string, opts: { noBadges?: boolean } = {}) {
   const used = await db()
     .select({ id: submissions.directoryId })
     .from(submissions)
@@ -343,7 +361,7 @@ async function addReplacement(order: SubmissionOrder, replacesId: string) {
   const [next] = selectTargets(await candidates(), {
     count: 1,
     categories: order.categories,
-    allowBadges: order.badgePreference === "allow",
+    allowBadges: order.badgePreference === "allow" && !opts.noBadges,
     exclude: new Set(used.map((u) => u.id)),
   });
   if (!next) return null;
@@ -368,6 +386,22 @@ export async function updateOrderSubmission(submissionId: string, raw: OpsUpdate
     throw new SubmissionError("This order isn't active.");
 
   const status = input.status ?? s.status;
+  const directory = (await db().query.directories.findFirst({ where: eq(directories.id, s.directoryId) }))!;
+  const badgeSeenAt =
+    input.badgeSeen === true ? (s.badgeSeenAt ?? now) : input.badgeSeen === false ? null : s.badgeSeenAt;
+  if (
+    heldForBadge(order, directory, { badgeSeenAt }) &&
+    status !== s.status &&
+    !["todo", "skipped", "rejected"].includes(status)
+  ) {
+    throw new SubmissionError("Held until the client's badge for this directory is on their site.");
+  }
+  let accountSecret = s.accountSecret;
+  if (input.accountPassword) {
+    const key = env().CREDENTIALS_KEY;
+    if (!key) throw new SubmissionError("Set CREDENTIALS_KEY to store directory passwords.");
+    accountSecret = encryptSecret(input.accountPassword, key);
+  }
   const liveUrl = input.liveUrl !== undefined ? input.liveUrl || null : s.liveUrl;
   if (status === "live" && !liveUrl) throw new SubmissionError("Add the live listing URL.");
   const urlChanged = liveUrl !== s.liveUrl;
@@ -380,6 +414,9 @@ export async function updateOrderSubmission(submissionId: string, raw: OpsUpdate
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.actionNeeded !== undefined ? { actionNeeded: input.actionNeeded || null } : {}),
       ...(input.evidenceUrl !== undefined ? { evidenceUrl: input.evidenceUrl || null } : {}),
+      ...(input.accountLogin !== undefined ? { accountLogin: input.accountLogin || null } : {}),
+      accountSecret,
+      badgeSeenAt,
       submittedAt: s.submittedAt ?? (status !== "todo" && status !== "skipped" ? now : null),
       liveAt: status === "live" ? (s.liveAt ?? now) : null,
       ...(urlChanged
@@ -400,6 +437,7 @@ export async function updateOrderSubmission(submissionId: string, raw: OpsUpdate
   }
   const checked =
     status === "live" && liveUrl && (urlChanged || !row.linkCheckedAt) ? await verifySubmission(row.id) : null;
+  await trackSubmission(row.id, now);
   return { row: checked ?? (replacement ? { ...row, status: "replaced" as const } : row), replacement };
 }
 
@@ -419,6 +457,12 @@ export async function bulkUpdate(orderId: string, ids: string[], status: "submit
         inArray(submissions.id, ids),
         ne(submissions.status, "live"),
         ne(submissions.status, "replaced"),
+        // Badge-gated rows wait for the client's badge (only "todo" and "skipped" move them).
+        status === "todo" || status === "skipped"
+          ? undefined
+          : sql`not (${submissions.badgeSeenAt} is null
+              and exists (select 1 from directories d where d.id = ${submissions.directoryId} and d.badge_required)
+              and exists (select 1 from submission_orders o where o.id = ${submissions.submissionOrderId} and o.badge_preference = 'allow'))`,
       ),
     )
     .returning({ id: submissions.id });
@@ -443,6 +487,11 @@ export async function deliverOrder(orderId: string, now = new Date()) {
     .where(and(eq(orders.id, orderId), inArray(orders.status, ["queued", "in_progress"])))
     .returning();
   if (!order) throw new SubmissionError("Only active orders can be delivered.");
+  const months = PACKAGES[order.package].monitorMonths;
+  await db()
+    .update(orders)
+    .set({ monitorUntil: monitorEnd(now, months) })
+    .where(eq(orders.id, order.id));
   const rows = await orderRows(order.id);
   const s = summarizeOrder(
     order,
@@ -453,7 +502,8 @@ export async function deliverOrder(orderId: string, now = new Date()) {
     `Delivered: ${s.live} live listings for ${order.productName}`,
     [
       `Your ${PACKAGES[order.package].label} order is complete: ${s.live} listings are live, ${s.dofollow} of them with a verified dofollow link.`,
-      "Your report lists every directory with its live URL and link check. Account logins we created are available on request.",
+      "Your report lists every directory with its live URL and link check, plus the logins of any accounts we created for you.",
+      `Link Monitor is included for ${months} months: we re-check every live link and email you if one is removed or turns nofollow.`,
       "Share the read-only report with your team, or download it as CSV or PDF.",
     ],
     { label: "Open your report", href: url(`/orders/${order.intakeToken}`) },
@@ -549,3 +599,146 @@ export function ordersCsv(rows: Awaited<ReturnType<typeof orderRows>>): string {
 }
 
 export type { PackageId };
+
+// --- Badge blocks (clients who allow badges) ----------------------------------
+
+/** A badge-gated row waits until we've seen that directory's badge on the client's site. */
+export function heldForBadge(
+  order: Pick<SubmissionOrder, "badgePreference">,
+  directory: { badgeRequired: boolean },
+  row: { badgeSeenAt: Date | null },
+) {
+  return order.badgePreference === "allow" && directory.badgeRequired && !row.badgeSeenAt;
+}
+
+async function badgeRows(orderId: string) {
+  return db()
+    .select({ s: submissions, d: directories })
+    .from(submissions)
+    .innerJoin(directories, eq(directories.id, submissions.directoryId))
+    .where(
+      and(
+        eq(submissions.submissionOrderId, orderId),
+        eq(directories.badgeRequired, true),
+        inArray(submissions.status, ["todo", "submitted", "pending", "needs_action", "live"]),
+      ),
+    )
+    .orderBy(sql`${directories.dr} desc nulls last`);
+}
+
+/** The order's badge block: the snippets of its badge-gated directories. Null when there are none. */
+export async function badgeBlockFor(orderId: string) {
+  const rows = (await badgeRows(orderId)).filter((r) => r.d.badgeSnippet?.trim());
+  if (rows.length === 0) return null;
+  return {
+    html: badgeBlockHtml(rows.map((r) => ({ name: r.d.name, snippet: r.d.badgeSnippet! }))),
+    directories: rows.map((r) => ({ name: r.d.name, seen: Boolean(r.s.badgeSeenAt) })),
+  };
+}
+
+/** Emails the client their badge block (after intake, or when staff resend it). */
+export async function sendBadgeBlock(order: SubmissionOrder, now = new Date()) {
+  const block = await badgeBlockFor(order.id);
+  if (!block) return false;
+  const to = order.contactEmail ?? order.email;
+  const dashboard = url(`/orders/${order.intakeToken}`);
+  const intro = `${block.directories.length} of the directories we're submitting ${order.productName ?? "your product"} to only list products that show their badge. Paste this block into your site's footer (any page we can reach from your homepage works):`;
+  const outro = `We check your site daily and submit each one as soon as its badge is up. Any still missing after ${BADGE_WAIT_DAYS} days are swapped for directories that don't need a badge.`;
+  await sendEmail({
+    to,
+    subject: "One step for your listings: add your directory badges",
+    text: [intro, block.html, outro, `Your dashboard: ${dashboard}`, `— ${site.name}`].join("\n\n"),
+    html:
+      `<p>${escape(intro)}</p>` +
+      `<pre style="white-space:pre-wrap;background:#f4f4f5;padding:12px;border-radius:6px">${escape(block.html)}</pre>` +
+      `<p>${escape(outro)}</p><p><a href="${dashboard}">Your dashboard</a></p><p>— ${site.name}</p>`,
+  });
+  await db().update(orders).set({ badgeBlockSentAt: now }).where(eq(orders.id, order.id));
+  return true;
+}
+
+/**
+ * Daily: looks for each held directory's badge on the client's site and
+ * releases the rows it finds. After the wait, swaps the rest for badge-free
+ * directories so the count holds.
+ */
+export async function checkBadgeBlocks(now = new Date()) {
+  const active = await db()
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.badgePreference, "allow"),
+        inArray(orders.status, ["queued", "in_progress"]),
+        isNotNull(orders.websiteUrl),
+      ),
+    );
+  let found = 0;
+  let replaced = 0;
+  for (const order of active) {
+    const held = (await badgeRows(order.id)).filter((r) => heldForBadge(order, r.d, r.s));
+    if (held.length === 0) continue;
+    let html = "";
+    let pageUrl = order.websiteUrl!;
+    try {
+      const page = await safeFetchText(order.websiteUrl!, { timeoutMs: 10_000 });
+      html = page.body;
+      pageUrl = page.url;
+    } catch {
+      // Unreachable today: try again tomorrow (the wait still runs).
+    }
+    const waited = now.getTime() - (order.badgeBlockSentAt ?? order.intakeAt ?? now).getTime();
+    for (const r of held) {
+      let domain: string;
+      try {
+        domain = domainOf(r.d.url);
+      } catch {
+        continue;
+      }
+      if (html && inspectBacklink(html, pageUrl, domain).verdict !== "missing") {
+        await db().update(submissions).set({ badgeSeenAt: now }).where(eq(submissions.id, r.s.id));
+        found++;
+      } else if (r.s.status === "todo" && waited >= BADGE_WAIT_DAYS * DAY) {
+        const next = await addReplacement(order, r.s.id, { noBadges: true });
+        await db()
+          .update(submissions)
+          .set({
+            status: next ? "replaced" : "skipped",
+            notes: sql`trim(${submissions.notes} || ' Badge not found on the client site.')`,
+          })
+          .where(eq(submissions.id, r.s.id));
+        replaced++;
+      }
+    }
+  }
+  return { orders: active.length, found, replaced };
+}
+
+// --- Directory accounts --------------------------------------------------------
+
+/** Logins we created for the client, decrypted. Only for the private order page after delivery, and ops. */
+export async function credentialsFor(orderId: string) {
+  const key = env().CREDENTIALS_KEY;
+  const rows = await db()
+    .select({
+      directory: directories.name,
+      url: directories.url,
+      login: submissions.accountLogin,
+      secret: submissions.accountSecret,
+    })
+    .from(submissions)
+    .innerJoin(directories, eq(directories.id, submissions.directoryId))
+    .where(and(eq(submissions.submissionOrderId, orderId), isNotNull(submissions.accountLogin)))
+    .orderBy(asc(directories.name));
+  return rows.map((r) => {
+    let password: string | null = null;
+    if (r.secret && key) {
+      try {
+        password = decryptSecret(r.secret, key);
+      } catch {
+        password = null;
+      }
+    }
+    return { directory: r.directory, url: r.url, login: r.login!, password };
+  });
+}

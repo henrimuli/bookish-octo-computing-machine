@@ -1,9 +1,15 @@
 import { env } from "@/env";
+import { approveReferrals } from "@/lib/affiliates/service";
 import { recheckBadges } from "@/lib/badges/service";
+import { syncSubscriptions } from "@/lib/billing/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
 import { settleBookings } from "@/lib/ads/service";
+import { auditDirectories } from "@/lib/directories/audit";
 import { refreshDirectoryStats } from "@/lib/directories/service";
-import { sendOrderDigests } from "@/lib/submissions/service";
+import { checkIndexed } from "@/lib/links/indexed";
+import { monitorLinks } from "@/lib/links/service";
+import { snapshotDomains } from "@/lib/metrics/service";
+import { checkBadgeBlocks, sendOrderDigests } from "@/lib/submissions/service";
 import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
@@ -25,10 +31,17 @@ export async function GET(request: Request) {
     ["newsletter", () => sendWeeklyDigest()],
     ["recap", () => draftWeeklyRecap()],
     ["payments", () => reconcilePendingOrders()],
+    ["subscriptions", () => syncSubscriptions()],
     ["ads", () => settleBookings()],
     ["submission digests", () => sendOrderDigests()],
+    ["badge blocks", () => checkBadgeBlocks()],
     ["directory stats", () => refreshDirectoryStats()],
     ["badges", () => recheckBadges()],
+    ["links", () => monitorLinks()],
+    ["indexed", () => checkIndexed()],
+    ["directory audit", () => auditDirectories()],
+    ["dr", () => snapshotDomains()],
+    ["affiliates", () => approveReferrals()],
   ];
   for (const [name, run] of tasks) {
     try {

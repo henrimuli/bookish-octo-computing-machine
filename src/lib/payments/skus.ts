@@ -118,23 +118,35 @@ export const SKUS = [
   ),
 
   // Subscriptions
-  recurring("sub_link_monitor_100", "Yard Monitor (100 links)", 900, "monthly", "Weekly link checks with alerts."),
-  recurring("sub_link_monitor_500", "Yard Monitor (500 links)", 1900, "monthly", "Weekly link checks with alerts."),
+  recurring(
+    "sub_link_monitor_100",
+    "Link Monitor (100 links)",
+    900,
+    "monthly",
+    "Weekly checks on 100 backlinks you add, with an email when one is removed or turns nofollow.",
+  ),
+  recurring(
+    "sub_link_monitor_500",
+    "Link Monitor (500 links)",
+    1900,
+    "monthly",
+    "Weekly checks on 500 backlinks you add, with an email when one is removed or turns nofollow.",
+  ),
   recurring(
     "sub_maker_pro_monthly",
     "Maker Pro (monthly)",
     1200,
     "monthly",
-    "DR tracking, analytics, a free Fast Track each quarter.",
+    "A free Fast Track each quarter, DR tracking, 100 monitored links, a Pro badge, early slot booking.",
   ),
+  recurring("sub_maker_pro_yearly", "Maker Pro (yearly)", 9900, "annually", "Maker Pro for a year: two months free."),
   recurring(
-    "sub_maker_pro_yearly",
-    "Maker Pro (yearly)",
-    9900,
-    "annually",
-    "DR tracking, analytics, a free Fast Track each quarter.",
+    "sub_always_featured",
+    "Always Featured",
+    4900,
+    "monthly",
+    "One listing in the homepage featured rail and rotating as a category sponsor.",
   ),
-  recurring("sub_always_featured", "Always Featured", 4900, "monthly", "Rotating featured placement, cancel anytime."),
   recurring("sub_agency", "Agency", 79900, "monthly", "5 client submissions a month with white-label reports."),
 ] as const satisfies readonly Sku[];
 
@@ -147,12 +159,13 @@ export function getSku(id: string): Sku | undefined {
 }
 
 /**
- * What can be bought directly from /api/checkout. Launch tiers are sold in the
- * submit flow and featured slots through the /advertise booking calendar;
- * plans wait for their features (Phase 4).
+ * What can be bought directly from /api/checkout: submission packages and
+ * plans. Launch tiers are sold in the submit flow and featured slots through
+ * the /advertise booking calendar. Agency waits for Phase 5.
  */
 export function isPurchasable(sku: Sku): boolean {
-  return sku.type === "one_time" && sku.kind === "submission";
+  if (sku.type === "recurring") return sku.id !== "sub_agency";
+  return sku.kind === "submission";
 }
 
 export function isSkuId(id: string): id is SkuId {

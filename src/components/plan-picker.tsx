@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { startTierCheckoutAction, submitFreeAction } from "@/app/submit/actions";
+import { redeemFastTrackAction, startTierCheckoutAction, submitFreeAction } from "@/app/submit/actions";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, Input } from "@/components/ui/primitives";
 import type { Tier } from "@/lib/products/input";
@@ -28,6 +28,7 @@ export function PlanPicker({
   options,
   weeks,
   providers,
+  freeFastTrack = null,
 }: {
   productId: string;
   productName: string;
@@ -35,6 +36,8 @@ export function PlanPicker({
   options: PlanOption[];
   weeks: Array<{ key: string; label: string }>;
   providers: ProviderId[];
+  /** Maker Pro: true when this quarter's free Fast Track is unused, false when used, null without Pro. */
+  freeFastTrack?: boolean | null;
 }) {
   const firstAvailable = options.find((o) => o.available)?.tier ?? "pro";
   const [selected, setSelected] = useState<Tier>(firstAvailable);
@@ -48,6 +51,14 @@ export function PlanPicker({
     setError(null);
     start(async () => {
       const res = await submitFreeAction(productId);
+      if (res && !res.ok) setError(res.error);
+    });
+  }
+
+  function redeem() {
+    setError(null);
+    start(async () => {
+      const res = await redeemFastTrackAction(productId);
       if (res && !res.ok) setError(res.error);
     });
   }
@@ -123,6 +134,23 @@ export function PlanPicker({
               ))}
             </select>
           </label>
+        )}
+
+        {selected === "fast_track" && freeFastTrack !== null && (
+          <div className="rounded-md bg-primary/10 p-4 text-sm">
+            {freeFastTrack ? (
+              <>
+                <p className="font-medium">Maker Pro: your free Fast Track for this quarter is available.</p>
+                <Button className="mt-3" onClick={redeem} disabled={pending || !option.available}>
+                  {pending ? "Applying…" : "Use my free Fast Track"}
+                </Button>
+              </>
+            ) : (
+              <p className="text-muted-foreground">
+                You&apos;ve used this quarter&apos;s free Fast Track. The next one comes with the new quarter.
+              </p>
+            )}
+          </div>
         )}
 
         {selected === "free" ? (

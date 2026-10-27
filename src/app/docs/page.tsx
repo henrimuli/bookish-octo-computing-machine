@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, Container, Heading } from "@/components/ui/primitives";
 import { site } from "@/config/site";
 import { TOOLS } from "@/lib/api/mcp";
+import { drEnabled } from "@/lib/metrics/service";
 
 export const metadata: Metadata = {
   title: "API & MCP",
@@ -53,7 +54,7 @@ export default function DocsPage() {
 
       <h3 className="mt-8 font-display text-lg font-semibold">Tools</h3>
       <div className="mt-3 space-y-3">
-        {TOOLS.map((t) => (
+        {TOOLS.filter((t) => t.enabled?.() ?? true).map((t) => (
           <Card key={t.name} className="p-4">
             <p className="font-mono text-sm font-semibold">{t.name}</p>
             <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>
@@ -77,8 +78,11 @@ export default function DocsPage() {
             ["GET", "/categories", "Category slugs"],
             ["GET", "/directories?niche=&noBadge=", "Launch directories to submit to"],
             ["POST", "/readiness", "Launch-readiness check for { url }"],
+            ["POST", "/tools/dofollow", "Is there a dofollow link to { target } on { pageUrl }?"],
+            ...(drEnabled() ? [["POST", "/tools/dr", "Domain Rating for { domain }"]] : []),
             ["POST", "/submissions", "Create a draft listing (token)"],
             ["GET", "/me/products", "Your listings and stats (token)"],
+            ["GET", "/me/links", "Your monitored backlinks and plan usage (token)"],
           ].map(([m, p, d]) => (
             <tr key={p}>
               <td className="py-2 pr-3 font-mono text-xs font-semibold">{m}</td>
@@ -94,7 +98,7 @@ export default function DocsPage() {
        "description":"Acme sends polite, automatic reminders so clients pay on time.",
        "categories":["productivity"],"pricingModel":"freemium"}'`}</Code>
       <p className="mt-6 text-sm text-muted-foreground">
-        Readiness checks are limited to 15 an hour per caller. Questions: <a href={`mailto:${site.supportEmail}`} className="text-primary hover:underline">{site.supportEmail}</a>.
+        Readiness checks and each free tool are limited to 15 an hour per caller. Questions: <a href={`mailto:${site.supportEmail}`} className="text-primary hover:underline">{site.supportEmail}</a>.
       </p>
     </Container>
   );

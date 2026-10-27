@@ -6,7 +6,7 @@ import { BookingForm } from "@/components/ads/booking-form";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
-import { availability } from "@/lib/ads/service";
+import { availability, extraWeeksFor } from "@/lib/ads/service";
 import { CPC_TARGET_CENTS, MAX_EXTENSIONS, PLACEMENTS } from "@/lib/ads/placements";
 import { getCurrentUser } from "@/lib/auth";
 import { categoriesWithCounts } from "@/lib/board/queries";
@@ -95,7 +95,7 @@ async function Booking() {
       .where(and(eq(schema.products.createdBy, user.id), eq(schema.products.status, "approved")))
       .orderBy(schema.products.name),
     categoriesWithCounts(),
-    availability("leaderboard", null),
+    extraWeeksFor(user.id).then((extra) => availability("leaderboard", null, new Date(), extra)),
   ]);
   if (products.length === 0) {
     return (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BookingStatsTable } from "@/components/ads/booking-stats";
 import { BadgePanel } from "@/components/badge-panel";
+import { DrChart } from "@/components/metrics/dr-chart";
 import { ProductLogo } from "@/components/board/product-logo";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
@@ -11,6 +12,8 @@ import { bookingsForUser } from "@/lib/ads/service";
 import { PACKAGES } from "@/lib/submissions/packages";
 import { ordersForUser } from "@/lib/submissions/service";
 import { requireUser } from "@/lib/auth";
+import { can } from "@/lib/billing/entitlements";
+import { drEnabled, drHistory } from "@/lib/metrics/service";
 import { dnsRecordValue } from "@/lib/badges/detect";
 import { badgeSnippet } from "@/lib/badges/svg";
 import { isFollowed } from "@/lib/board/links";
@@ -46,6 +49,15 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
           <ButtonLink href="/dashboard/tracker" variant="outline">
             Directory tracker
           </ButtonLink>
+          <ButtonLink href="/dashboard/links" variant="outline">
+            Link Monitor
+          </ButtonLink>
+          <ButtonLink href="/dashboard/billing" variant="outline">
+            Billing
+          </ButtonLink>
+          <ButtonLink href="/dashboard/affiliate" variant="outline">
+            Affiliate
+          </ButtonLink>
           <ButtonLink href="/dashboard/api" variant="outline">
             API &amp; agents
           </ButtonLink>
@@ -54,6 +66,7 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
       </div>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Products searchParams={props.searchParams} />
+        <DomainRating />
         <SubmissionOrders />
         <Sponsorships />
       </Suspense>
@@ -201,6 +214,36 @@ async function Sponsorships() {
           <BookingStatsTable rows={rows} />
         </div>
       )}
+    </section>
+  );
+}
+
+/** Maker Pro: DR over time for each of the maker's product domains. */
+async function DomainRating() {
+  const user = await requireUser("/dashboard");
+  if (!drEnabled() || !(await can(user.id, "dr_tracking"))) return null;
+  const domains = (await dashboardProducts(user.id))
+    .map((i) => i.product.domain)
+    .filter((d, i, all): d is string => !!d && all.indexOf(d) === i);
+  const histories = await Promise.all(domains.map(async (d) => ({ domain: d, points: await drHistory(d) })));
+  return (
+    <section className="mt-14">
+      <h2 className="font-display text-2xl font-bold">Domain Rating</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Measured weekly. We email you if it drops by 5 points or more.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {histories.map((h) => (
+          <Card key={h.domain} className="p-5">
+            <p className="mb-2 text-sm font-medium">{h.domain}</p>
+            {h.points.length ? (
+              <DrChart points={h.points} since="first check" />
+            ) : (
+              <p className="text-sm text-muted-foreground">First reading within a day.</p>
+            )}
+          </Card>
+        ))}
+      </div>
     </section>
   );
 }

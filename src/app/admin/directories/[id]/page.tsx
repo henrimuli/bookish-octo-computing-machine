@@ -40,6 +40,7 @@ const blank = {
   queueEstimateDays: "",
   submissionNotes: "",
   instructions: "",
+  badgeSnippet: "",
   isActive: true,
 };
 
@@ -73,6 +74,7 @@ async function Editor({ params }: Pick<PageProps<"/admin/directories/[id]">, "pa
             ...d,
             submitUrl: d.submitUrl ?? "",
             dr: d.dr?.toString() ?? "",
+            badgeSnippet: d.badgeSnippet ?? "",
             queueEstimateDays: d.queueEstimateDays?.toString() ?? "",
           }}
         />

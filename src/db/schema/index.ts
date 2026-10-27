@@ -5,3 +5,5 @@ export * from "./content";
 export * from "./ads";
 export * from "./api";
 export * from "./directories";
+export * from "./metrics";
+export * from "./affiliates";

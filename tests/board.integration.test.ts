@@ -60,6 +60,9 @@ class FakeProvider implements PaymentProvider {
     return { url: "https://pay.test/sub" };
   }
   async cancelSubscription() {}
+  async getSubscription() {
+    return { status: "active" as const };
+  }
   async parseWebhook(): Promise<WebhookEvent> {
     throw new Error("unused");
   }
@@ -757,8 +760,10 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
       "list_categories",
       "list_launch_directories",
       "check_launch_readiness",
+      "check_dofollow",
       "submit_product",
       "get_my_launches",
+      "get_my_links",
     ]);
     const submitTool = tools.find((t: { name: string }) => t.name === "submit_product");
     expect(submitTool.inputSchema.required).toEqual(

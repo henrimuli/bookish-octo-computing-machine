@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone workers with their own dependencies and runtimes.
+    "workers/**",
   ]),
 ]);
 

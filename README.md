@@ -45,7 +45,7 @@ The research, pricing and roadmap are in [docs/PLAN.md](docs/PLAN.md).
 - featured slots, from the `/advertise` calendar;
 - the three directory-submission packages ($99 / $179 / $299), from `/submission-service`: the buyer gets a private intake link and you run the order from `/admin/submissions`.
 
-Subscriptions show "Opening soon" until their features ship (Phase 4).
+- plans (Link Monitor, Maker Pro, Always Featured), from `/pricing`, once `pnpm payments:sync-plans` has created them on each provider. Subscribers manage them at `/dashboard/billing`.
 
 ## Local development
 

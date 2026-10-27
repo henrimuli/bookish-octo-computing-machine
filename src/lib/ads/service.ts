@@ -7,6 +7,8 @@ import { sendEmail } from "@/lib/email";
 import { startCheckout } from "@/lib/payments/service";
 import { formatUsd } from "@/lib/payments/skus";
 import type { ProviderId } from "@/lib/payments/types";
+import { can } from "@/lib/billing/entitlements";
+import { PRO_EXTRA_WEEKS } from "@/lib/billing/plans";
 import { withRef } from "@/lib/board/links";
 import { addWeeks, formatWeekLabel, formatWeekRange, upcomingWeekKeys, weekBounds, weekKeyFor } from "@/lib/weeks";
 import {
@@ -41,14 +43,24 @@ const sameSlot = (placement: Placement, categorySlug: string | null) =>
 /**
  * Weeks that can be booked: whole weeks from next Monday on, so nobody pays
  * for a week that's half over. For newsletters the week is the issue that
- * goes out on its Monday.
+ * goes out on its Monday. Maker Pro books `PRO_EXTRA_WEEKS` further ahead.
  */
-export function bookableWeeks(now = new Date()): string[] {
-  return upcomingWeekKeys(now, BOOKING_HORIZON_WEEKS);
+export function bookableWeeks(now = new Date(), extraWeeks = 0): string[] {
+  return upcomingWeekKeys(now, BOOKING_HORIZON_WEEKS + extraWeeks);
 }
 
-export async function availability(placement: Placement, categorySlug: string | null, now = new Date()) {
-  const keys = bookableWeeks(now);
+/** Extra weeks of booking horizon for this user's plan. */
+export async function extraWeeksFor(userId: string, now = new Date()) {
+  return (await can(userId, "early_booking", now)) ? PRO_EXTRA_WEEKS : 0;
+}
+
+export async function availability(
+  placement: Placement,
+  categorySlug: string | null,
+  now = new Date(),
+  extraWeeks = 0,
+) {
+  const keys = bookableWeeks(now, extraWeeks);
   const weeks = keys.map((key) => ({ key, ...weekBounds(key) }));
   const from = weeks[0].startsAt;
   const to = weeks[weeks.length - 1].endsAt;
@@ -89,7 +101,9 @@ export async function bookSlot(input: BookInput, now = new Date()): Promise<{ bo
   const config = PLACEMENTS[input.placement];
   const skuId = config.skus[input.duration];
   if (!skuId) throw new BookingError("That duration isn't available for this placement.");
-  if (!bookableWeeks(now).includes(input.weekKey)) throw new BookingError("Pick a week from the calendar.");
+  if (!bookableWeeks(now, await extraWeeksFor(input.userId, now)).includes(input.weekKey)) {
+    throw new BookingError("Pick a week from the calendar.");
+  }
   if (input.placement === "category" && !input.categorySlug) throw new BookingError("Pick a category to sponsor.");
   const categorySlug = input.placement === "category" ? input.categorySlug : null;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { assignAction, deliverAction } from "@/app/admin/submissions/actions";
+import { assignAction, deliverAction, resendBadgeBlockAction } from "@/app/admin/submissions/actions";
 import { Button } from "@/components/ui/button";
 
 export function OrderControls({
@@ -57,5 +57,28 @@ export function OrderControls({
       )}
       {msg && <span className={msg.ok ? "text-sm text-success" : "text-sm text-danger"}>{msg.text}</span>}
     </div>
+  );
+}
+
+export function ResendBadgeBlock({ orderId }: { orderId: string }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const res = await resendBadgeBlockAction(orderId);
+            setMsg(res.ok ? (res.message ?? "Sent.") : res.error);
+          })
+        }
+      >
+        Email badge block
+      </Button>
+      {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
+    </span>
   );
 }

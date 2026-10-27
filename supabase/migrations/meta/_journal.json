@@ -78,6 +78,62 @@
       "when": 1793028254071,
       "tag": "20261026152414_directories_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793034797598,
+      "tag": "20261026171317_link_monitor",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793036348037,
+      "tag": "20261026173908_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793037841176,
+      "tag": "20261026180401_domain_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793039015602,
+      "tag": "20261026182335_affiliates",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793039938615,
+      "tag": "20261026183858_free_tools",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793040687239,
+      "tag": "20261026185127_launch_wall",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793041491914,
+      "tag": "20261026190451_ops_tooling",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793043438946,
+      "tag": "20261026193718_monitoring",
+      "breakpoints": true
     }
   ]
 }

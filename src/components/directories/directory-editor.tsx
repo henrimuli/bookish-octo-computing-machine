@@ -23,6 +23,7 @@ type Values = {
   queueEstimateDays: string;
   submissionNotes: string;
   instructions: string;
+  badgeSnippet: string;
   isActive: boolean;
 };
 
@@ -146,6 +147,20 @@ export function DirectoryEditor({ id, initial }: { id: string | null; initial: V
           onChange={(e) => set("instructions", e.target.value)}
         />
       </div>
+      {v.badgeRequired && (
+        <div className="space-y-1.5">
+          <Label htmlFor="badge">
+            Badge snippet (HTML the directory asks makers to embed; goes in the client badge block)
+          </Label>
+          <textarea
+            id="badge"
+            rows={3}
+            className={`${areaCls} font-mono`}
+            value={v.badgeSnippet}
+            onChange={(e) => set("badgeSnippet", e.target.value)}
+          />
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={pending}>
           Save
