@@ -273,7 +273,7 @@ describe.skipIf(!TEST_DB)("payment service (Postgres)", () => {
       sql`select c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
             where n.nspname = 'public' and c.relkind = 'r'`,
     );
-    const tables = [...rows];
+    const tables = rows.rows;
     expect(tables.length).toBeGreaterThan(5);
     expect(tables.filter((t) => !t.relrowsecurity).map((t) => t.relname)).toEqual([]);
   });

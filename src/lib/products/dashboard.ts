@@ -1,6 +1,6 @@
 import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { db, queryRows, schema } from "@/db";
 import { queueAhead } from "./service";
 
 /** A maker's listings with everything the dashboard shows. */
@@ -15,7 +15,7 @@ export async function dashboardProducts(userId: string) {
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.product.id);
 
-  const stats = (await db().execute(sql`
+  const stats = (await queryRows(sql`
     select p.id,
       (select count(*)::int from votes v where v.product_id = p.id) as votes,
       (select count(*)::int from comments c where c.product_id = p.id and c.status = 'visible') as comments,

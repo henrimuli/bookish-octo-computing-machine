@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { queryRows } from "@/db";
 import { addWeeks, weekKeyFor } from "@/lib/weeks";
 
 export type DuelProduct = {
@@ -29,7 +29,7 @@ export async function duelPair(
         sql`, `,
       )})`
     : sql``;
-  const rows = (await db().execute(sql`
+  const rows = (await queryRows(sql`
     select p.id, p.slug, p.name, p.tagline, left(p.description, 280) as description, p.logo_url,
       coalesce((select array_agg(c.name order by c.position) from product_categories pc
                 join categories c on c.slug = pc.category_slug where pc.product_id = p.id), '{}') as categories

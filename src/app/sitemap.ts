@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { queryRows } from "@/db";
 import { env } from "@/env";
 import { drEnabled } from "@/lib/metrics/service";
 import { weekKeyFor } from "@/lib/weeks";
@@ -33,20 +33,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const current = weekKeyFor(new Date());
-    const products = (await db().execute(sql`
+    const products = (await queryRows(sql`
       select slug, updated_at from products
       where status = 'approved' and launch_week_key <= ${current}
       order by approved_at desc limit 45000
     `)) as unknown as Array<{ slug: string; updated_at: Date | string }>;
-    const weeks = (await db().execute(sql`
+    const weeks = (await queryRows(sql`
       select distinct launch_week_key as key from products
       where status = 'approved' and launch_week_key <= ${current}
     `)) as unknown as Array<{ key: string }>;
-    const categories = (await db().execute(sql`select slug from categories`)) as unknown as Array<{ slug: string }>;
-    const dirs = (await db().execute(sql`select slug from directories where is_active`)) as unknown as Array<{
+    const categories = (await queryRows(sql`select slug from categories`)) as unknown as Array<{ slug: string }>;
+    const dirs = (await queryRows(sql`select slug from directories where is_active`)) as unknown as Array<{
       slug: string;
     }>;
-    const posts = (await db().execute(sql`
+    const posts = (await queryRows(sql`
       select slug, updated_at from posts where status = 'published' and published_at <= now()
     `)) as unknown as Array<{ slug: string; updated_at: Date | string }>;
 

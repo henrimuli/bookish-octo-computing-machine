@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { queryRows } from "@/db";
 import { weekBounds, weekKeyFor } from "@/lib/weeks";
 
 /** How long each paid tier stays in the homepage featured rail, from the start of its debut week. */
@@ -37,7 +37,7 @@ export async function featuredNow(now = new Date()): Promise<FeaturedItem[]> {
   const { alwaysFeatured } = await import("@/lib/billing/service");
   const always = await alwaysFeatured(now);
   const current = weekKeyFor(now);
-  const rows = (await db().execute(sql`
+  const rows = (await queryRows(sql`
     select slug, name, tagline, logo_url, tier, launch_week_key
     from products
     where status = 'approved' and tier in ('pro', 'premium', 'spotlight') and launch_week_key <= ${current}
@@ -84,7 +84,7 @@ export async function alwaysFeaturedSponsor(categorySlug: string, now = new Date
   const { alwaysFeatured } = await import("@/lib/billing/service");
   const always = await alwaysFeatured(now);
   if (always.length === 0) return null;
-  const inCategory = (await db().execute(sql`
+  const inCategory = (await queryRows(sql`
     select product_id from product_categories where category_slug = ${categorySlug}
   `)) as unknown as Array<{ product_id: string }>;
   const ids = new Set(inCategory.map((r) => r.product_id));
