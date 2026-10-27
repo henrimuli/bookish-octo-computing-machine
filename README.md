@@ -43,7 +43,7 @@ The research, pricing and roadmap are in [docs/PLAN.md](docs/PLAN.md).
 | SEO                | Sitemap, robots, JSON-LD per product, generated Open Graph images, `llms.txt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Foundations        | Next.js 16 (Cache Components), Supabase Postgres + Drizzle (RLS on every table), Better Auth magic link + Google/GitHub, Paystack + PayPal behind one `PaymentProvider`, R2, Resend, CI                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
-**Admin access:** the account whose email matches `ADMIN_EMAIL` becomes an admin when it signs up.
+**Admin access:** the admin area starts at `/admin/dashboard` (what needs attention, revenue, orders, scheduled jobs and setup status). `ADMIN_EMAIL` is always the owner, checked on every request, so it works for accounts created before the variable was set. Add teammates by email at `/admin/users` (stored in `admin_users`; roles are recorded for permissions to come, and every role has full access for now). Signed-out visitors to `/admin` are sent to sign-in; signed-in non-staff get a 404.
 
 **What can be bought today:**
 
@@ -176,7 +176,8 @@ src/
   lib/metrics/         DR providers and snapshots
   lib/affiliates/      referrals and commissions
   lib/tools/           free dofollow and DR checkers
-  lib/cron.ts          shared cron runner (daily and hourly routes)
+  lib/admin/           admin dashboard data, admin users, setup checklist
+  lib/cron.ts          shared cron runner (daily and hourly routes), logs each run to cron_runs
   lib/storage.ts       Cloudflare R2
   env.ts               environment validation
 workers/               off-Vercel workers: screenshots (Playwright container)

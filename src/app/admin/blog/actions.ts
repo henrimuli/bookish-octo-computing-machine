@@ -11,7 +11,7 @@ type Result = { ok: true; id: string; slug: string } | { ok: false; error: strin
 
 async function staffOnly() {
   const user = await getCurrentUser();
-  return user && isStaff(user) ? user : null;
+  return user && (await isStaff(user)) ? user : null;
 }
 
 const uuid = z.string().uuid();

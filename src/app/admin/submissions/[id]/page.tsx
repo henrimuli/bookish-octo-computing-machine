@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { eq, inArray } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -40,7 +40,7 @@ async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "pa
     db()
       .select({ id: schema.user.id, name: schema.user.name })
       .from(schema.user)
-      .where(inArray(schema.user.role, ["admin", "ops"])),
+      .innerJoin(schema.adminUsers, eq(schema.adminUsers.email, sql`lower(${schema.user.email})`)),
     inboxAddress(order),
     messagesFor(order.id),
     order.badgePreference === "allow" ? badgeBlockFor(order.id) : null,

@@ -10,7 +10,7 @@ const id = z.string().uuid();
 
 async function staff() {
   const user = await getCurrentUser();
-  return !!user && isStaff(user);
+  return !!user && (await isStaff(user));
 }
 
 export async function approveReferralAction(referralId: string): Promise<Result> {

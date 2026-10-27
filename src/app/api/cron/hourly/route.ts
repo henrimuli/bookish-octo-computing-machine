@@ -11,7 +11,7 @@ import { reconcilePendingOrders } from "@/lib/payments/service";
  * jobs is safe.
  */
 export function GET(request: Request) {
-  return runCron(request, [
+  return runCron(request, "hourly", [
     ["payments", () => reconcilePendingOrders()],
     ["ads", () => settleBookings()],
   ]);

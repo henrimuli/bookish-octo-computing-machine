@@ -9,7 +9,7 @@ type Result = { ok: true } | { ok: false; error: string };
 
 async function staffOnly() {
   const user = await getCurrentUser();
-  return user && isStaff(user) ? user : null;
+  return user && (await isStaff(user)) ? user : null;
 }
 
 export async function approveAction(productId: string): Promise<Result> {

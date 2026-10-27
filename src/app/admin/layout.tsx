@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Container } from "@/components/ui/primitives";
 
 const links = [
-  { href: "/admin", label: "Review queue" },
+  { href: "/admin/dashboard", label: "Dashboard" },
+  { href: "/admin/review", label: "Review queue" },
   { href: "/admin/submissions", label: "Submissions" },
   { href: "/admin/directories", label: "Directories" },
   { href: "/admin/ads", label: "Ads" },
   { href: "/admin/blog", label: "Blog" },
   { href: "/admin/newsletter", label: "Newsletter" },
   { href: "/admin/affiliates", label: "Affiliates" },
+  { href: "/admin/users", label: "Admin users" },
 ];
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
