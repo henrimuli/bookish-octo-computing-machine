@@ -7,6 +7,7 @@ import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
 import { limit } from "@/lib/billing/entitlements";
 import { checkLink, targetDomain, type LinkCheckResult } from "@/lib/directories/verify";
+import { captureEvidence, evidenceKey } from "@/lib/evidence";
 import {
   BATCH_SIZE,
   CONCURRENCY,
@@ -252,10 +253,12 @@ async function runCheck(link: TrackedLink, now: Date): Promise<CheckOutcome> {
   const result = await checkLink(link.url, link.targetDomain);
   const failures = failed(result.verdict) ? link.failures + 1 : 0;
   const change = classifyChange(link.lastVerdict, result.verdict, link.failures, failures);
+  // Evidence of every change: what the listing looked like when it turned nofollow, vanished or came back.
+  const evidenceUrl = change ? await captureEvidence(link.url, evidenceKey(link.submissionId ?? link.id, now)) : null;
 
   await db()
     .insert(linkChecks)
-    .values({ trackedLinkId: link.id, submissionId: link.submissionId, checkedAt: now, ...result });
+    .values({ trackedLinkId: link.id, submissionId: link.submissionId, checkedAt: now, ...result, evidenceUrl });
   const [updated] = await db()
     .update(trackedLinks)
     .set({
@@ -290,6 +293,7 @@ async function runCheck(link: TrackedLink, now: Date): Promise<CheckOutcome> {
         linkHttpStatus: result.httpStatus,
         linkCheckedAt: now,
         ...(status ? { status } : {}),
+        ...(evidenceUrl ? { evidenceUrl } : {}),
       })
       .where(eq(submissions.id, link.submissionId));
   }

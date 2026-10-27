@@ -222,21 +222,30 @@ export async function refreshDirectoryStats() {
     update directories d set
       acceptance_rate = s.rate,
       avg_days_to_live = s.days,
-      live_count = s.live,
-      link_type_observed = coalesce(s.observed, d.link_type_observed)
+      live_count = s.live
     from (
       select directory_id,
         count(*) filter (where status in ('live', 'dead'))::float8
           / nullif(count(*) filter (where status in ('live', 'dead', 'rejected', 'replaced')), 0) as rate,
         avg(extract(epoch from (live_at - submitted_at)) / 86400)
           filter (where live_at is not null and submitted_at is not null) as days,
-        count(*) filter (where status = 'live')::int as live,
-        case
-          when count(*) filter (where link_verdict = 'dofollow') > 0 then 'dofollow'::link_type
-          when count(*) filter (where link_verdict = 'nofollow') > 0 then 'nofollow'::link_type
-        end as observed
+        count(*) filter (where status = 'live')::int as live
       from submissions group by directory_id
     ) s
     where s.directory_id = d.id
+  `);
+  // Observed link type: whichever of dofollow/nofollow our checks saw more of in the last 90 days (ties: dofollow).
+  await db().execute(sql`
+    update directories d set link_type_observed = s.observed
+    from (
+      select sub.directory_id,
+        case when count(*) filter (where c.verdict = 'dofollow') >= count(*) filter (where c.verdict = 'nofollow')
+          then 'dofollow'::link_type else 'nofollow'::link_type end as observed
+      from link_checks c
+      join submissions sub on sub.id = c.submission_id
+      where c.checked_at > now() - interval '90 days' and c.verdict in ('dofollow', 'nofollow')
+      group by sub.directory_id
+    ) s
+    where s.directory_id = d.id and d.link_type_observed is distinct from s.observed
   `);
 }

@@ -52,6 +52,10 @@ export const directories = pgTable(
     avgDaysToLive: real("avg_days_to_live"),
     liveCount: integer("live_count").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    // Monthly liveness audit of the homepage. Three failures in a row deactivate it.
+    auditedAt: timestamp("audited_at", { withTimezone: true }),
+    auditFailures: integer("audit_failures").notNull().default(0),
+    auditError: text("audit_error"),
     lastAuditedAt: timestamp("last_audited_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -221,6 +225,9 @@ export const trackedLinks = pgTable(
     /** Daily checks for the first 14 days after this, then weekly. */
     liveAt: timestamp("live_at", { withTimezone: true }).notNull().defaultNow(),
     nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Whether Google has the listing page indexed (SERP API, weekly). Null until checked. */
+    indexed: boolean("indexed"),
+    indexedCheckedAt: timestamp("indexed_checked_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -243,6 +250,8 @@ export const linkChecks = pgTable(
     rel: text("rel"),
     anchor: text("anchor"),
     error: text("error"),
+    /** Screenshot of the listing at this check (when it went live or changed). */
+    evidenceUrl: text("evidence_url"),
   },
   (t) => [
     index("link_checks_submission_idx").on(t.submissionId, t.checkedAt),

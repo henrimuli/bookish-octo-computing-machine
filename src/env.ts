@@ -57,6 +57,15 @@ const schema = z.object({
   /** 32 random bytes, base64. Encrypts directory account passwords. */
   CREDENTIALS_KEY: optional,
 
+  // Screenshot worker (workers/screenshot) for listing evidence. Unset: staff paste evidence URLs by hand.
+  WORKER_URL: optional,
+  WORKER_SECRET: optional,
+
+  // SERP API for the weekly "is this listing indexed by Google?" check. Unset hides it.
+  SERP_PROVIDER: z.enum(["serpapi", "dataforseo"]).optional().catch(undefined),
+  /** SerpApi: its API key. DataForSEO: "login:password". */
+  SERP_API_KEY: optional,
+
   // Vercel Cron sends this as a bearer token.
   CRON_SECRET: optional,
 });
