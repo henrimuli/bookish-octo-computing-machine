@@ -12,9 +12,9 @@ export function setupChecklist(e: Env): SetupItem[] {
     { label: "Admin email", ok: has("ADMIN_EMAIL"), required: true, hint: "ADMIN_EMAIL" },
     {
       label: "Email (Resend)",
-      ok: has("RESEND_API_KEY", "EMAIL_FROM"),
+      ok: has("RESEND_API_KEY"),
       required: true,
-      hint: "RESEND_API_KEY, EMAIL_FROM",
+      hint: "RESEND_API_KEY",
     },
     { label: "Cron secret", ok: has("CRON_SECRET"), required: true, hint: "CRON_SECRET" },
     {

@@ -6,7 +6,7 @@ import { magicLink } from "better-auth/plugins/magic-link";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { cache } from "react";
-import { notFound, redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { env } from "@/env";
 import { sendEmail } from "@/lib/email";
@@ -152,12 +152,12 @@ export async function isStaff(user: Pick<SessionUser, "email"> | null): Promise<
 
 /**
  * Staff only. Signed-out visitors go to sign-in; signed-in non-staff get a
- * 404 so the admin area isn't advertised.
+ * 403 page (app/admin/forbidden.tsx) saying which account they're using.
  */
 export async function requireStaff(returnTo = "/admin/dashboard"): Promise<SessionUser & { staffRole: StaffRole }> {
   const user = await requireUser(returnTo);
   const role = await staffRole(user);
-  if (!role) notFound();
+  if (!role) forbidden();
   return { ...user, staffRole: role };
 }
 

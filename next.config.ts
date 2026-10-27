@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  // forbidden(): admin pages show an "admins only" page (403) to signed-in non-staff.
+  experimental: { authInterrupts: true },
   turbopack: {
     rules: {
       "*.css": {
