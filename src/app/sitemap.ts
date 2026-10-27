@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(drEnabled() ? ["/tools/dr-checker"] : []),
     "/docs",
     "/directories",
+    "/launch-wall",
     "/submission-service",
     "/categories",
     "/how-ranking-works",

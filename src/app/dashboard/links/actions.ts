@@ -12,6 +12,7 @@ import {
   removeLink,
   type TrackedLink,
 } from "@/lib/links/service";
+import { setLaunchWall } from "@/lib/links/wall";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 const id = z.string().uuid();
@@ -52,4 +53,11 @@ export async function removeLinkAction(linkId: string): Promise<Result<{ data: n
 export async function linkHistoryAction(linkId: string) {
   if (!id.safeParse(linkId).success) return { ok: false as const, error: "Not found." };
   return guard((userId) => linkHistory(userId, linkId));
+}
+
+export async function setLaunchWallAction(on: boolean) {
+  const res = await guard((userId) => setLaunchWall(userId, on === true));
+  revalidatePath("/dashboard/links");
+  revalidatePath("/launch-wall");
+  return res;
 }
