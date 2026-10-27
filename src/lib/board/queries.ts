@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, schema } from "@/db";
+import { db, queryRows, schema } from "@/db";
 import { weekBounds, weekKeyFor } from "@/lib/weeks";
 import { COMMENT_BONUS, MIN_COMMENT_LENGTH, rank } from "./ranking";
 
@@ -54,7 +54,7 @@ export async function boardForWeeks(weekKeys: string[], viewerId: string | null 
     weekKeys.map((k) => sql`${k}`),
     sql`, `,
   );
-  const rows = (await db().execute(sql`
+  const rows = (await queryRows(sql`
     select p.id, p.slug, p.name, p.tagline, p.logo_url, p.tier, p.approved_at, p.launch_week_key,
       (select count(*) from votes v where v.product_id = p.id) as votes,
       (select count(*) from comments c where c.product_id = p.id and c.status = 'visible') as comments,
@@ -108,7 +108,7 @@ export async function weekArchive(limit = 52) {
 /** Live products in a category, most voted first. */
 export async function categoryProducts(slug: string, limit = 60) {
   const current = weekKeyFor(new Date());
-  return (await db().execute(sql`
+  return (await queryRows(sql`
     select p.id, p.slug, p.name, p.tagline, p.logo_url, p.launch_week_key,
       (select count(*)::int from votes v where v.product_id = p.id) as votes
     from products p
@@ -129,7 +129,7 @@ export async function categoryProducts(slug: string, limit = 60) {
 
 export async function categoriesWithCounts() {
   const current = weekKeyFor(new Date());
-  return (await db().execute(sql`
+  return (await queryRows(sql`
     select c.slug, c.name, count(p.id)::int as count
     from categories c
     left join product_categories pc on pc.category_slug = c.slug
@@ -197,7 +197,7 @@ export async function getProductPage(slug: string, viewer: { id: string; staff: 
 /** Live products sharing a category, excluding this one. */
 export async function similarProducts(productId: string, limit = 6) {
   const current = weekKeyFor(new Date());
-  return (await db().execute(sql`
+  return (await queryRows(sql`
     select p.slug, p.name, p.tagline, p.logo_url, count(*) as shared
     from product_categories mine
     join product_categories other on other.category_slug = mine.category_slug and other.product_id <> mine.product_id
@@ -212,7 +212,7 @@ export async function similarProducts(productId: string, limit = 6) {
 /** Daily vote counts for the product's debut week (for the sparkline). */
 export async function votesByDay(productId: string, weekKey: string) {
   const startsAt = sql`${weekBounds(weekKey).startsAt.toISOString()}::timestamptz`;
-  const rows = (await db().execute(sql`
+  const rows = (await queryRows(sql`
     select floor(extract(epoch from (created_at - ${startsAt})) / 86400)::int as day, count(*)::int as n
     from votes where product_id = ${productId}
       and created_at >= ${startsAt} and created_at < ${startsAt} + interval '7 days'
@@ -248,7 +248,7 @@ export async function builderByHandle(handle: string) {
   });
   if (!u) return null;
   const current = weekKeyFor(new Date());
-  const products = (await db().execute(sql`
+  const products = (await queryRows(sql`
     select p.slug, p.name, p.tagline, p.logo_url, p.launch_week_key,
       (select count(*)::int from votes v where v.product_id = p.id) as votes
     from products p
@@ -267,7 +267,7 @@ export async function builderByHandle(handle: string) {
 
 /** Recent weekly winners for the homepage. */
 export async function recentWinners(limit = 3) {
-  return (await db().execute(sql`
+  return (await queryRows(sql`
     select a.period_key, a.place, p.slug, p.name, p.tagline, p.logo_url
     from awards a join products p on p.id = a.product_id
     where a.scope = 'week'
