@@ -20,7 +20,7 @@ const uuid = z.string().uuid();
 
 async function staffOnly() {
   const user = await getCurrentUser();
-  return user && isStaff(user) ? user : null;
+  return user && (await isStaff(user)) ? user : null;
 }
 
 async function run(fn: () => Promise<string | void>): Promise<Result> {

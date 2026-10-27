@@ -5,7 +5,8 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
+import { forbidden, redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { env } from "@/env";
 import { sendEmail } from "@/lib/email";
@@ -52,8 +53,8 @@ function createAuth() {
             const handle = await uniqueSlug(base, async (h) =>
               Boolean(await db().query.user.findFirst({ where: eq(schema.user.handle, h), columns: { id: true } })),
             );
-            const isAdmin = e.ADMIN_EMAIL && data.email.toLowerCase() === e.ADMIN_EMAIL.toLowerCase();
-            return { data: { ...data, handle, role: isAdmin ? "admin" : "user" } };
+            // Admin access lives in admin_users (see staffRole), not on the user row.
+            return { data: { ...data, handle, role: "user" } };
           },
         },
       },
@@ -111,15 +112,53 @@ export async function requireUser(returnTo = "/"): Promise<SessionUser> {
   return user;
 }
 
-export function isStaff(user: SessionUser | null): boolean {
-  return user?.role === "admin" || user?.role === "ops";
+export type StaffRole = "owner" | "admin" | "ops";
+
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+/**
+ * The admin role for an email, or null. ADMIN_EMAIL is always the owner and
+ * gets its admin_users row on first check, so it works for accounts created
+ * before the variable was set. Cached per request.
+ */
+const roleForEmail = cache(async (rawEmail: string): Promise<StaffRole | null> => {
+  const email = normalizeEmail(rawEmail);
+  const owner = env().ADMIN_EMAIL ? normalizeEmail(env().ADMIN_EMAIL!) : null;
+  const { adminUsers } = schema;
+  if (email && email === owner) {
+    await db()
+      .insert(adminUsers)
+      .values({ email, role: "owner", lastSeenAt: new Date() })
+      .onConflictDoUpdate({ target: adminUsers.email, set: { role: "owner", lastSeenAt: new Date() } });
+    return "owner";
+  }
+  const row = await db().query.adminUsers.findFirst({ where: eq(adminUsers.email, email) });
+  if (!row) return null;
+  // Touch at most hourly.
+  if (!row.lastSeenAt || Date.now() - row.lastSeenAt.getTime() > 3_600_000) {
+    await db().update(adminUsers).set({ lastSeenAt: new Date() }).where(eq(adminUsers.id, row.id));
+  }
+  // A former ADMIN_EMAIL keeps access but is no longer the owner.
+  return row.role === "owner" ? "admin" : row.role;
+});
+
+export async function staffRole(user: Pick<SessionUser, "email"> | null): Promise<StaffRole | null> {
+  return user?.email ? roleForEmail(user.email) : null;
 }
 
-/** Admin/ops only; everyone else gets a 404 so the admin area isn't advertised. */
-export async function requireStaff(): Promise<SessionUser> {
-  const user = await getCurrentUser();
-  if (!user || !isStaff(user)) notFound();
-  return user;
+export async function isStaff(user: Pick<SessionUser, "email"> | null): Promise<boolean> {
+  return (await staffRole(user)) !== null;
+}
+
+/**
+ * Staff only. Signed-out visitors go to sign-in; signed-in non-staff get a
+ * 403 page (app/admin/forbidden.tsx) saying which account they're using.
+ */
+export async function requireStaff(returnTo = "/admin/dashboard"): Promise<SessionUser & { staffRole: StaffRole }> {
+  const user = await requireUser(returnTo);
+  const role = await staffRole(user);
+  if (!role) forbidden();
+  return { ...user, staffRole: role };
 }
 
 export function enabledSocialProviders(): Array<"google" | "github"> {

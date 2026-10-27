@@ -7,7 +7,7 @@ import { importDirectoriesCsv, saveDirectory, type DirectoryInput } from "@/lib/
 
 async function staffOnly() {
   const user = await getCurrentUser();
-  return user && isStaff(user) ? user : null;
+  return user && (await isStaff(user)) ? user : null;
 }
 
 export async function saveDirectoryAction(

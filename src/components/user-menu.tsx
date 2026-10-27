@@ -18,8 +18,8 @@ export async function UserMenu() {
   }
   return (
     <div className="flex items-center gap-2 text-sm">
-      {isStaff(user) && (
-        <ButtonLink href="/admin" variant="ghost" size="sm">
+      {(await isStaff(user)) && (
+        <ButtonLink href="/admin/dashboard" variant="ghost" size="sm">
           Admin
         </ButtonLink>
       )}

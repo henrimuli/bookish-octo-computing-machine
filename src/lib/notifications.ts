@@ -40,7 +40,11 @@ export async function notifyProductSubmitted(p: Product) {
   await sendEmail({
     to: env().ADMIN_EMAIL ?? site.supportEmail,
     subject: `Review: ${p.name} (${p.tier})`,
-    ...compose([`${p.name}: ${p.tagline}`, `Website: ${p.websiteUrl}`, `[Open the review queue](${url("/admin")})`]),
+    ...compose([
+      `${p.name}: ${p.tagline}`,
+      `Website: ${p.websiteUrl}`,
+      `[Open the review queue](${url("/admin/review")})`,
+    ]),
   });
 }
 

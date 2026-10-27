@@ -53,7 +53,8 @@ export default function ProductPage(props: PageProps<"/p/[slug]">) {
 async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] }) {
   const { slug } = await params;
   const viewer = await getCurrentUser().catch(() => null);
-  const data = await getProductPage(slug, viewer ? { id: viewer.id, staff: isStaff(viewer) } : null);
+  const staff = viewer ? await isStaff(viewer) : false;
+  const data = await getProductPage(slug, viewer ? { id: viewer.id, staff } : null);
   if (!data) notFound();
 
   const p = data.product;
@@ -75,7 +76,7 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
     name: c.name,
     handle: c.handle,
     isMaker: c.userId === p.createdBy,
-    canDelete: viewer ? viewer.id === c.userId || isStaff(viewer) : false,
+    canDelete: viewer ? viewer.id === c.userId || staff : false,
   }));
 
   const jsonLd = {

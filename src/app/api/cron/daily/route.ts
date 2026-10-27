@@ -13,6 +13,7 @@ import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
 import { runCron } from "@/lib/cron";
+import { pruneCronRuns } from "@/lib/admin/overview";
 
 /**
  * One daily job (Vercel Hobby allows few crons), scheduled just after Monday
@@ -20,7 +21,7 @@ import { runCron } from "@/lib/cron";
  * Payments and ads also run from /api/cron/hourly when that's scheduled.
  */
 export function GET(request: Request) {
-  return runCron(request, [
+  return runCron(request, "daily", [
     ["weeks", () => closeEndedWeeks()],
     ["periods", () => closeEndedPeriods()],
     ["newsletter", () => sendWeeklyDigest()],
@@ -37,5 +38,6 @@ export function GET(request: Request) {
     ["directory audit", () => auditDirectories()],
     ["dr", () => snapshotDomains()],
     ["affiliates", () => approveReferrals()],
+    ["cron history", () => pruneCronRuns()],
   ]);
 }

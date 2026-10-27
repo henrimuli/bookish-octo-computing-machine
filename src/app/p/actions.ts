@@ -41,7 +41,7 @@ export async function removeCommentAction(commentId: string): Promise<Result> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first.", needsAuth: true };
   try {
-    await removeComment(commentId, { id: user.id, staff: isStaff(user) });
+    await removeComment(commentId, { id: user.id, staff: await isStaff(user) });
   } catch (err) {
     if (err instanceof EngagementError) return { ok: false, error: err.message };
     throw err;
