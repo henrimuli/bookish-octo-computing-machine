@@ -1,11 +1,9 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
-/** Per-order inbox helpers: addresses, signed inbound posts, verification links. Pure. */
+/** Per-order inbox helpers: addresses and verification links. Pure. */
 
 const KEY = /^[a-z0-9]{6,16}$/;
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
-/** Inbound posts older (or newer) than this are refused, so a captured post can't be replayed later. */
-export const INBOUND_MAX_SKEW_MS = 5 * 60_000;
 
 export function newInboxKey(length = 10): string {
   return [...randomBytes(length)].map((b) => ALPHABET[b % ALPHABET.length]).join("");
@@ -19,23 +17,17 @@ export function inboxKeyFrom(address: string, domain: string): string | null {
   return KEY.test(local) ? local : null;
 }
 
-export function signInbound(body: string, timestamp: string, secret: string): string {
-  return createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
-}
-
-export function verifyInbound(
-  body: string,
-  timestamp: string | null,
-  signature: string | null,
-  secret: string,
-  now = Date.now(),
-): boolean {
-  if (!timestamp || !signature || !/^\d{10,13}$/.test(timestamp)) return false;
-  const ms = timestamp.length <= 10 ? Number(timestamp) * 1000 : Number(timestamp);
-  if (Math.abs(now - ms) > INBOUND_MAX_SKEW_MS) return false;
-  const expected = Buffer.from(signInbound(body, timestamp, secret), "hex");
-  const given = Buffer.from(signature.replace(/^sha256=/, ""), "hex");
-  return given.length === expected.length && timingSafeEqual(given, expected);
+/**
+ * Recipients of a Resend `email.received` event worth checking, envelope
+ * recipients (`received_for`, which covers BCC and forwards) first. Null when
+ * the event isn't a received email.
+ */
+export function receivedEvent(payload: unknown): { emailId: string; recipients: string[] } | null {
+  const p = payload as { type?: string; data?: { email_id?: unknown; to?: unknown; received_for?: unknown } } | null;
+  if (p?.type !== "email.received" || typeof p.data?.email_id !== "string") return null;
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+  const recipients = [...new Set([...list(p.data.received_for), ...list(p.data.to)])];
+  return { emailId: p.data.email_id, recipients };
 }
 
 const LIKELY = /verif|confirm|activat|validate|magic|token|signup|sign-up|register|complete/i;

@@ -1,0 +1,2 @@
+ALTER TABLE "submission_messages" ADD COLUMN "resend_email_id" text;--> statement-breakpoint
+ALTER TABLE "submission_messages" ADD CONSTRAINT "submission_messages_resend_email_id_unique" UNIQUE("resend_email_id");

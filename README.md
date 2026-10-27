@@ -34,7 +34,7 @@ The research, pricing and roadmap are in [docs/PLAN.md](docs/PLAN.md).
 | Directories        | `/directories`: 100 launch directories seeded (name, URL, niche, pricing, stated link type, badge and "needs the maker" flags), filterable. DR is empty until you add it: edit at `/admin/directories` or import a CSV (e.g. your Ahrefs export). Acceptance rate, days to live and the link type we actually observed update daily from outcomes                                                                                                                                                                                                                                                                                       |
 | DIY tracker        | `/dashboard/tracker`: per product, every directory with a status. Marking one live with its URL fetches the listing and verifies the link (loads, links to the product, rel, anchor)                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Submission service | `/submission-service`: buy without an account (or "boost" an existing listing; Spotlight opens its bundled Starter order). The buyer gets a private link: intake form (product kit, badge preference, account permission), then a live dashboard with CSV, print-to-PDF and a shareable read-only report (`/r/…`). Targets are niche-matched and skip guided, nofollow and (unless allowed) badge directories. Ops console at `/admin/submissions`: kanban, per-directory instructions, status/URL/notes per row, bulk updates, automatic replacement of rejections, delivery email. Daily digests tell clients about new live listings |
-| Ops tooling        | Per-order inboxes (`{key}@INBOUND_EMAIL_DOMAIN`, via `workers/inbound-email`) shown on the admin order page with likely confirmation links. Directory logins stored encrypted (AES-256-GCM) and handed over on the private order page after delivery. Badge block: badge directories are held until the client's site shows the badge, then swapped for badge-free ones after 7 days. Evidence screenshots (`workers/screenshot`) when a listing goes live or changes                                                                                                                                                                   |
+| Ops tooling        | Per-order inboxes (`{key}@INBOUND_EMAIL_DOMAIN`, received by Resend) shown on the admin order page with likely confirmation links. Directory logins stored encrypted (AES-256-GCM) and handed over on the private order page after delivery. Badge block: badge directories are held until the client's site shows the badge, then swapped for badge-free ones after 7 days. Evidence screenshots (`workers/screenshot`) when a listing goes live or changes                                                                                                                                                                            |
 | Link Monitor       | `/dashboard/links`: every live listing (tracker, orders) plus any URL you add, re-checked daily for 14 days then weekly; one alert email per owner per run when a link turns nofollow, disappears or recovers. Weekly Google index check (SERP API), DR snapshots with before/after charts, and a monthly directory audit that retires dead directories                                                                                                                                                                                                                                                                                 |
 | Subscriptions      | Link Monitor (100 / 500 links), Maker Pro and Always Featured on Paystack and PayPal, with entitlements, dunning emails and `/dashboard/billing`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Affiliates         | `/dashboard/affiliate`: a `?via=` link (60-day cookie), commission on paid orders, approved after the 30-day refund window, adjusted on refunds. Payouts tracked at `/admin/affiliates`                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -115,7 +115,10 @@ After either provider is configured, run `pnpm payments:sync-plans` once per env
 
 Verify `debutyard.com` in Resend, then set `RESEND_API_KEY`, `EMAIL_FROM` and `ADMIN_EMAIL`.
 
-For newsletter open/click stats, turn on open and click tracking for the domain, add a webhook to `https://debutyard.com/api/webhooks/resend` with the `email.opened` and `email.clicked` events, and copy its signing secret (`whsec_…`) into `RESEND_WEBHOOK_SECRET`.
+Add one webhook to `https://debutyard.com/api/webhooks/resend` and copy its signing secret (`whsec_…`) into `RESEND_WEBHOOK_SECRET`. Subscribe it to:
+
+- `email.received`, for per-order submission inboxes. Turn on receiving for the inbox domain (e.g. `submit.debutyard.com`: add the MX record Resend shows) and set `INBOUND_EMAIL_DOMAIN` to it. Every address on the domain is accepted; the app matches the part before the `@` to an order and ignores the rest.
+- `email.opened` and `email.clicked`, for newsletter stats (also turn on open and click tracking for the sending domain).
 
 ### Optional services
 
@@ -123,7 +126,7 @@ For newsletter open/click stats, turn on open and click tracking for the domain,
 - **DR provider** (`DR_PROVIDER`, `DR_API_KEY`): DR snapshots and the DR checker.
 - **SERP API** (`SERP_PROVIDER`, `SERP_API_KEY`): the weekly index check.
 - **Screenshot worker** (`WORKER_URL`, `WORKER_SECRET`): deploy `workers/screenshot` (see its README).
-- **Inbound email** (`INBOUND_EMAIL_DOMAIN`, `INBOUND_SECRET`) and `CREDENTIALS_KEY`: deploy `workers/inbound-email` (see its README).
+- **Order inboxes** (`INBOUND_EMAIL_DOMAIN`) and `CREDENTIALS_KEY`: see Resend above.
 
 ### Vercel (hosting)
 
@@ -176,7 +179,7 @@ src/
   lib/cron.ts          shared cron runner (daily and hourly routes)
   lib/storage.ts       Cloudflare R2
   env.ts               environment validation
-workers/               off-Vercel workers: inbound email (Cloudflare), screenshots (Playwright container)
+workers/               off-Vercel workers: screenshots (Playwright container)
 supabase/migrations/   SQL migrations (generated by Drizzle, applied by the Supabase CLI)
 scripts/               one-off scripts (plan sync)
 tests/                 integration tests

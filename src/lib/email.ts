@@ -14,7 +14,8 @@ export type Email = {
 
 let client: Resend | undefined;
 
-function resend(): Resend | null {
+/** The Resend client, or null in development without a key (production throws instead). */
+export function resendClient(): Resend | null {
   const { RESEND_API_KEY, NODE_ENV } = env();
   if (!RESEND_API_KEY) {
     if (NODE_ENV === "production") throw new Error("Missing environment variables: RESEND_API_KEY");
@@ -26,7 +27,7 @@ function resend(): Resend | null {
 
 /** Sends through Resend; without an API key (local dev) it logs the email instead. */
 export async function sendEmail(email: Email): Promise<void> {
-  const r = resend();
+  const r = resendClient();
   if (!r) {
     console.info(`[email] to=${email.to} subject="${email.subject}"\n${email.text}`);
     return;
@@ -43,7 +44,7 @@ export const BATCH_SIZE = 100;
  * Resend drops a batch it has already accepted under the same key.
  */
 export async function sendBatch(emails: Email[], idempotencyKey: string): Promise<number> {
-  const r = resend();
+  const r = resendClient();
   if (!r) {
     console.info(`[email] batch "${emails[0]?.subject ?? ""}" to ${emails.length} recipients (logged, not sent)`);
     return emails.length;
