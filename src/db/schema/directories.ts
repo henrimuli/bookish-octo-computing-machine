@@ -109,6 +109,10 @@ export const submissionOrders = pgTable(
     intakeAt: timestamp("intake_at", { withTimezone: true }),
     startedAt: timestamp("started_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** Included Link Monitor ends (set at delivery: 3/6/12 months by package). */
+    monitorUntil: timestamp("monitor_until", { withTimezone: true }),
+    /** When the end of included monitoring was handled (links kept on a plan, or stopped). */
+    monitorEndedAt: timestamp("monitor_ended_at", { withTimezone: true }),
     /** Last status-change digest sent to the client. */
     digestAt: timestamp("digest_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -175,14 +179,53 @@ export const submissions = pgTable(
   ],
 );
 
-/** Every backlink check we run on a live listing. */
+export const trackedLinkSource = pgEnum("tracked_link_source", ["tracker", "order", "manual"]);
+
+/**
+ * A live backlink that Link Monitor re-checks: from the DIY tracker, a
+ * done-for-you order, or a URL the user added. Order links without an
+ * account alert `alert_email` instead.
+ */
+export const trackedLinks = pgTable(
+  "tracked_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "cascade" }),
+    /** Where alerts go when there's no account (order links). */
+    alertEmail: text("alert_email"),
+    submissionId: uuid("submission_id")
+      .unique()
+      .references(() => submissions.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    targetDomain: text("target_domain").notNull(),
+    expectedAnchor: text("expected_anchor"),
+    source: trackedLinkSource("source").notNull(),
+    lastVerdict: linkVerdict("last_verdict"),
+    lastRel: text("last_rel"),
+    lastAnchor: text("last_anchor"),
+    lastStatusCode: integer("last_status_code"),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    /** Consecutive checks that found the link missing or the page unreachable. */
+    failures: integer("failures").notNull().default(0),
+    /** Daily checks for the first 14 days after this, then weekly. */
+    liveAt: timestamp("live_at", { withTimezone: true }).notNull().defaultNow(),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull().defaultNow(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("tracked_links_due_idx").on(t.active, t.nextCheckAt),
+    index("tracked_links_owner_idx").on(t.ownerUserId),
+  ],
+);
+
+/** Every backlink check we run on a live listing or a tracked link. */
 export const linkChecks = pgTable(
   "link_checks",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    submissionId: uuid("submission_id")
-      .notNull()
-      .references(() => submissions.id, { onDelete: "cascade" }),
+    submissionId: uuid("submission_id").references(() => submissions.id, { onDelete: "cascade" }),
+    trackedLinkId: uuid("tracked_link_id").references(() => trackedLinks.id, { onDelete: "cascade" }),
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
     verdict: linkVerdict("verdict").notNull(),
     httpStatus: integer("http_status"),
@@ -190,5 +233,8 @@ export const linkChecks = pgTable(
     anchor: text("anchor"),
     error: text("error"),
   },
-  (t) => [index("link_checks_submission_idx").on(t.submissionId, t.checkedAt)],
+  (t) => [
+    index("link_checks_submission_idx").on(t.submissionId, t.checkedAt),
+    index("link_checks_tracked_link_idx").on(t.trackedLinkId, t.checkedAt),
+  ],
 );

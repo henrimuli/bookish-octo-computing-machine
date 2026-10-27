@@ -172,6 +172,29 @@ export async function myLaunches(user: ApiUser | null) {
   }));
 }
 
+export async function myLinks(user: ApiUser | null) {
+  if (!user) throw new ApiError("This needs an API token. Create one at " + site("/dashboard/api"), 401);
+  const { linksForUser, linkUsage } = await import("@/lib/links/service");
+  const [rows, usage] = await Promise.all([linksForUser(user.id), linkUsage(user.id)]);
+  return {
+    usage: { manualLinks: usage.used, limit: usage.limit, monitored: usage.monitored },
+    links: rows.map(({ link: l, directory }) => ({
+      id: l.id,
+      url: l.url,
+      target: l.targetDomain,
+      directory,
+      source: l.source,
+      monitored: l.active,
+      verdict: l.lastVerdict,
+      rel: l.lastRel,
+      anchor: l.lastAnchor,
+      httpStatus: l.lastStatusCode,
+      lastCheckedAt: l.lastCheckedAt?.toISOString() ?? null,
+      nextCheckAt: l.active ? l.nextCheckAt.toISOString() : null,
+    })),
+  };
+}
+
 /** JSON Schema for an input, without the `$schema` key (MCP and OpenAPI embed it). */
 export function inputJsonSchema(s: z.ZodType): Record<string, unknown> {
   const out = z.toJSONSchema(s, { io: "input" }) as Record<string, unknown>;

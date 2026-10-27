@@ -12,6 +12,7 @@ import {
   launchDirectories,
   inputJsonSchema,
   myLaunches,
+  myLinks,
   readiness,
   readinessInput,
   searchInput,
@@ -97,6 +98,15 @@ export const TOOLS: Tool[] = [
     readOnly: true,
     run: (_args, ctx) => myLaunches(ctx.user),
   },
+  {
+    name: "get_my_links",
+    title: "My monitored links",
+    description:
+      "The user's backlinks in Link Monitor (from their directory tracker, submission orders and links they added): URL, verdict (dofollow, nofollow, missing, unreachable), rel, anchor and when it was last checked, plus plan usage (needs an API token).",
+    input: z.object({}),
+    readOnly: true,
+    run: (_args, ctx) => myLinks(ctx.user),
+  },
 ];
 
 const toolList = () =>
@@ -140,7 +150,7 @@ export async function handleMessage(msg: unknown, ctx: ApiContext): Promise<Json
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "debutyard", title: siteConfig.name, version: "1.0.0" },
         instructions:
-          "DebutYard is a weekly launch board for software products. Use check_launch_readiness before drafting, list_categories for valid slugs, and submit_product to create a draft the user finishes in their browser. Drafting and get_my_launches need the user's API token.",
+          "DebutYard is a weekly launch board for software products. Use check_launch_readiness before drafting, list_categories for valid slugs, and submit_product to create a draft the user finishes in their browser. Drafting, get_my_launches and get_my_links need the user's API token.",
       });
     }
     case "ping":

@@ -2,10 +2,14 @@
 
 export type PackageId = "starter" | "growth" | "scale";
 
-export const PACKAGES: Record<PackageId, { sku: string; label: string; count: number; days: number }> = {
-  starter: { sku: "submission_starter", label: "Starter", count: 40, days: 7 },
-  growth: { sku: "submission_growth", label: "Growth", count: 100, days: 14 },
-  scale: { sku: "submission_scale", label: "Scale", count: 180, days: 14 },
+/** `monitorMonths`: Link Monitor included after delivery. */
+export const PACKAGES: Record<
+  PackageId,
+  { sku: string; label: string; count: number; days: number; monitorMonths: number }
+> = {
+  starter: { sku: "submission_starter", label: "Starter", count: 40, days: 7, monitorMonths: 3 },
+  growth: { sku: "submission_growth", label: "Growth", count: 100, days: 14, monitorMonths: 6 },
+  scale: { sku: "submission_scale", label: "Scale", count: 180, days: 14, monitorMonths: 12 },
 };
 
 export function packageForSku(sku: string): PackageId | null {

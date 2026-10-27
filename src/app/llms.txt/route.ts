@@ -26,7 +26,7 @@ export async function GET() {
     `- [Launch readiness check](${base}/tools/launch-readiness): free pre-launch audit of any product URL`,
     "",
     "## For agents",
-    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, submit_product drafts, get_my_launches)`,
+    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, submit_product drafts, get_my_launches, get_my_links)`,
     `- [OpenAPI spec](${base}/api/v1/openapi.json): REST API at ${base}/api/v1`,
     "",
   ];
