@@ -87,6 +87,21 @@ export async function submitFreeAction(productId: string): Promise<Result> {
   redirect(`/dashboard?submitted=${productId}`);
 }
 
+/** Maker Pro: Fast Track with this quarter's free credit, no checkout. */
+export async function redeemFastTrackAction(productId: string): Promise<Result> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  if (!/^[0-9a-f-]{36}$/.test(productId)) return { ok: false, error: "Listing not found." };
+  const { BillingError, redeemFastTrack } = await import("@/lib/billing/service");
+  try {
+    await redeemFastTrack(user.id, productId);
+  } catch (err) {
+    if (err instanceof BillingError || err instanceof ProductError) return { ok: false, error: err.message };
+    throw err;
+  }
+  redirect(`/dashboard?submitted=${productId}`);
+}
+
 /** Paid debut: creates the order and returns the provider's checkout URL. */
 export async function startTierCheckoutAction(args: {
   productId: string;

@@ -49,6 +49,9 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
           <ButtonLink href="/dashboard/links" variant="outline">
             Link Monitor
           </ButtonLink>
+          <ButtonLink href="/dashboard/billing" variant="outline">
+            Billing
+          </ButtonLink>
           <ButtonLink href="/dashboard/api" variant="outline">
             API &amp; agents
           </ButtonLink>

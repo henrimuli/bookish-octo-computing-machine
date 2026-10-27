@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { PlanPicker, type PlanOption } from "@/components/plan-picker";
 import { Container, Heading } from "@/components/ui/primitives";
 import { requireUser } from "@/lib/auth";
+import { fastTrackCredit } from "@/lib/billing/service";
 import { enabledProviders, formatUsd, getSku } from "@/lib/payments";
 import { TIERS, tierRank, type Tier } from "@/lib/products/input";
 import { getEditableProduct } from "@/lib/products/queries";
@@ -65,7 +66,11 @@ async function Plans({ params }: { params: PageProps<"/submit/[id]/plan">["param
   if (!editable) notFound();
   const p = editable.product;
 
-  const [freeWeek, activeFree] = await Promise.all([nextFreeWeek(), activeFreeCount(user.id, p.id)]);
+  const [freeWeek, activeFree, credit] = await Promise.all([
+    nextFreeWeek(),
+    activeFreeCount(user.id, p.id),
+    fastTrackCredit(user.id),
+  ]);
   const freeAvailable =
     (p.status === "draft" || p.status === "rejected") && p.tier === "free" && activeFree < MAX_ACTIVE_FREE;
   const nextWeek = upcomingWeekKeys(new Date(), 1)[0];
@@ -103,6 +108,7 @@ async function Plans({ params }: { params: PageProps<"/submit/[id]/plan">["param
       options={options}
       weeks={bookableWeeks().map((k) => ({ key: k, label: `${formatWeekLabel(k)} · ${formatWeekRange(k)}` }))}
       providers={enabledProviders()}
+      freeFastTrack={credit.eligible ? credit.available : null}
     />
   );
 }

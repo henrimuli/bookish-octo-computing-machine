@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { availability, BookingError, bookSlot } from "@/lib/ads/service";
+import { availability, BookingError, bookSlot, extraWeeksFor } from "@/lib/ads/service";
 import { PLACEMENT_IDS, type Placement } from "@/lib/ads/placements";
 import { getCurrentUser } from "@/lib/auth";
 import { enabledProviders } from "@/lib/payments";
@@ -19,7 +19,8 @@ export async function availabilityAction(p: string, categorySlug: string | null)
   if (!parsed.success) return [];
   const cat = categorySlug && slug.safeParse(categorySlug).success ? categorySlug : null;
   if (parsed.data === "category" && !cat) return [];
-  return availability(parsed.data, cat);
+  const user = await getCurrentUser();
+  return availability(parsed.data, cat, new Date(), user ? await extraWeeksFor(user.id) : 0);
 }
 
 const input = z.object({

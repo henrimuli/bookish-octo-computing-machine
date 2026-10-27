@@ -115,6 +115,14 @@ export const subscriptions = pgTable(
     status: subscriptionStatus("status").notNull().default("pending"),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** When the subscription went past due; dunning emails count from here. */
+    pastDueAt: timestamp("past_due_at", { withTimezone: true }),
+    /** Dunning emails sent for the current past-due spell (day 0, 3, 7). */
+    dunningStage: integer("dunning_stage").notNull().default(0),
+    /** Always Featured: the subscriber's approved listing to feature. */
+    featuredProductId: uuid("featured_product_id"),
+    /** Last time status was confirmed with the provider (webhook or sync). */
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -138,4 +146,25 @@ export const providerPlans = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("provider_plans_sku_provider_idx").on(t.sku, t.provider)],
+);
+
+/**
+ * Plan perks used per period, e.g. Maker Pro's free Fast Track each quarter.
+ * The unique key is the claim, so a perk can't be used twice in a period.
+ */
+export const planCredits = pgTable(
+  "plan_credits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** e.g. "2026-Q4". */
+    periodKey: text("period_key").notNull(),
+    /** What it was used on (a product id for Fast Track). */
+    targetId: text("target_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("plan_credits_user_kind_period_idx").on(t.userId, t.kind, t.periodKey)],
 );

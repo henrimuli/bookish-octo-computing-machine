@@ -263,17 +263,13 @@ async function applySubscriptionUpdate(
   }
 
   if (!sub) return;
-
-  await db()
-    .update(subscriptions)
-    .set({
-      status: event.status,
-      providerSubscriptionId: event.providerSubscriptionId ?? sub.providerSubscriptionId,
-      providerToken: event.providerToken ?? sub.providerToken,
-      currentPeriodEnd: event.currentPeriodEnd ?? sub.currentPeriodEnd,
-      cancelledAt: event.status === "cancelled" ? new Date() : sub.cancelledAt,
-    })
-    .where(eq(subscriptions.id, sub.id));
+  const { applySubscriptionState } = await import("@/lib/billing/service");
+  await applySubscriptionState(sub, {
+    status: event.status,
+    providerSubscriptionId: event.providerSubscriptionId,
+    providerToken: event.providerToken,
+    currentPeriodEnd: event.currentPeriodEnd,
+  });
 }
 
 /** Refunds all or part of a paid order (money-back guarantee, admin refunds). */
@@ -357,15 +353,19 @@ export async function cancelSubscription(subscriptionId: string, userId: string)
     where: and(eq(subscriptions.id, subscriptionId), eq(subscriptions.userId, userId)),
   });
   if (!sub?.providerSubscriptionId) throw new Error("Subscription not found");
+  if (sub.status === "cancelled" || sub.status === "non_renewing") return sub;
   await getProvider(sub.provider).cancelSubscription({
     providerSubscriptionId: sub.providerSubscriptionId,
     providerToken: sub.providerToken,
   });
-  // Paystack keeps access until period end ("non-renewing"); PayPal cancels immediately.
-  await db()
+  // No more charges; the plan keeps working until the paid period ends (both providers).
+  const { applySubscriptionState } = await import("@/lib/billing/service");
+  const [marked] = await db()
     .update(subscriptions)
-    .set({ status: sub.provider === "paystack" ? "non_renewing" : "cancelled", cancelledAt: new Date() })
-    .where(eq(subscriptions.id, sub.id));
+    .set({ cancelledAt: new Date() })
+    .where(eq(subscriptions.id, sub.id))
+    .returning();
+  return applySubscriptionState(marked, { status: sub.currentPeriodEnd ? "non_renewing" : "cancelled" });
 }
 
 /** Checkouts left unpaid this long are marked failed (abandoned). */

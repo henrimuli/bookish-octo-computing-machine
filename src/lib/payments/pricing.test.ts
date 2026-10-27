@@ -62,11 +62,16 @@ describe("SKU catalog", () => {
     for (const s of SKUS) expect(Number.isInteger(s.amountCents) && s.amountCents > 0).toBe(true);
   });
 
-  it("only sells the submission service until the other features ship", () => {
+  it("sells the submission service and every plan but Agency at checkout", () => {
     expect(SKUS.filter(isPurchasable).map((s) => s.id)).toEqual([
       "submission_starter",
       "submission_growth",
       "submission_scale",
+      "sub_link_monitor_100",
+      "sub_link_monitor_500",
+      "sub_maker_pro_monthly",
+      "sub_maker_pro_yearly",
+      "sub_always_featured",
     ]);
   });
 });
