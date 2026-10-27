@@ -9,6 +9,7 @@ import { productInput } from "@/lib/products/input";
 import { listCategories } from "@/lib/products/queries";
 import { isLiveCondition, ProductError, saveProduct } from "@/lib/products/service";
 import { checkReadiness, ReadinessError } from "@/lib/readiness/service";
+import { checkDofollow, checkDr, ToolError } from "@/lib/tools/service";
 import { formatWeekLabel } from "@/lib/weeks";
 import type { ApiUser } from "./tokens";
 
@@ -112,6 +113,42 @@ export async function readiness(
     if (err instanceof ReadinessError) throw new ApiError(err.message, err.message.includes("hour") ? 429 : 400);
     throw err;
   }
+}
+
+export const dofollowInput = z.object({
+  pageUrl: z.string().max(500).describe("The page that should contain the link, e.g. a directory listing"),
+  target: z.string().max(500).describe("The domain (or any URL on it) the link should point to"),
+});
+
+const toolCall = async <T>(run: () => Promise<T>) => {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof ToolError) throw new ApiError(err.message, err.rateLimited ? 429 : 400);
+    throw err;
+  }
+};
+
+export async function dofollow(
+  raw: z.input<typeof dofollowInput>,
+  caller: { clientKey: string; user: ApiUser | null; source: "api" | "mcp" },
+) {
+  const { pageUrl, target } = dofollowInput.parse(raw);
+  return toolCall(() =>
+    checkDofollow(pageUrl, target, { clientKey: caller.clientKey, userId: caller.user?.id, source: caller.source }),
+  );
+}
+
+export const drInput = z.object({ domain: z.string().max(500).describe("A domain, like example.com") });
+
+export async function domainRating(
+  raw: z.input<typeof drInput>,
+  caller: { clientKey: string; user: ApiUser | null; source: "api" | "mcp" },
+) {
+  const { domain } = drInput.parse(raw);
+  return toolCall(() =>
+    checkDr(domain, { clientKey: caller.clientKey, userId: caller.user?.id, source: caller.source }),
+  );
 }
 
 export const draftInput = productInput.pick({

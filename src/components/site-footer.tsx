@@ -3,14 +3,17 @@ import { Logo } from "@/components/logo";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Container } from "@/components/ui/primitives";
 import { site } from "@/config/site";
+import { drEnabled } from "@/lib/metrics/service";
 
-const links = [
+const links: Array<{ href: string; label: string; dr?: boolean }> = [
   { href: "/blog", label: "Blog" },
   { href: "/pricing", label: "Pricing" },
   { href: "/advertise", label: "Advertise" },
   { href: "/submission-service", label: "Submission service" },
   { href: "/directories", label: "Directories" },
   { href: "/tools/launch-readiness", label: "Readiness check" },
+  { href: "/tools/dofollow-checker", label: "Dofollow checker" },
+  { href: "/tools/dr-checker", label: "DR checker", dr: true },
   { href: "/docs", label: "API & MCP" },
   { href: "/refund-policy", label: "Refund policy" },
   { href: "/terms", label: "Terms" },
@@ -30,11 +33,13 @@ export function SiteFooter() {
           </div>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          {links.map((l) => (
-            <Link key={l.href} href={l.href} className="hover:text-foreground">
-              {l.label}
-            </Link>
-          ))}
+          {links
+            .filter((l) => !l.dr || drEnabled())
+            .map((l) => (
+              <Link key={l.href} href={l.href} className="hover:text-foreground">
+                {l.label}
+              </Link>
+            ))}
           <a href={`mailto:${site.supportEmail}`} className="hover:text-foreground">
             {site.supportEmail}
           </a>

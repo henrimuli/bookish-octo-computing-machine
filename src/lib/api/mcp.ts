@@ -5,6 +5,9 @@ import {
   ApiError,
   categories,
   directoriesInput,
+  dofollow,
+  dofollowInput,
+  domainRating,
   draftInput,
   draftSubmission,
   getInput,
@@ -15,9 +18,11 @@ import {
   myLinks,
   readiness,
   readinessInput,
+  drInput,
   searchInput,
   searchProducts,
 } from "./operations";
+import { drEnabled } from "@/lib/metrics/service";
 import type { ApiContext } from "./http";
 
 /**
@@ -33,6 +38,10 @@ type Tool = {
   description: string;
   input: z.ZodType;
   readOnly: boolean;
+  /** Fetches third-party pages or APIs. */
+  openWorld?: boolean;
+  /** Hidden from tools/list and refused when false (e.g. no DR provider configured). */
+  enabled?: () => boolean;
   run: (args: unknown, ctx: ApiContext) => Promise<unknown>;
 };
 
@@ -77,8 +86,32 @@ export const TOOLS: Tool[] = [
       "Audit a product URL before launch: HTTPS, title, meta description, social image, indexability, duplicates and the DebutYard badge. Returns a 0-100 score, checks with fixes, a suggested listing and the next weeks with room.",
     input: readinessInput,
     readOnly: true,
+    openWorld: true,
     run: (args, ctx) =>
       readiness(args as z.input<typeof readinessInput>, { user: ctx.user, clientKey: ctx.clientKey, source: "mcp" }),
+  },
+  {
+    name: "check_dofollow",
+    title: "Check a backlink",
+    description:
+      "Load a page (e.g. a directory listing) and check whether it links to a domain, and whether that link is dofollow or nofollow/ugc/sponsored. Returns the verdict, rel, anchor text and a plain-English explanation.",
+    input: dofollowInput,
+    readOnly: true,
+    openWorld: true,
+    run: (args, ctx) =>
+      dofollow(args as z.input<typeof dofollowInput>, { user: ctx.user, clientKey: ctx.clientKey, source: "mcp" }),
+  },
+  {
+    name: "check_dr",
+    title: "Check Domain Rating",
+    description:
+      "A domain's authority score (0-100) from our DR provider, with referring domains when available. Cached for 7 days.",
+    input: drInput,
+    readOnly: true,
+    openWorld: true,
+    enabled: drEnabled,
+    run: (args, ctx) =>
+      domainRating(args as z.input<typeof drInput>, { user: ctx.user, clientKey: ctx.clientKey, source: "mcp" }),
   },
   {
     name: "submit_product",
@@ -109,8 +142,10 @@ export const TOOLS: Tool[] = [
   },
 ];
 
+const available = () => TOOLS.filter((t) => t.enabled?.() ?? true);
+
 const toolList = () =>
-  TOOLS.map((t) => ({
+  available().map((t) => ({
     name: t.name,
     title: t.title,
     description: t.description,
@@ -118,7 +153,7 @@ const toolList = () =>
     annotations: {
       readOnlyHint: t.readOnly,
       destructiveHint: false,
-      openWorldHint: t.name === "check_launch_readiness",
+      openWorldHint: t.openWorld ?? false,
     },
   }));
 
@@ -158,7 +193,7 @@ export async function handleMessage(msg: unknown, ctx: ApiContext): Promise<Json
     case "tools/list":
       return ok({ tools: toolList() });
     case "tools/call": {
-      const tool = TOOLS.find((t) => t.name === params?.name);
+      const tool = available().find((t) => t.name === params?.name);
       if (!tool) return rpcError(id, -32602, `Unknown tool: ${String(params?.name)}`);
       try {
         const data = await tool.run(params?.arguments ?? {}, ctx);
