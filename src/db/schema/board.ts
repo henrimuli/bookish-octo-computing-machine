@@ -263,3 +263,21 @@ export const newsletterIssues = pgTable("newsletter_issues", {
   sentAt: timestamp("sent_at", { withTimezone: true }),
   error: text("error"),
 });
+
+/** Resend open/click webhooks for digest issues. `svix_id` makes redelivered events no-ops. */
+export const newsletterEvents = pgTable(
+  "newsletter_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    svixId: text("svix_id").notNull().unique(),
+    weekKey: text("week_key")
+      .notNull()
+      .references(() => newsletterIssues.weekKey, { onDelete: "cascade" }),
+    type: text("type", { enum: ["opened", "clicked"] }).notNull(),
+    email: text("email").notNull(),
+    link: text("link"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("newsletter_events_week_idx").on(t.weekKey, t.type)],
+);

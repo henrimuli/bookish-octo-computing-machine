@@ -5,14 +5,14 @@ import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { referralCode } from "@/lib/affiliates/cookie";
 import { getCurrentUser } from "@/lib/auth";
-import { safeFetchText, UnsafeUrlError } from "@/lib/net";
 import { enabledProviders } from "@/lib/payments";
 import { CouponError } from "@/lib/payments/pricing";
 import { CheckoutError, startCheckout } from "@/lib/payments/service";
 import type { ProviderId } from "@/lib/payments/types";
 import { notifyProductSubmitted } from "@/lib/notifications";
 import { productInput, TIERS, tierRank, type ProductInput, type Tier } from "@/lib/products/input";
-import { extractPrefill, type Prefill } from "@/lib/products/prefill";
+import type { Prefill } from "@/lib/products/prefill";
+import { prefillFromSite } from "@/lib/products/prefill-service";
 import {
   bookableWeeks,
   ProductError,
@@ -27,16 +27,10 @@ type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string;
 
 /** Fetches the maker's site and suggests listing details. */
 export async function prefillAction(url: string): Promise<Result<Prefill>> {
-  if (!(await getCurrentUser())) return { ok: false, error: "Sign in first." };
-  const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
-  try {
-    const page = await safeFetchText(normalized, { timeoutMs: 8000 });
-    if (page.status >= 400) return { ok: false, error: `Your site returned HTTP ${page.status}.` };
-    return { ok: true, data: extractPrefill(page.body, page.url) };
-  } catch (err) {
-    if (err instanceof UnsafeUrlError) return { ok: false, error: err.message };
-    return { ok: false, error: "We couldn't reach that site. You can fill the details in by hand." };
-  }
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  // Signed-in callers are limited by account, so the client key is unused.
+  return prefillFromSite(url, { userId: user.id, clientKey: "web", source: "web" });
 }
 
 /** Creates or updates a listing, then sends the maker to the plan step. */

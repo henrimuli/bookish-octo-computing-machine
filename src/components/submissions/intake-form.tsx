@@ -52,14 +52,18 @@ export function IntakeForm({
         websiteUrl: d.url,
         productName: s.productName || d.name || "",
         tagline: s.tagline || (d.tagline ?? "").slice(0, 60),
-        shortDescription: s.shortDescription || (d.description ?? "").slice(0, 160),
+        shortDescription: s.shortDescription || (d.shortDescription ?? d.description ?? "").slice(0, 160),
         longDescription: s.longDescription || (d.description ?? "").slice(0, 500),
         logoUrl: s.logoUrl || (d.logoUrl?.startsWith("https://") ? d.logoUrl : ""),
         categories: s.categories.length
           ? s.categories
           : d.categories.filter((c) => categories.some((k) => k.slug === c)).slice(0, 3),
       }));
-      setNote("Filled in from your site. Check and adjust the wording.");
+      setNote(
+        d.drafted
+          ? "We drafted the copy from your site. Check it's accurate and adjust the wording."
+          : "Filled in from your site. Check and adjust the wording.",
+      );
     });
   }
 

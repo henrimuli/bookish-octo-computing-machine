@@ -19,10 +19,16 @@ export class ToolError extends Error {
 export const TOOL_RUNS_PER_HOUR = 15;
 
 export type ToolCaller = { clientKey: string; userId?: string | null; source: "web" | "api" | "mcp" };
-type Tool = "dofollow" | "dr";
+type Tool = "dofollow" | "dr" | "ai_prefill";
 
 /** Counts the run against the caller's hourly allowance, or throws when it's used up. */
-async function spend(tool: Tool, target: string, caller: ToolCaller, now = new Date()) {
+export async function spend(
+  tool: Tool,
+  target: string,
+  caller: ToolCaller,
+  limit = TOOL_RUNS_PER_HOUR,
+  now = new Date(),
+) {
   const clientHash = hashClient(caller.userId ? `user:${caller.userId}` : `ip:${caller.clientKey}`);
   const since = new Date(now.getTime() - 3600_000).toISOString();
   const [{ n }] = await db()
@@ -35,7 +41,7 @@ async function spend(tool: Tool, target: string, caller: ToolCaller, now = new D
         gt(schema.toolChecks.createdAt, sql`${since}::timestamptz`),
       ),
     );
-  if (n >= TOOL_RUNS_PER_HOUR) throw new ToolError("That's a lot of checks. Try again in an hour.", true);
+  if (n >= limit) throw new ToolError("That's a lot of checks. Try again in an hour.", true);
   await db()
     .insert(schema.toolChecks)
     .values({ tool, target, clientHash, source: caller.source, userId: caller.userId ?? null });

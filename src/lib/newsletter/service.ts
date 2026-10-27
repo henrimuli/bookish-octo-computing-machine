@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
+import { and, asc, countDistinct, eq, inArray, isNotNull, lt } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db, schema } from "@/db";
 import { env } from "@/env";
@@ -8,6 +8,7 @@ import { sendBatch, sendEmail } from "@/lib/email";
 import { weekBoard } from "@/lib/board/queries";
 import { addWeeks, formatWeekLabel, weekKeyFor } from "@/lib/weeks";
 import { renderDigest, type DigestData } from "./render";
+import type { TrackedEvent } from "./webhook-rules";
 
 const { newsletterSubscribers: subs, newsletterIssues: issues, launchWeeks } = schema;
 
@@ -166,6 +167,7 @@ export async function sendWeeklyDigest(now = new Date()) {
         to: r.email,
         ...renderDigest(data, unsub),
         headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+        tags: [{ name: "issue", value: closedWeek }],
       };
     });
     const sent = emails.length ? await sendBatch(emails, `digest-${closedWeek}`) : 0;
@@ -188,4 +190,42 @@ export async function subscriberCounts() {
     pending: rows.filter((r) => r.status === "pending").length,
     unsubscribed: rows.filter((r) => r.status === "unsubscribed").length,
   };
+}
+
+/** Stores a Resend open/click. Redelivered events (same svix id) and unknown issues are no-ops. */
+export async function recordEvent(svixId: string, event: TrackedEvent): Promise<boolean> {
+  const issue = await db().query.newsletterIssues.findFirst({ where: eq(issues.weekKey, event.weekKey) });
+  if (!issue) return false;
+  const rows = await db()
+    .insert(schema.newsletterEvents)
+    .values({
+      svixId,
+      weekKey: event.weekKey,
+      type: event.type,
+      email: event.email,
+      link: event.link ?? null,
+      occurredAt: event.at,
+    })
+    .onConflictDoNothing()
+    .returning({ id: schema.newsletterEvents.id });
+  return rows.length > 0;
+}
+
+/** Unique opens and clicks per issue (one per subscriber, however often they open). */
+export async function engagementByIssue(weekKeys: string[]) {
+  if (weekKeys.length === 0) return new Map<string, { opens: number; clicks: number }>();
+  const ev = schema.newsletterEvents;
+  const rows = await db()
+    .select({ weekKey: ev.weekKey, type: ev.type, n: countDistinct(ev.email) })
+    .from(ev)
+    .where(inArray(ev.weekKey, weekKeys))
+    .groupBy(ev.weekKey, ev.type);
+  const out = new Map<string, { opens: number; clicks: number }>();
+  for (const r of rows) {
+    const s = out.get(r.weekKey) ?? { opens: 0, clicks: 0 };
+    if (r.type === "opened") s.opens = r.n;
+    else s.clicks = r.n;
+    out.set(r.weekKey, s);
+  }
+  return out;
 }

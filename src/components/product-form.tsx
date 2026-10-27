@@ -79,10 +79,11 @@ export function ProductForm({
         };
       });
       const names = picked.map((s) => categories.find((c) => c.slug === s)?.name).filter(Boolean);
+      const drafted = d.drafted ? " The tagline and description are AI drafts from your homepage." : "";
       setMessage(
-        names.length
+        (names.length
           ? `We filled in what we could find and picked ${names.join(", ")} as categories. Check everything before continuing.`
-          : "We filled in what we could find. Check everything before continuing.",
+          : "We filled in what we could find. Check everything before continuing.") + drafted,
       );
     });
   }

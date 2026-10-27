@@ -1,4 +1,3 @@
-import { env } from "@/env";
 import { approveReferrals } from "@/lib/affiliates/service";
 import { recheckBadges } from "@/lib/badges/service";
 import { syncSubscriptions } from "@/lib/billing/service";
@@ -13,19 +12,15 @@ import { checkBadgeBlocks, sendOrderDigests } from "@/lib/submissions/service";
 import { draftWeeklyRecap } from "@/lib/blog/service";
 import { sendWeeklyDigest } from "@/lib/newsletter/service";
 import { reconcilePendingOrders } from "@/lib/payments/service";
+import { runCron } from "@/lib/cron";
 
 /**
  * One daily job (Vercel Hobby allows few crons), scheduled just after Monday
  * 00:00 UTC rolls the week. Each task is independent and idempotent.
+ * Payments and ads also run from /api/cron/hourly when that's scheduled.
  */
-export async function GET(request: Request) {
-  const secret = env().CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const results: Record<string, unknown> = {};
-  const tasks: Array<[string, () => Promise<unknown>]> = [
+export function GET(request: Request) {
+  return runCron(request, [
     ["weeks", () => closeEndedWeeks()],
     ["periods", () => closeEndedPeriods()],
     ["newsletter", () => sendWeeklyDigest()],
@@ -42,14 +37,5 @@ export async function GET(request: Request) {
     ["directory audit", () => auditDirectories()],
     ["dr", () => snapshotDomains()],
     ["affiliates", () => approveReferrals()],
-  ];
-  for (const [name, run] of tasks) {
-    try {
-      results[name] = await run();
-    } catch (err) {
-      console.error(`cron task ${name} failed`, err);
-      results[name] = { error: err instanceof Error ? err.message : String(err) };
-    }
-  }
-  return Response.json(results);
+  ]);
 }

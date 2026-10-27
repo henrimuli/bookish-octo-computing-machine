@@ -29,7 +29,7 @@ export default function DocsPage() {
 
       <h2 className="mt-12 font-display text-2xl font-bold">1. Create a token</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Reading and readiness checks work without one. Drafting and your stats need a personal token from{" "}
+        Reading and readiness checks work without one. Drafting and your stats need a token: connect over OAuth (below), or create one from{" "}
         <Link href="/dashboard/api" className="text-primary hover:underline">
           Dashboard → API &amp; agents
         </Link>
@@ -37,7 +37,15 @@ export default function DocsPage() {
       </p>
 
       <h2 className="mt-12 font-display text-2xl font-bold">2. Connect over MCP</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Streamable HTTP at <code>{base}/api/mcp</code>.</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Easiest: add <code>{base}/mcp</code> as a custom connector (Claude, ChatGPT, Cursor and other clients that
+        support OAuth). Your browser opens, you approve the app, and it gets its own token: no copying needed. Remove it
+        any time from the tokens page.
+      </p>
+      <Code>{`claude mcp add --transport http debutyard ${base}/mcp`}</Code>
+      <p className="mt-6 text-sm text-muted-foreground">
+        Or paste a token. Streamable HTTP at <code>{base}/api/mcp</code> (works without a token for the public tools).
+      </p>
       <p className="mt-4 text-sm font-medium">Claude Code</p>
       <Code>{`claude mcp add --transport http debutyard ${base}/api/mcp \\
   --header "Authorization: Bearer dy_your_token"`}</Code>

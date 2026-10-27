@@ -134,6 +134,20 @@
       "when": 1793043438946,
       "tag": "20261026193718_monitoring",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793100237046,
+      "tag": "20261027112357_mcp_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793101010375,
+      "tag": "20261027113650_newsletter_events",
+      "breakpoints": true
     }
   ]
 }

@@ -524,16 +524,16 @@ Pricing note: until DR is above ~50, run launch-sale codes on the launch tiers a
 **Phase 0 — Foundations (week 1)** ✅ *Done Oct 26, 2026 (see README).* Submission packages are already sellable, fulfilled by hand.
 Repo setup, Next.js + Drizzle + Postgres, auth, Paystack + PayPal sandbox/test accounts and the `PaymentProvider` layer, CI (lint/typecheck/test), base design system, final name + domain.
 
-**Phase 1 — MVP launch board (weeks 2–4)** ✅ *Done Oct 26, 2026.* Also shipped early: the Phase 2 featured rail for paid debuts, so paid perks are live from day one. AI-written prefill is deferred: prefill reads the site's metadata.
+**Phase 1 — MVP launch board (weeks 2–4)** ✅ *Done Oct 26, 2026.* Also shipped early: the Phase 2 featured rail for paid debuts, so paid perks are live from day one. AI-written prefill shipped in Phase 4: Claude drafts the copy when `ANTHROPIC_API_KEY` is set, and metadata extraction is the fallback.
 Product submission with URL prefill + moderation, product pages (rank, votes chart, same-week, similar), categories, builders, weekly launch weeks + free queue (visible ETA, 2-active cap), voting + comments, basic anti-fraud, weekly winners job + badges + top-3 dofollow, badge verification (HTML + DNS), paid tiers via Paystack + PayPal (webhooks, verification, refunds, coupons), maker dashboard v1, SEO basics (sitemap, JSON-LD, OG images, `llms.txt`), transactional email.
 
-**Phase 2 — Monetization + agent surface (weeks 5–6)** ✅ *Done Oct 26, 2026.* Agents connect with a personal API token for now; the browser-approval (OAuth) connect flow is a follow-up. Newsletter impressions count delivered emails; open tracking isn't built.
+**Phase 2 — Monetization + agent surface (weeks 5–6)** ✅ *Done Oct 26, 2026.* The OAuth connect flow (`/mcp`, approval at `/connect`) and newsletter open/click tracking shipped in Phase 4; pasted tokens still work.
 Featured slot calendar with capped inventory + leaderboard slot, click/impression stats, newsletter, blog/CMS + automated recap drafts, monthly/yearly boards, `/vote` duels, pricing + advertise pages, **launch-readiness check**, **MCP server + REST API** (search, get, readiness, draft submit, my launches).
 
-**Phase 3 — Directory DB, DIY tracker, submission service (weeks 7–9)** ✅ *Done Oct 26, 2026.* Still to come: automatic evidence screenshots (needs the Playwright worker; ops paste a screenshot URL for now), per-order submission inboxes (Cloudflare Email Routing), the badge-block generator for clients who allow badges, and indexed/DR-before-after checks (SERP and DR APIs).
+**Phase 3 — Directory DB, DIY tracker, submission service (weeks 7–9)** ✅ *Done Oct 26, 2026.* The deferred pieces (evidence screenshots, per-order inboxes, encrypted directory logins, the badge block, index and DR before/after checks, the monthly directory audit) shipped in Phase 4.
 Directory database (admin editor + public pages), DIY tracker with automatic link verification, submission order checkout (no account needed) + "boost" on existing launches, ops console (kanban, per-directory checklists, QA), client live-tracking dashboard, evidence screenshots, CSV/PDF export, shareable reports, status emails.
 
-**Phase 4 — Link Monitor & subscriptions (weeks 10–11)**
+**Phase 4 — Link Monitor & subscriptions (weeks 10–11)** ✅ *Done Oct 27, 2026.* Deferred: the hourly jobs (`/api/cron/hourly`: payments reconcile, slot settlement) exist but aren't scheduled until the project moves to Vercel Pro, so they run daily; `rank.compute` and `votes.audit` aren't separate jobs: scores are computed when the board is read, and vote weights are set when each vote is cast. The screenshot and inbound-email workers need deploying, and the DR, SERP and Claude features stay hidden until their keys are set.
 Tracked links for any URL, weekly monitoring + alerts, DR snapshots + before/after charts, Maker Pro + Always Featured + Link Monitor plans (Paystack/PayPal subscriptions + dunning emails), in-house affiliate program, free tools (dofollow checker, DR checker), launch wall.
 
 **Phase 5 — Scale & moat (ongoing)**

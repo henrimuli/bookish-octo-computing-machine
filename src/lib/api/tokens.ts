@@ -9,7 +9,11 @@ export const MAX_TOKENS = 10;
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 /** Creates a token and returns it once; only its hash is stored. */
-export async function createToken(userId: string, name: string): Promise<{ id: string; token: string }> {
+export async function createToken(
+  userId: string,
+  name: string,
+  clientId?: string,
+): Promise<{ id: string; token: string }> {
   const active = await listTokens(userId);
   if (active.length >= MAX_TOKENS) throw new Error(`You can have up to ${MAX_TOKENS} tokens. Revoke one first.`);
   const token = `dy_${randomBytes(24).toString("base64url")}`;
@@ -20,6 +24,7 @@ export async function createToken(userId: string, name: string): Promise<{ id: s
       name: name.trim().slice(0, 60) || "API token",
       tokenHash: hash(token),
       prefix: token.slice(0, 10),
+      clientId,
     })
     .returning({ id: apiTokens.id });
   return { id: row.id, token };

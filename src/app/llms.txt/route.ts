@@ -30,7 +30,7 @@ export async function GET() {
     ...(drEnabled() ? [`- [DR checker](${base}/tools/dr-checker): any domain's authority score, 0�100`] : []),
     "",
     "## For agents",
-    `- [API & MCP docs](${base}/docs): MCP server at ${base}/api/mcp (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, check_dofollow${drEnabled() ? ", check_dr" : ""}, submit_product drafts, get_my_launches, get_my_links)`,
+    `- [API & MCP docs](${base}/docs): MCP server at ${base}/mcp (OAuth connect; ${base}/api/mcp with a pasted token or anonymous) (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, check_dofollow${drEnabled() ? ", check_dr" : ""}, submit_product drafts, get_my_launches, get_my_links)`,
     `- [OpenAPI spec](${base}/api/v1/openapi.json): REST API at ${base}/api/v1`,
     "",
   ];

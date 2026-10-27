@@ -6,6 +6,10 @@ export type Prefill = {
   name?: string;
   tagline?: string;
   description?: string;
+  /** Card-length description (160 chars), only when Claude drafted the copy. */
+  shortDescription?: string;
+  /** True when tagline and descriptions were drafted by Claude rather than read from metadata. */
+  drafted?: boolean;
   logoUrl?: string;
   imageUrl?: string;
   twitterUrl?: string;
