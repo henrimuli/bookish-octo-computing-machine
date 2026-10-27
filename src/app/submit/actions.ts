@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
+import { referralCode } from "@/lib/affiliates/cookie";
 import { getCurrentUser } from "@/lib/auth";
 import { safeFetchText, UnsafeUrlError } from "@/lib/net";
 import { enabledProviders } from "@/lib/payments";
@@ -141,7 +142,7 @@ export async function startTierCheckoutAction(args: {
       email: user.email,
       userId: user.id,
       couponCode: args.coupon || null,
-      metadata: { productId: product.id, weekKey: weekKey ?? null },
+      metadata: { productId: product.id, weekKey: weekKey ?? null, via: await referralCode() },
     });
     await db().insert(schema.productOrders).values({ orderId, productId: product.id });
     return { ok: true, data: { url } };

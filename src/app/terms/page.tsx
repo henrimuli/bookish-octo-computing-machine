@@ -63,6 +63,16 @@ export default function TermsPage() {
         details. Refunds follow our <Link href="/refund-policy">refund policy</Link>.
       </p>
 
+      <h2 id="affiliates">Affiliate program</h2>
+      <p>
+        Affiliates earn 30% of the first payment for a submission package or paid debut bought within 60 days of a
+        visitor clicking their link (the last affiliate link clicked wins). You can&apos;t earn commission on your own
+        purchases. A commission is approved 30 days after the payment if it hasn&apos;t been refunded, and refunds
+        reduce or cancel it. We pay approved commissions by PayPal to the email you give us, usually monthly. Spam, paid
+        search on our name, misleading claims and self-referrals aren&apos;t allowed; we may suspend an affiliate and
+        withhold unpaid commission for breaking these rules.
+      </p>
+
       <h2>Liability</h2>
       <p>
         {site.name} is provided &quot;as is&quot;. To the extent the law allows, our total liability for any claim is

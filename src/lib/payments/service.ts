@@ -129,6 +129,16 @@ export async function applyVerifiedPayment(provider: ProviderId, result: Verifie
       .where(eq(coupons.id, paid.couponId));
   }
 
+  // Affiliate commission, once per order. Never blocks fulfilment.
+  if (paid) {
+    try {
+      const { recordReferral } = await import("@/lib/affiliates/service");
+      await recordReferral(paid);
+    } catch (err) {
+      console.error("recording referral failed", err);
+    }
+  }
+
   // Runs on first payment, and again on later calls (webhook retries, reconciliation)
   // if an earlier fulfilment attempt failed.
   return fulfil(paid ?? order);
@@ -302,6 +312,8 @@ export async function refundOrder(orderId: string, reason: string, amountCents?:
     .set({ status: full ? "refunded" : "partially_refunded", refundedAt: full ? new Date() : order.refundedAt })
     .where(eq(orders.id, orderId))
     .returning();
+  const { adjustReferralForRefund } = await import("@/lib/affiliates/service");
+  await adjustReferralForRefund(orderId, order.amountCents - remaining + amount, full);
   // A full refund also stops a submission order bought (or bundled) with it.
   if (full) {
     await db()

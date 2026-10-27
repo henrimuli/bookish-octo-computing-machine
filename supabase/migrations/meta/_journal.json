@@ -99,6 +99,13 @@
       "when": 1793037841176,
       "tag": "20261026180401_domain_metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793039015602,
+      "tag": "20261026182335_affiliates",
+      "breakpoints": true
     }
   ]
 }

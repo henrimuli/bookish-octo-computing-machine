@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { approveReferrals } from "@/lib/affiliates/service";
 import { recheckBadges } from "@/lib/badges/service";
 import { syncSubscriptions } from "@/lib/billing/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
     ["badges", () => recheckBadges()],
     ["links", () => monitorLinks()],
     ["dr", () => snapshotDomains()],
+    ["affiliates", () => approveReferrals()],
   ];
   for (const [name, run] of tasks) {
     try {
