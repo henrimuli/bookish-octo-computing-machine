@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { effectiveLinkType } from "@/lib/directories/service";
 import { verifySubmission } from "@/lib/directories/verify";
 import { monitorEnd, trackSubmission } from "@/lib/links/service";
+import { baselineSnapshot } from "@/lib/metrics/service";
 import { formatUsd } from "@/lib/payments/skus";
 import { PACKAGES, packageForSku, selectTargets, type PackageId } from "./packages";
 
@@ -200,6 +201,8 @@ export async function submitIntake(intakeToken: string, raw: IntakeInput, now = 
       .values(targets.map((directoryId) => ({ directoryId, submissionOrderId: order.id })))
       .onConflictDoNothing();
   }
+  // DR before/after: the "before".
+  await baselineSnapshot(input.websiteUrl, now);
 
   await mail(
     input.contactEmail,
