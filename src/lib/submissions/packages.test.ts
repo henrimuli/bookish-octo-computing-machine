@@ -36,6 +36,7 @@ describe("selectTargets", () => {
 
   it("includes badge-gated directories only when allowed, respects count and exclusions", () => {
     expect(selectTargets(all, { count: 2, categories: [], allowBadges: true })).toEqual(["badge-95", "general-80"]);
+    expect(selectTargets(all, { count: 2, categories: [], allowBadges: true, maxBadges: 0 })).not.toContain("badge-95");
     expect(
       selectTargets(all, { count: 10, categories: [], allowBadges: false, exclude: new Set(["general-80"]) }),
     ).not.toContain("general-80");

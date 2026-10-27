@@ -101,6 +101,9 @@ export const directoryInput = z.object({
   queueEstimateDays: optionalInt(0, 365).default(null),
   submissionNotes: z.string().trim().max(1000).default(""),
   instructions: z.string().trim().max(5000).default(""),
+  badgeSnippet: z
+    .preprocess((v) => (v === "" || v === undefined ? null : v), z.string().trim().max(5000).nullable())
+    .default(null),
   isActive: z.boolean().default(true),
 });
 export type DirectoryInput = z.input<typeof directoryInput>;

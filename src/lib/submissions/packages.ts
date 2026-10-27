@@ -54,9 +54,10 @@ export type TargetCandidate = {
  */
 export function selectTargets(
   candidates: TargetCandidate[],
-  opts: { count: number; categories: string[]; allowBadges: boolean; exclude?: Set<string> },
+  opts: { count: number; categories: string[]; allowBadges: boolean; exclude?: Set<string>; maxBadges?: number },
 ): string[] {
   const niches = nichesFor(opts.categories);
+  let badges = 0;
   const fit = (c: TargetCandidate) => (niches.has(c.niche) ? 2 : c.niche === "general" || c.niche === "indie" ? 1 : 0);
   return candidates
     .filter(
@@ -74,6 +75,7 @@ export function selectTargets(
         (b.acceptanceRate ?? 0.5) - (a.acceptanceRate ?? 0.5) ||
         a.id.localeCompare(b.id),
     )
+    .filter((c) => !c.badgeRequired || ++badges <= (opts.maxBadges ?? Infinity))
     .slice(0, opts.count)
     .map((c) => c.id);
 }
