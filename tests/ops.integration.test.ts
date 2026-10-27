@@ -1,15 +1,17 @@
 /**
- * Submission ops tooling against a real Postgres: per-order inboxes (signed
- * inbound posts), encrypted directory logins and the badge block (hold,
+ * Submission ops tooling against a real Postgres: per-order inboxes (Resend
+ * received-email webhooks), encrypted directory logins and the badge block (hold,
  * detect, replace). Runs when TEST_DATABASE_URL is set; the database is wiped.
  */
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentProvider, VerifiedPayment, WebhookEvent } from "@/lib/payments/types";
+import { signSvix } from "@/lib/newsletter/webhook-rules";
 import { resetDatabase } from "./helpers/db";
 
 const TEST_DB = process.env.TEST_DATABASE_URL;
+const WEBHOOK_SECRET = `whsec_${Buffer.from("ops-webhook-secret").toString("base64")}`;
 const DAY = 86_400_000;
 
 const sent: Array<{ to: string; subject: string; text: string }> = [];
@@ -74,7 +76,7 @@ describe.skipIf(!TEST_DB)("submission ops tooling (Postgres)", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "https://debutyard.test";
     process.env.ADMIN_EMAIL = "ops@debutyard.test";
     process.env.INBOUND_EMAIL_DOMAIN = "submit.debutyard.test";
-    process.env.INBOUND_SECRET = "inbound-secret";
+    process.env.RESEND_WEBHOOK_SECRET = WEBHOOK_SECRET;
     process.env.CREDENTIALS_KEY = randomBytes(32).toString("base64");
     (await import("@/env")).resetEnvForTests();
     await resetDatabase(TEST_DB!);
@@ -160,36 +162,48 @@ describe.skipIf(!TEST_DB)("submission ops tooling (Postgres)", () => {
     return r?.s;
   };
 
-  it("gives each order an inbox and stores signed inbound mail only", async () => {
+  it("gives each order an inbox and stores Resend-received mail for it once", async () => {
     const address = await inbox.inboxAddress(order);
     expect(address).toMatch(/^[a-z0-9]{10}@submit\.debutyard\.test$/);
-    const route = await import("@/app/api/inbound/route");
-    const post = (body: string, sig?: string, ts = String(Math.floor(Date.now() / 1000))) =>
-      route.POST(
-        new Request("https://debutyard.test/api/inbound", {
+    const fetched: string[] = [];
+    inbox.setEmailFetcherForTests(async (id) => {
+      fetched.push(id);
+      return {
+        from: "noreply@badge-a.test",
+        subject: "Confirm your email",
+        text: "Click https://badge-a.test/verify?t=1 to confirm.",
+        html: null,
+      };
+    });
+    const route = await import("@/app/api/webhooks/resend/route");
+    const post = (svixId: string, data: Record<string, unknown>, sign = true) => {
+      const body = JSON.stringify({ type: "email.received", created_at: new Date().toISOString(), data });
+      const ts = String(Math.floor(Date.now() / 1000));
+      return route.POST(
+        new Request("https://debutyard.test/api/webhooks/resend", {
           method: "POST",
           headers: {
-            "x-inbound-timestamp": ts,
-            "x-inbound-signature": sig ?? rules.signInbound(body, ts, "inbound-secret"),
+            "svix-id": svixId,
+            "svix-timestamp": ts,
+            "svix-signature": sign ? signSvix(svixId, ts, body, WEBHOOK_SECRET) : "v1,bad",
           },
           body,
         }),
       );
-    const body = JSON.stringify({
-      to: [`Ops <${address}>`],
-      from: "noreply@badge-a.test",
-      subject: "Confirm your email",
-      text: "Click https://badge-a.test/verify?t=1 to confirm.",
-    });
-    expect((await post(body, "00")).status).toBe(401);
-    const ok = await post(body);
-    expect(await ok.json()).toEqual({ stored: true });
-    expect(await (await post(JSON.stringify({ to: "nobody@submit.debutyard.test", from: "x" }))).json()).toEqual({
+    };
+    const mail = { email_id: "em_1", to: ["ops@debutyard.test"], received_for: [address!], from: "x" };
+    expect((await post("m0", mail, false)).status).toBe(401);
+    expect(await (await post("m1", mail)).json()).toEqual({ stored: true });
+    // Resend retries deliver the same email id again.
+    expect(await (await post("m2", mail)).json()).toEqual({ stored: false });
+    expect(await (await post("m3", { email_id: "em_2", to: ["nobody@submit.debutyard.test"] })).json()).toEqual({
       stored: false,
     });
+    expect(fetched).toEqual(["em_1"]);
     const msgs = await inbox.messagesFor(order.id);
     expect(msgs).toHaveLength(1);
     expect(rules.messageLinks(msgs[0].text, msgs[0].html)[0]).toMatchObject({ likely: true });
+    inbox.setEmailFetcherForTests(undefined);
   });
 
   it("keeps directory passwords encrypted and hands them over after delivery", async () => {

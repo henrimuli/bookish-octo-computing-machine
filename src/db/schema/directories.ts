@@ -280,6 +280,8 @@ export const submissionMessages = pgTable(
     subject: text("subject").notNull().default(""),
     text: text("text").notNull().default(""),
     html: text("html"),
+    /** Resend's id for the received email; makes redelivered webhooks no-ops. */
+    resendEmailId: text("resend_email_id").unique(),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("submission_messages_order_idx").on(t.submissionOrderId, t.receivedAt)],

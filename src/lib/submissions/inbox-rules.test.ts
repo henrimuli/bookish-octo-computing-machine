@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inboxKeyFrom, messageLinks, newInboxKey, signInbound, verifyInbound } from "./inbox-rules";
+import { inboxKeyFrom, messageLinks, newInboxKey, receivedEvent } from "./inbox-rules";
 
 describe("submission inboxes", () => {
   it("makes keys and reads them back from addresses on our domain only", () => {
@@ -11,17 +11,15 @@ describe("submission inboxes", () => {
     expect(inboxKeyFrom("x@submit.debutyard.com", "submit.debutyard.com")).toBeNull();
   });
 
-  it("accepts only fresh, correctly signed posts", () => {
-    const now = Date.UTC(2026, 9, 26, 12);
-    const ts = String(Math.floor(now / 1000));
-    const sig = signInbound('{"a":1}', ts, "s3cret");
-    expect(verifyInbound('{"a":1}', ts, sig, "s3cret", now)).toBe(true);
-    expect(verifyInbound('{"a":1}', ts, `sha256=${sig}`, "s3cret", now)).toBe(true);
-    expect(verifyInbound('{"a":2}', ts, sig, "s3cret", now)).toBe(false);
-    expect(verifyInbound('{"a":1}', ts, sig, "other", now)).toBe(false);
-    expect(verifyInbound('{"a":1}', ts, sig, "s3cret", now + 10 * 60_000)).toBe(false);
-    expect(verifyInbound('{"a":1}', null, sig, "s3cret", now)).toBe(false);
-    expect(verifyInbound('{"a":1}', ts, "zz", "s3cret", now)).toBe(false);
+  it("reads Resend received-email events, envelope recipients first", () => {
+    expect(
+      receivedEvent({
+        type: "email.received",
+        data: { email_id: "e1", to: ["a@x.test", "k@y.test"], received_for: ["k@y.test", "b@x.test"] },
+      }),
+    ).toEqual({ emailId: "e1", recipients: ["k@y.test", "b@x.test", "a@x.test"] });
+    expect(receivedEvent({ type: "email.opened", data: { email_id: "e1" } })).toBeNull();
+    expect(receivedEvent({ type: "email.received", data: {} })).toBeNull();
   });
 
   it("pulls out links, verification ones first", () => {

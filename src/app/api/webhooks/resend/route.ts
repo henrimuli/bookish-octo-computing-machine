@@ -1,8 +1,13 @@
 import { env } from "@/env";
 import { recordEvent } from "@/lib/newsletter/service";
 import { parseEvent, verifySvix } from "@/lib/newsletter/webhook-rules";
+import { receiveInbound } from "@/lib/submissions/inbox";
+import { receivedEvent } from "@/lib/submissions/inbox-rules";
 
-/** Resend open/click events for the weekly digest, signed with Svix. */
+/**
+ * Resend webhooks, signed with Svix: mail received for per-order submission
+ * inboxes, and open/click events for the weekly digest.
+ */
 export async function POST(request: Request) {
   const secret = env().RESEND_WEBHOOK_SECRET;
   if (!secret) return new Response("Not configured", { status: 404 });
@@ -17,6 +22,12 @@ export async function POST(request: Request) {
     payload = JSON.parse(raw);
   } catch {
     return new Response("Bad JSON", { status: 400 });
+  }
+  const received = receivedEvent(payload);
+  if (received) {
+    // 200 for unknown addresses too: they aren't worth a retry. A failed fetch throws, so Resend retries.
+    const stored = await receiveInbound(received.emailId, received.recipients);
+    return Response.json({ stored: Boolean(stored) });
   }
   const event = parseEvent(payload);
   if (event) await recordEvent(id!, event);

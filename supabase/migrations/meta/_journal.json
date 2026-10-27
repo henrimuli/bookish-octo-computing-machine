@@ -148,6 +148,13 @@
       "when": 1793101010375,
       "tag": "20261027113650_newsletter_events",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793106946857,
+      "tag": "20261027131546_inbox_resend_id",
+      "breakpoints": true
     }
   ]
 }

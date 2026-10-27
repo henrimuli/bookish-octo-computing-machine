@@ -228,7 +228,7 @@ Vendors also warn against walls of reciprocal badges, since hundreds of them hur
 5. **Paid skips** are used only in Scale/Agency packages, with the cost built into the price.
 
 **Accounts and email verification (the bigger contact issue):** most directories need an account and a confirmed email.
-- Each order gets a **dedicated submission inbox**, e.g. `{order}@submit.debutyard.com`, using Cloudflare Email Routing or Resend inbound. Verification emails land there, the ops console shows them, and we click through without asking the client.
+- Each order gets a **dedicated submission inbox**, e.g. `{order}@submit.debutyard.com`, using Resend receiving (an `email.received` webhook). Verification emails land there, the ops console shows them, and we click through without asking the client.
 - Credentials for every account we create are stored per order and **handed over in the final report**, so the client owns their listings.
 - The intake form asks permission to create accounts in the product's name.
 - A few sites need the maker personally: Product Hunt and Hacker News (personal accounts), and G2/Capterra (vendor verification). These are offered as **"guided" items** with a checklist, not counted in the package total.
@@ -533,7 +533,7 @@ Featured slot calendar with capped inventory + leaderboard slot, click/impressio
 **Phase 3 — Directory DB, DIY tracker, submission service (weeks 7–9)** ✅ *Done Oct 26, 2026.* The deferred pieces (evidence screenshots, per-order inboxes, encrypted directory logins, the badge block, index and DR before/after checks, the monthly directory audit) shipped in Phase 4.
 Directory database (admin editor + public pages), DIY tracker with automatic link verification, submission order checkout (no account needed) + "boost" on existing launches, ops console (kanban, per-directory checklists, QA), client live-tracking dashboard, evidence screenshots, CSV/PDF export, shareable reports, status emails.
 
-**Phase 4 — Link Monitor & subscriptions (weeks 10–11)** ✅ *Done Oct 27, 2026.* Deferred: the hourly jobs (`/api/cron/hourly`: payments reconcile, slot settlement) exist but aren't scheduled until the project moves to Vercel Pro, so they run daily; `rank.compute` and `votes.audit` aren't separate jobs: scores are computed when the board is read, and vote weights are set when each vote is cast. The screenshot and inbound-email workers need deploying, and the DR, SERP and Claude features stay hidden until their keys are set.
+**Phase 4 — Link Monitor & subscriptions (weeks 10–11)** ✅ *Done Oct 27, 2026.* Deferred: the hourly jobs (`/api/cron/hourly`: payments reconcile, slot settlement) exist but aren't scheduled until the project moves to Vercel Pro, so they run daily; `rank.compute` and `votes.audit` aren't separate jobs: scores are computed when the board is read, and vote weights are set when each vote is cast. The screenshot worker needs deploying, and the DR, SERP and Claude features stay hidden until their keys are set.
 Tracked links for any URL, weekly monitoring + alerts, DR snapshots + before/after charts, Maker Pro + Always Featured + Link Monitor plans (Paystack/PayPal subscriptions + dunning emails), in-house affiliate program, free tools (dofollow checker, DR checker), launch wall.
 
 **Phase 5 — Scale & moat (ongoing)**

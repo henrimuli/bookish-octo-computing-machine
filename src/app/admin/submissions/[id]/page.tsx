@@ -167,7 +167,7 @@ async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "pa
                   land here.
                 </>
               ) : (
-                "Set INBOUND_EMAIL_DOMAIN and INBOUND_SECRET, and deploy the email worker, to receive mail here."
+                "Set INBOUND_EMAIL_DOMAIN and RESEND_WEBHOOK_SECRET, with receiving on for that domain in Resend, to get mail here."
               )}
             </p>
             {messages.length > 0 && (

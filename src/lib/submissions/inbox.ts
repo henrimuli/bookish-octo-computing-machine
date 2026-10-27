@@ -1,8 +1,8 @@
 import "server-only";
 import { desc, eq } from "drizzle-orm";
-import { z } from "zod";
 import { db, schema } from "@/db";
 import { env } from "@/env";
+import { resendClient } from "@/lib/email";
 import { inboxKeyFrom, newInboxKey } from "./inbox-rules";
 
 const { submissionOrders: orders, submissionMessages: messages } = schema;
@@ -24,37 +24,56 @@ export async function inboxAddress(order: Pick<Order, "id" | "inboxKey">): Promi
   return key ? `${key}@${domain}` : null;
 }
 
-export const inboundMessage = z.object({
-  to: z.union([z.string(), z.array(z.string())]).transform((v) => (Array.isArray(v) ? v : [v])),
-  from: z.string().max(500),
-  subject: z.string().max(1000).default(""),
-  text: z.string().max(500_000).default(""),
-  html: z.string().max(1_000_000).nullish(),
-});
+export type ReceivedEmail = { from: string; subject: string; text: string | null; html: string | null };
+/** Loads a received email's content from Resend; tests swap it out. */
+export type EmailFetcher = (emailId: string) => Promise<ReceivedEmail | null>;
 
-/** Stores a message sent to one of our order inboxes. Returns null when no order matches. */
-export async function receiveInbound(raw: unknown, now = new Date()) {
-  const msg = inboundMessage.parse(raw);
+const resendFetcher: EmailFetcher = async (emailId) => {
+  const r = resendClient();
+  if (!r) return null;
+  // `cid` keeps inline images as references instead of inlining them as base64.
+  const { data, error } = await r.emails.receiving.get(emailId, { html_format: "cid" });
+  if (error) throw new Error(`Couldn't load received email ${emailId}: ${error.message}`);
+  return data;
+};
+
+let fetcher: EmailFetcher = resendFetcher;
+export function setEmailFetcherForTests(fn: EmailFetcher | undefined) {
+  fetcher = fn ?? resendFetcher;
+}
+
+/**
+ * Stores a Resend `email.received` message sent to one of our order inboxes.
+ * Only fetches the body when a recipient matches an order, and Resend's email
+ * id keeps redelivered webhooks from storing it twice. Null when nothing matched.
+ */
+export async function receiveInbound(emailId: string, recipients: string[], now = new Date()) {
   const domain = env().INBOUND_EMAIL_DOMAIN;
   if (!domain) return null;
-  for (const to of msg.to) {
+  for (const to of recipients) {
     const key = inboxKeyFrom(to, domain);
     if (!key) continue;
     const order = await db().query.submissionOrders.findFirst({ where: eq(orders.inboxKey, key) });
     if (!order) continue;
+    const seen = await db().query.submissionMessages.findFirst({ where: eq(messages.resendEmailId, emailId) });
+    if (seen) return null;
+    const email = await fetcher(emailId);
+    if (!email) return null;
     const [row] = await db()
       .insert(messages)
       .values({
         submissionOrderId: order.id,
         toAddress: to.slice(0, 500),
-        fromAddress: msg.from,
-        subject: msg.subject,
-        text: msg.text,
-        html: msg.html ?? null,
+        fromAddress: email.from.slice(0, 500),
+        subject: email.subject.slice(0, 1000),
+        text: (email.text ?? "").slice(0, 500_000),
+        html: email.html?.slice(0, 1_000_000) ?? null,
+        resendEmailId: emailId,
         receivedAt: now,
       })
+      .onConflictDoNothing()
       .returning({ id: messages.id });
-    return { orderId: order.id, messageId: row.id };
+    return row ? { orderId: order.id, messageId: row.id } : null;
   }
   return null;
 }
