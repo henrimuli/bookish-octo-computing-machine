@@ -109,7 +109,18 @@ After either provider is configured, run `pnpm payments:sync-plans` once per env
 
 1. Create a bucket (e.g. `debutyard`) and connect a custom domain (e.g. `cdn.debutyard.com`) as `R2_PUBLIC_URL`.
 2. Create an API token with **Object Read & Write** on that bucket and set the `R2_*` variables.
-3. Add a CORS rule allowing `PUT` from your site's origin. Browsers upload straight to R2 with presigned URLs.
+3. Add a CORS policy (bucket → **Settings** → **CORS Policy**). Browsers upload logos, profile pictures and screenshots straight to R2 with presigned URLs, so without it every upload fails with "couldn't reach file storage":
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://debutyard.com", "https://www.debutyard.com", "http://localhost:3000"],
+       "AllowedMethods": ["PUT", "GET"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
 
 ### Resend (email)
 

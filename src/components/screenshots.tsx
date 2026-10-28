@@ -5,6 +5,7 @@ import { screenshotUploadAction } from "@/app/submit/actions";
 import { Dialog } from "@/components/ui/dialog";
 import { Label, Spinner } from "@/components/ui/primitives";
 import { MAX_SCREENSHOTS } from "@/lib/products/input";
+import { putToStorage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
 const eye = "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z";
@@ -66,12 +67,7 @@ export function ScreenshotsField({
     try {
       const res = await screenshotUploadAction(file.type, file.size);
       if (!res.ok) throw new Error(res.error);
-      const put = await fetch(res.data.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      if (!put.ok) throw new Error("Upload failed");
+      await putToStorage(res.data.uploadUrl, file);
       onChange((current) => [...current, res.data.publicUrl].slice(0, MAX_SCREENSHOTS));
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed");

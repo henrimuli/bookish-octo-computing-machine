@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Spinner } from "@/components/ui/primitives";
 import { MAX_CATEGORIES, MAX_SCREENSHOTS, type ProductInput } from "@/lib/products/input";
 import { normalizeWebsite } from "@/lib/products/website";
+import { putToStorage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
 type Category = { slug: string; name: string };
@@ -184,12 +185,7 @@ export function ProductForm({
     try {
       const res = await logoUploadAction(file.type, file.size);
       if (!res.ok) throw new Error(res.error);
-      const put = await fetch(res.data.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      if (!put.ok) throw new Error("Upload failed");
+      await putToStorage(res.data.uploadUrl, file);
       set("logoUrl", res.data.publicUrl);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed");
