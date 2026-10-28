@@ -4,15 +4,17 @@ import { and, eq } from "drizzle-orm";
 import { Suspense } from "react";
 import { CancelPlan, FeaturedListingPicker } from "@/components/billing/billing-controls";
 import { ButtonLink } from "@/components/ui/button";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { planForSku } from "@/lib/billing/plans";
 import { fastTrackCredit, receiptsFor, subscriptionsFor } from "@/lib/billing/service";
 import { linkUsage } from "@/lib/links/service";
-import { formatUsd, getSku } from "@/lib/payments/skus";
+import { BuyButton } from "@/components/buy-button";
+import { enabledProviders } from "@/lib/payments";
+import { formatUsd, getSku, isPurchasable, SKUS } from "@/lib/payments/skus";
 
-export const metadata: Metadata = { title: "Billing", robots: { index: false } };
+export const metadata: Metadata = { title: "Billing & plans", robots: { index: false } };
 
 const day = (d: Date | null) =>
   d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "–";
@@ -25,15 +27,12 @@ const STATUS = {
 
 export default function BillingPage() {
   return (
-    <Container className="max-w-4xl py-12">
-      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Dashboard
-      </Link>
-      <Heading className="mt-4">Billing</Heading>
+    <div className="mx-auto max-w-4xl">
+      <Heading className="text-2xl sm:text-3xl">Billing &amp; plans</Heading>
       <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-lg bg-muted/50" />}>
         <Billing />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 
@@ -59,7 +58,7 @@ async function Billing() {
           <p className="mt-1 text-sm text-muted-foreground">
             You can monitor {usage.limit} links you add yourself, plus everything from your tracker and orders.
           </p>
-          <ButtonLink href="/pricing#plans" className="mt-4">
+          <ButtonLink href="/dashboard/billing#plans" className="mt-4">
             See plans
           </ButtonLink>
         </Card>
@@ -138,6 +137,38 @@ async function Billing() {
           Subscription invoices come from Paystack or PayPal each time you&apos;re charged.
         </p>
       </Card>
+
+      <Plans current={new Set(subs.map((s) => s.sku))} />
     </div>
+  );
+}
+
+/** Subscription plans and their prices. Plans that aren't on sale (Agency) stay hidden. */
+function Plans({ current }: { current: Set<string> }) {
+  const providers = enabledProviders();
+  const plans = SKUS.filter((s) => s.type === "recurring" && isPurchasable(s));
+  return (
+    <section id="plans" className="scroll-mt-20 pt-4">
+      <h2 className="font-display text-xl font-semibold">Plans</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Monthly or yearly, cancel anytime.</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {plans.map((sku) => (
+          <Card key={sku.id} className="flex flex-col p-5">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-medium">{sku.name}</h3>
+              {current.has(sku.id) && <Badge tone="success">Current</Badge>}
+            </div>
+            <p className="mt-1 font-display text-2xl font-bold">
+              {formatUsd(sku.amountCents)}
+              <span className="text-sm font-normal text-muted-foreground">
+                /{sku.type === "recurring" && sku.interval === "monthly" ? "mo" : "yr"}
+              </span>
+            </p>
+            <p className="mt-2 flex-1 text-sm text-muted-foreground">{sku.description}</p>
+            {!current.has(sku.id) && <BuyButton sku={sku.id} recurring providers={providers} className="mt-4" />}
+          </Card>
+        ))}
+      </div>
+    </section>
   );
 }

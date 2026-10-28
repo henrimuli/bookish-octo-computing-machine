@@ -20,7 +20,6 @@ export async function GET() {
     `- [Past weeks](${base}/weeks): every weekly board, with final rankings`,
     `- [Categories](${base}/categories): products by category`,
     `- [How ranking works](${base}/how-ranking-works): scoring and anti-manipulation rules`,
-    `- [Pricing](${base}/pricing): free and paid debuts, featured placements, directory submission service`,
     `- [Blog](${base}/blog): weekly recaps of every debut`,
     `- [Launch directories](${base}/directories): where to list a product after launch, with link types we've verified`,
     `- [Launch wall](${base}/launch-wall): makers and the directory backlinks we've verified for them`,

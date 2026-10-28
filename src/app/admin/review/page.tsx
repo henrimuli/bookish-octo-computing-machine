@@ -4,7 +4,7 @@ import { asc, count, eq, inArray, sql } from "drizzle-orm";
 import { Suspense } from "react";
 import { ProductLogo } from "@/components/board/product-logo";
 import { ReviewControls } from "@/components/review-controls";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireStaff } from "@/lib/auth";
 import { TIERS } from "@/lib/products/input";
@@ -14,12 +14,12 @@ export const metadata: Metadata = { title: "Review queue · Admin", robots: { in
 
 export default function AdminPage() {
   return (
-    <Container className="max-w-5xl py-12">
-      <Heading>Review queue</Heading>
+    <div className="mx-auto max-w-5xl">
+      <Heading className="text-2xl sm:text-3xl">Review queue</Heading>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Queue />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

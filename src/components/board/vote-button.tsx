@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
-import { toggleVoteAction } from "@/app/p/actions";
+import { toggleVoteAction } from "@/app/(site)/p/actions";
 import { cn } from "@/lib/utils";
 
 export function VoteButton({

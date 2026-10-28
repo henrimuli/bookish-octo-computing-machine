@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 import { DirectoryEditor } from "@/components/directories/directory-editor";
-import { Card, Container, Heading } from "@/components/ui/primitives";
+import { Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireStaff } from "@/lib/auth";
 
@@ -13,14 +13,14 @@ export const metadata: Metadata = { title: "Edit directory · Admin", robots: { 
 
 export default function EditDirectoryPage(props: PageProps<"/admin/directories/[id]">) {
   return (
-    <Container className="max-w-4xl py-10">
+    <div className="mx-auto max-w-4xl">
       <Link href="/admin/directories" className="text-sm text-muted-foreground hover:text-foreground">
         ← All directories
       </Link>
       <Suspense fallback={<p className="mt-6 text-muted-foreground">Loading…</p>}>
         <Editor params={props.params} />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

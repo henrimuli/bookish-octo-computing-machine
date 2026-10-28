@@ -4,7 +4,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { Suspense } from "react";
 import { TrackerTable } from "@/components/directories/tracker-table";
 import { ButtonLink } from "@/components/ui/button";
-import { Card, Container, Heading } from "@/components/ui/primitives";
+import { Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { effectiveLinkType } from "@/lib/directories/service";
@@ -15,11 +15,8 @@ export const metadata: Metadata = { title: "Directory tracker", robots: { index:
 
 export default function TrackerPage(props: PageProps<"/dashboard/tracker">) {
   return (
-    <Container className="max-w-5xl py-12">
-      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Dashboard
-      </Link>
-      <Heading className="mt-4">Directory tracker</Heading>
+    <div className="mx-auto max-w-5xl">
+      <Heading className="text-2xl sm:text-3xl">Directory tracker</Heading>
       <p className="mt-2 max-w-2xl text-muted-foreground">
         Work through the directories at your own pace. When a listing goes live, paste its URL and we check the link
         ourselves: that the page loads, links to your site, and whether the link is dofollow.
@@ -27,7 +24,7 @@ export default function TrackerPage(props: PageProps<"/dashboard/tracker">) {
       <Suspense fallback={<div className="mt-8 h-96 animate-pulse rounded-lg bg-muted/50" />}>
         <Tracker searchParams={props.searchParams} />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 
@@ -49,7 +46,7 @@ async function Tracker({ searchParams }: Pick<PageProps<"/dashboard/tracker">, "
         <p className="mt-1 text-sm text-muted-foreground">
           The tracker works per product, so we know which site to check links for.
         </p>
-        <ButtonLink href="/submit" className="mt-4">
+        <ButtonLink href="/?debut=1" scroll={false} className="mt-4">
           Add your product
         </ButtonLink>
       </Card>

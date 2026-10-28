@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SponsoredRow } from "@/components/ads/sponsored";
-import { ButtonLink } from "@/components/ui/button";
+import { DebutLink } from "@/components/debut/debut-link";
 import { Card } from "@/components/ui/primitives";
 import type { AdItem } from "@/lib/ads/service";
 import { getCurrentUser } from "@/lib/auth";
@@ -30,9 +30,7 @@ export async function WeekBoard({
         {emptyCta && (
           <>
             <p className="mt-1 text-sm text-muted-foreground">Be the first: debut your product and get the top spot.</p>
-            <ButtonLink href="/submit" className="mt-4">
-              Debut your product
-            </ButtonLink>
+            <DebutLink className="mt-4">Debut your product</DebutLink>
           </>
         )}
       </Card>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ButtonLink } from "@/components/ui/button";
-import { Badge, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Heading } from "@/components/ui/primitives";
 import { requireStaff } from "@/lib/auth";
 import { allPosts, formatPostDate } from "@/lib/blog/service";
 
@@ -10,9 +10,9 @@ export const metadata: Metadata = { title: "Blog · Admin", robots: { index: fal
 
 export default function BlogAdminPage() {
   return (
-    <Container className="max-w-5xl py-10">
+    <div className="mx-auto max-w-5xl">
       <div className="flex items-center justify-between gap-4">
-        <Heading>Blog</Heading>
+        <Heading className="text-2xl sm:text-3xl">Blog</Heading>
         <ButtonLink href="/admin/blog/new">New post</ButtonLink>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -21,7 +21,7 @@ export default function BlogAdminPage() {
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <List />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

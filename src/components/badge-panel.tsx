@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { verifyBadgeAction } from "@/app/dashboard/actions";
+import { CodeBlock } from "@/components/code-block";
 import { Button } from "@/components/ui/button";
 
 export function BadgePanel({
@@ -47,10 +48,10 @@ export function BadgePanel({
           : "Optional for your plan, but it sends visitors to your listing."}{" "}
         Paste it as plain HTML: badges added by JavaScript can&apos;t be detected.
       </p>
-      <div className="flex items-center gap-3">
-        <span className={`rounded-md p-2 ${theme === "dark" ? "bg-[#f3f7f5]" : "bg-[#dce6e2]"}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`max-w-full rounded-md p-2 ${theme === "dark" ? "bg-[#f3f7f5]" : "bg-[#dce6e2]"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrls[theme]} alt="Badge preview" width={220} height={54} />
+          <img src={previewUrls[theme]} alt="Badge preview" width={220} height={54} className="h-auto max-w-full" />
         </span>
         <div className="flex gap-1 text-xs">
           {(["light", "dark"] as const).map((t) => (
@@ -65,7 +66,7 @@ export function BadgePanel({
           ))}
         </div>
       </div>
-      <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">{snippets[theme]}</pre>
+      <CodeBlock code={snippets[theme]} copy={false} />
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={copy}>
           {copied ? "Copied" : "Copy snippet"}
@@ -78,9 +79,10 @@ export function BadgePanel({
       <details className="text-muted-foreground">
         <summary className="cursor-pointer">Site behind bot protection (e.g. Cloudflare)?</summary>
         <p className="mt-2">
-          Keep the badge on your site and add this DNS TXT record to <code>{dnsHost}</code>, then click “Check my site”:
+          Keep the badge on your site and add this DNS TXT record to <code className="break-all">{dnsHost}</code>, then
+          click “Check my site”:
         </p>
-        <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-3 text-xs">{dnsValue}</pre>
+        <CodeBlock code={dnsValue} className="mt-2" />
       </details>
     </div>
   );

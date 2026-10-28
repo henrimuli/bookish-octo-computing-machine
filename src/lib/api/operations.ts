@@ -181,7 +181,7 @@ export async function draftSubmission(raw: unknown, user: ApiUser | null, via: "
       id: p.id,
       slug: p.slug,
       status: p.status,
-      nextStep: `Open ${site(`/submit/${p.id}`)} to review the draft, pick a free or paid debut, and submit it.`,
+      nextStep: `Open ${site(`/dashboard/products/${p.id}`)} to review the draft, pick a free or paid debut, and submit it.`,
     };
   } catch (err) {
     if (err instanceof ProductError) throw new ApiError(err.message);
@@ -204,7 +204,7 @@ export async function myLaunches(user: ApiUser | null) {
     comments: stats.comments,
     views30d: stats.views_30d,
     clicks30d: stats.clicks_30d,
-    url: p.status === "approved" ? site(`/p/${p.slug}`) : site(`/submit/${p.id}`),
+    url: p.status === "approved" ? site(`/p/${p.slug}`) : site(`/dashboard/products/${p.id}`),
     rejectionReason: p.rejectionReason,
   }));
 }

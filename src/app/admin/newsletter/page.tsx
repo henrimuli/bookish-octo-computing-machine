@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { desc } from "drizzle-orm";
 import { Suspense } from "react";
-import { Card, Container, Heading } from "@/components/ui/primitives";
+import { Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireStaff } from "@/lib/auth";
 import { renderDigest } from "@/lib/newsletter/render";
@@ -12,12 +12,12 @@ export const metadata: Metadata = { title: "Newsletter · Admin", robots: { inde
 
 export default function NewsletterAdminPage() {
   return (
-    <Container className="max-w-5xl py-10">
-      <Heading>Newsletter</Heading>
+    <div className="mx-auto max-w-5xl">
+      <Heading className="text-2xl sm:text-3xl">Newsletter</Heading>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Body />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

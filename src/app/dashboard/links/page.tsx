@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { LaunchWallToggle } from "@/components/links/launch-wall-toggle";
 import { LinksTable } from "@/components/links/links-table";
 import { ButtonLink } from "@/components/ui/button";
-import { Card, Container, Heading } from "@/components/ui/primitives";
+import { Card, Heading } from "@/components/ui/primitives";
 import { requireUser } from "@/lib/auth";
 import { linksForUser, linkUsage, pausedLinkIds } from "@/lib/links/service";
 import { onLaunchWall } from "@/lib/links/wall";
@@ -13,11 +12,8 @@ export const metadata: Metadata = { title: "Link Monitor", robots: { index: fals
 
 export default function LinksPage() {
   return (
-    <Container className="max-w-5xl py-12">
-      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Dashboard
-      </Link>
-      <Heading className="mt-4">Link Monitor</Heading>
+    <div className="mx-auto max-w-5xl">
+      <Heading className="text-2xl sm:text-3xl">Link Monitor</Heading>
       <p className="mt-2 max-w-2xl text-muted-foreground">
         We re-check every live backlink: daily for its first two weeks, then weekly. If a link turns nofollow or a
         listing disappears, we email you. Links from your directory tracker and submission orders are added
@@ -26,7 +22,7 @@ export default function LinksPage() {
       <Suspense fallback={<div className="mt-8 h-96 animate-pulse rounded-lg bg-muted/50" />}>
         <Links />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 
@@ -71,7 +67,7 @@ async function Links() {
             </span>{" "}
             <span className="text-muted-foreground">Link Monitor covers 100 links for $9/month, or 500 for $19.</span>
           </p>
-          <ButtonLink href="/pricing#plans" size="sm">
+          <ButtonLink href="/dashboard/billing#plans" size="sm">
             See plans
           </ButtonLink>
         </Card>

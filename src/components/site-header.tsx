@@ -11,7 +11,6 @@ const nav = [
   { href: "/weeks", label: "Past weeks" },
   { href: "/categories", label: "Categories" },
   { href: "/directories", label: "Directories" },
-  { href: "/pricing", label: "Pricing" },
 ];
 
 export function SiteHeader() {

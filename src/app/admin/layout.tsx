@@ -1,44 +1,59 @@
-import Link from "next/link";
-import { Suspense } from "react";
-import { Container } from "@/components/ui/primitives";
+import { Suspense, type ReactNode } from "react";
+import { AccountFooter } from "@/components/app-shell/account-footer";
+import { AppShell, type NavGroup } from "@/components/app-shell/app-shell";
 import { getCurrentUser, isStaff } from "@/lib/auth";
 
-const links = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/review", label: "Review queue" },
-  { href: "/admin/submissions", label: "Submissions" },
-  { href: "/admin/directories", label: "Directories" },
-  { href: "/admin/ads", label: "Ads" },
-  { href: "/admin/blog", label: "Blog" },
-  { href: "/admin/newsletter", label: "Newsletter" },
-  { href: "/admin/affiliates", label: "Affiliates" },
-  { href: "/admin/users", label: "Admin users" },
+const groups: NavGroup[] = [
+  { items: [{ href: "/admin/dashboard", label: "Overview", icon: "overview" }] },
+  {
+    label: "Operations",
+    items: [
+      { href: "/admin/review", label: "Review queue", icon: "review" },
+      { href: "/admin/submissions", label: "Submissions", icon: "inbox" },
+      { href: "/admin/directories", label: "Directories", icon: "directory" },
+      { href: "/admin/ads", label: "Ads", icon: "megaphone" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/admin/blog", label: "Blog", icon: "pen" },
+      { href: "/admin/newsletter", label: "Newsletter", icon: "mail" },
+    ],
+  },
+  {
+    label: "People",
+    items: [
+      { href: "/admin/affiliates", label: "Affiliates", icon: "gift" },
+      { href: "/admin/users", label: "Admin users", icon: "users" },
+    ],
+  },
 ];
 
+/** The admin area: its own space with a sidebar, no site header or footer. */
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <>
-      <Suspense>
-        <AdminNav />
-      </Suspense>
-      {children}
-    </>
+    <Suspense fallback={<div className="flex-1" />}>
+      <AdminFrame>{children}</AdminFrame>
+    </Suspense>
   );
 }
 
-/** Only staff see the section links; everyone else gets the page's own sign-in or "admins only" view. */
-async function AdminNav() {
+/** Staff get the sidebar; everyone else sees the page's own sign-in redirect or "admins only" view, centred. */
+async function AdminFrame({ children }: { children: ReactNode }) {
   const user = await getCurrentUser().catch(() => null);
-  if (!(await isStaff(user))) return null;
+  if (!(await isStaff(user))) return <main className="flex flex-1 items-center justify-center">{children}</main>;
   return (
-    <Container className="max-w-5xl pt-6">
-      <nav className="flex flex-wrap gap-4 border-b border-border pb-3 text-sm">
-        {links.map((l) => (
-          <Link key={l.href} href={l.href} className="text-muted-foreground hover:text-foreground">
-            {l.label}
-          </Link>
-        ))}
-      </nav>
-    </Container>
+    <AppShell
+      area="Admin"
+      groups={groups}
+      footer={
+        <Suspense fallback={<div className="h-12 animate-pulse rounded-md bg-muted" />}>
+          <AccountFooter area="admin" />
+        </Suspense>
+      }
+    >
+      {children}
+    </AppShell>
   );
 }

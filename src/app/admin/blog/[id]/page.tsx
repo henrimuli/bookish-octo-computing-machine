@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 import { PostEditor } from "@/components/post-editor";
-import { Container } from "@/components/ui/primitives";
 import { requireStaff } from "@/lib/auth";
 import { getPost } from "@/lib/blog/service";
 
@@ -12,7 +11,7 @@ export const metadata: Metadata = { title: "Edit post · Admin", robots: { index
 
 export default function EditPostPage(props: PageProps<"/admin/blog/[id]">) {
   return (
-    <Container className="max-w-4xl py-10">
+    <div className="mx-auto max-w-4xl">
       <Link href="/admin/blog" className="text-sm text-muted-foreground hover:text-foreground">
         ← All posts
       </Link>
@@ -21,7 +20,7 @@ export default function EditPostPage(props: PageProps<"/admin/blog/[id]">) {
           <Editor params={props.params} />
         </Suspense>
       </div>
-    </Container>
+    </div>
   );
 }
 

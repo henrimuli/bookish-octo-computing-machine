@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AddAdmin, RemoveAdmin } from "@/components/admin/admin-users";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { listAdmins } from "@/lib/admin/users";
 import { normalizeEmail, requireStaff } from "@/lib/auth";
 
@@ -11,8 +11,8 @@ const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short
 
 export default function AdminUsersPage() {
   return (
-    <Container className="max-w-5xl py-10">
-      <Heading>Admin users</Heading>
+    <div className="mx-auto max-w-5xl">
+      <Heading className="text-2xl sm:text-3xl">Admin users</Heading>
       <p className="mt-2 text-muted-foreground">
         People who can open the admin area. They sign in with the email listed here. Every role has full access for now;
         roles are stored so permissions can be split later.
@@ -20,7 +20,7 @@ export default function AdminUsersPage() {
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Body />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

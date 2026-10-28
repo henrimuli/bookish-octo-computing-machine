@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { readinessAction } from "@/app/tools/launch-readiness/actions";
+import { readinessAction } from "@/app/(site)/tools/launch-readiness/actions";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, Input } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
@@ -94,7 +94,7 @@ export function ReadinessTool() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <ButtonLink href={`/submit?url=${encodeURIComponent(report.url)}`}>Debut it on DebutYard</ButtonLink>
+            <ButtonLink href={`/?debut=1&url=${encodeURIComponent(report.url)}`}>Debut it on DebutYard</ButtonLink>
             <Link href="/badge" className="self-center text-sm text-primary hover:underline">
               Get the badge
             </Link>

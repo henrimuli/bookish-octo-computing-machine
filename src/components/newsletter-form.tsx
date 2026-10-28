@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { subscribeAction } from "@/app/newsletter/actions";
+import { subscribeAction } from "@/app/(site)/newsletter/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
