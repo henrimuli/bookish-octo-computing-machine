@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/app-shell/page-header";
 import { ProductForm } from "@/components/product-form";
 import { Card } from "@/components/ui/primitives";
 import { requireUser } from "@/lib/auth";
-import { getEditableProduct, listCategories, uploadsEnabled } from "@/lib/products/queries";
+import { getEditableProduct, listCategories, screenshotsEnabled, uploadsEnabled } from "@/lib/products/queries";
 
 export const metadata: Metadata = { title: "Edit listing", robots: { index: false } };
 
@@ -43,6 +43,7 @@ async function Edit({ params }: { params: PageProps<"/dashboard/products/[id]">[
       initial={editable.input}
       productId={editable.product.id}
       uploadsEnabled={uploadsEnabled()}
+      screenshotsEnabled={screenshotsEnabled()}
     />
   );
 }

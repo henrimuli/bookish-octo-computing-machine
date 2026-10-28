@@ -12,7 +12,11 @@ import { CHECKOUT_CHANNEL, type CheckoutMessage } from "@/lib/checkout-channel";
 import type { PlanChoices } from "@/lib/products/plan-choices";
 import { cn } from "@/lib/utils";
 
-type Setup = { categories: Array<{ slug: string; name: string }>; uploadsEnabled: boolean };
+type Setup = {
+  categories: Array<{ slug: string; name: string }>;
+  uploadsEnabled: boolean;
+  screenshotsEnabled: boolean;
+};
 type Checkout = { orderId: string; url: string; tab: Window | null };
 type Step = "details" | "plan" | "payment" | "done";
 
@@ -136,6 +140,7 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
                 layout="modal"
                 categories={setup.categories}
                 uploadsEnabled={setup.uploadsEnabled}
+                screenshotsEnabled={setup.screenshotsEnabled}
                 initialWebsiteUrl={initialUrl && /^https?:\/\//.test(initialUrl) ? initialUrl : undefined}
                 productId={productId}
                 onSaved={toPlan}

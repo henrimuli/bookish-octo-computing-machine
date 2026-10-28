@@ -48,7 +48,7 @@ const NOISE = "script, style, noscript, svg, template, iframe, nav, footer, form
 const NOISE_ATTR =
   /(^|[\s_-])(cookies?|consent|gdpr|testimonials?|reviews|newsletter|announcement|banner-cookie)([\s_-]|$)/i;
 const BOILERPLATE =
-  /cookie|privacy|terms of|©|copyright|all rights reserved|sign ?up|log ?in|subscribe|newsletter|javascript|your browser|unsubscribe|we use|trusted by|loved by|testimonial|book a demo|contact (us|sales)/i;
+  /cookie|privacy|terms of|©|copyright|all rights reserved|sign ?up|log ?in|subscribe|newsletter|enable javascript|javascript is (required|disabled)|update your browser|unsubscribe|we use|trusted by|loved by|testimonial|book a demo|contact (us|sales)/i;
 const FILLER =
   /\b(revolutionary|world-class|cutting-edge|game[- ]?chang\w*|best-in-class|next-gen\w*|#1|unparalleled)\b/i;
 const NOT_FEATURE =
@@ -97,7 +97,7 @@ const GITHUB_RESERVED =
   /^(features|about|pricing|login|join|sponsors|marketplace|explore|topics|enterprise|team|security|site|orgs|apps|settings|contact)$/i;
 
 const squash = (s: string) => s.replace(/\s+/g, " ").trim();
-const textOf = (el: HTMLElement) => squash(el.text);
+const textOf = (el: HTMLElement) => squash(el.structuredText);
 const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
 
 function similar(a: string, b: string): boolean {
@@ -140,10 +140,6 @@ export function fitTo(s: string, max: number): string {
 function lowerFirst(s: string): string {
   // Keep acronyms and brand words ("AI", "GitHub") as written.
   return /^[A-Z][a-z]/.test(s) && !/^[A-Z][a-z]+[A-Z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
-}
-
-function featureName(s: string): string {
-  return lowerFirst(s.replace(/[.:!]+$/, "").trim());
 }
 
 function parsePrice(text: string): Price | undefined {
@@ -359,7 +355,7 @@ function readUncached(html: string, pageUrl: string): PageFacts {
     }
   }
 
-  const visible = squash(main.text);
+  const visible = squash(main.structuredText);
   const lower = visible.toLowerCase();
   const pricing = {
     free:
@@ -368,7 +364,11 @@ function readUncached(html: string, pageUrl: string): PageFacts {
         lower,
       ),
     trial: /\bfree trial\b|\b\d+[- ]day (free )?trial\b|\btry (it )?free for\b/.test(lower),
-    openSource: /\bopen[- ]source\b|\bmit licen[sc]e\b|\bapache(-| )2/.test(lower),
+    // "Open-source SDKs" or "we sponsor open source projects" describe parts or causes, not the product.
+    openSource:
+      /\bopen[- ]source\b(?!\s+(sdks?|librar(y|ies)|clients?|plugins?|integrations?|components?|packages?|examples?|templates?|starters?|projects?|contributions?|community|software we))|\bmit licen[sc]e\b|\bapache(-| )2/.test(
+        lower,
+      ),
     price: parsePrice(visible) ?? ld.price,
   };
 
@@ -403,20 +403,6 @@ function scoreSentence(s: string, name: string): number {
   if (FILLER.test(s)) score -= 2;
   if (s.endsWith("!")) score -= 1;
   return score;
-}
-
-function listOf(items: string[]): string {
-  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
-}
-
-function pricingSentence(p: PageFacts["pricing"]): string | undefined {
-  const from = p.price ? ` from ${p.price.label}` : "";
-  if (p.openSource) return p.price ? `Open source, with paid plans${from}.` : "Free and open source.";
-  if (p.free && p.price) return `Free plan available; paid plans${from}.`;
-  if (p.trial) return `Free trial available${p.price ? `; plans${from}` : ""}.`;
-  if (p.price) return `Plans start at ${p.price.label}.`;
-  if (p.free) return "Free to use.";
-  return undefined;
 }
 
 function pricingModel(p: PageFacts["pricing"]): PricingModel | undefined {
@@ -474,16 +460,10 @@ export function composeCopy(
     add(c.s);
   }
 
-  const features = pages
-    .flatMap((p) => p.features)
-    .filter((f, i, arr) => arr.findIndex((x) => similar(x, f)) === i)
-    .slice(0, 4)
-    .map(featureName);
-  if (features.length >= 2) add(`Features include ${listOf(features)}`);
-
+  // Features, audience and pricing only feed categories and the Pricing field: written out as
+  // "Features include…" / "Free and open source." sentences they were too often wrong.
+  const features = pages.flatMap((p) => p.features);
   const audience = pages.map((p) => p.audience).find(Boolean);
-  if (audience && !parts.join(" ").toLowerCase().includes(audience)) add(`Built for ${audience}`);
-  add(pricingSentence(pricing));
 
   let description = "";
   for (const p of parts) {
@@ -499,6 +479,6 @@ export function composeCopy(
     pricingModel: pricingModel(pricing),
     githubUrl: pages.map((p) => p.githubUrl).find(Boolean),
     twitterUrl: pages.map((p) => p.twitterUrl).find(Boolean),
-    keywords: [...features, home?.hero, home?.subhead].filter(Boolean).join(" \n "),
+    keywords: [...features, audience, home?.hero, home?.subhead].filter(Boolean).join(" \n "),
   };
 }

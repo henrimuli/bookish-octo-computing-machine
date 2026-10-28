@@ -2,9 +2,10 @@ import "server-only";
 import { env } from "@/env";
 
 /**
- * Listing screenshots from the screenshot worker (workers/screenshot), which
- * runs Playwright off Vercel and stores PNGs in R2. Optional: without
- * WORKER_URL, staff paste evidence links by hand.
+ * Screenshots from the screenshot worker (workers/screenshot), which runs
+ * Playwright off Vercel and stores PNGs in R2: directory evidence, and the
+ * homepage capture on the debut form. Optional: without WORKER_URL, staff
+ * paste evidence links by hand and makers upload their own screenshots.
  */
 
 export const evidenceEnabled = () => Boolean(env().WORKER_URL && env().WORKER_SECRET);

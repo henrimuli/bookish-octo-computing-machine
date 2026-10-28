@@ -1,6 +1,9 @@
 # Screenshot worker
 
-Takes evidence screenshots of directory listings: when a listing is first confirmed live (`verifySubmission`) and whenever Link Monitor sees a change (turned nofollow, removed, recovered). PNGs go to the same R2 bucket the app uses; the URL is stored on the check and in `submissions.evidence_url`.
+Takes two kinds of screenshots, as 1280×900 PNGs in the same R2 bucket the app uses:
+
+- **Listing screenshots:** when a maker fetches their website in the debut form, the homepage is captured into the first Screenshots slot (`screenshots/<uuid>.png`, saved to `product_media` with the listing).
+- **Evidence:** directory listings when they're first confirmed live (`verifySubmission`) and whenever Link Monitor sees a change (turned nofollow, removed, recovered). The URL is stored on the check and in `submissions.evidence_url`.
 
 Playwright doesn't run on Vercel functions, so this is a small container.
 
