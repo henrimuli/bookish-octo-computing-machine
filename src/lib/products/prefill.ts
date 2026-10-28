@@ -1,18 +1,20 @@
 import { decodeEntities, findTags, pageTitle } from "@/lib/html";
 import { suggestCategories } from "./categorize";
+import { composeCopy, readPage, type PricingModel } from "./site-copy";
 
 export type Prefill = {
   url: string;
   name?: string;
   tagline?: string;
   description?: string;
-  /** Card-length description (160 chars), only when Claude drafted the copy. */
+  /** Card-length description (at most 160 chars). */
   shortDescription?: string;
-  /** True when tagline and descriptions were drafted by Claude rather than read from metadata. */
-  drafted?: boolean;
+  /** Read from prices, "free plan" and "open source" cues on the site. */
+  pricingModel?: PricingModel;
   logoUrl?: string;
   imageUrl?: string;
   twitterUrl?: string;
+  githubUrl?: string;
   /** Suggested category slugs, best first (up to 3). */
   categories: string[];
 };
@@ -49,8 +51,11 @@ function splitTitle(title: string): { name: string; rest?: string } {
   return { name: title };
 }
 
-/** Extracts listing details from a page's HTML. Pure; the caller fetches the page. */
-export function extractPrefill(html: string, pageUrl: string): Prefill {
+/**
+ * Extracts listing details from a page's HTML, plus any extra same-site pages
+ * the caller read (see `prefillPages`). Pure; the caller fetches the pages.
+ */
+export function extractPrefill(html: string, pageUrl: string, extra: { html: string; url: string }[] = []): Prefill {
   const metas = findTags(html, "meta");
   const meta = (key: string) =>
     metas.find((m) => (m.property ?? m.name ?? "").toLowerCase() === key && m.content)?.content;
@@ -77,19 +82,32 @@ export function extractPrefill(html: string, pageUrl: string): Prefill {
     clean(description?.split(/(?<=[.!?])\s/)[0], 80);
 
   const cleanName = clean(name, 60);
+  const copy = composeCopy(cleanName, [readPage(html, pageUrl), ...extra.map((p) => readPage(p.html, p.url))], {
+    description,
+    tagline,
+  });
+  const metaTwitter = handle && /^[A-Za-z0-9_]{1,15}$/.test(handle) ? `https://x.com/${handle}` : undefined;
   return {
     url: pageUrl,
     name: cleanName,
-    tagline,
-    description,
+    tagline: copy.tagline,
+    description: copy.description,
+    shortDescription: copy.shortDescription,
+    pricingModel: copy.pricingModel,
     logoUrl: absolute(icon?.href, pageUrl) ?? absolute("/favicon.ico", pageUrl),
     imageUrl: absolute(meta("og:image") ?? meta("twitter:image"), pageUrl),
-    twitterUrl: handle && /^[A-Za-z0-9_]{1,15}$/.test(handle) ? `https://x.com/${handle}` : undefined,
+    twitterUrl: metaTwitter ?? copy.twitterUrl,
+    githubUrl: copy.githubUrl,
     categories: suggestCategories({
       name: cleanName,
-      tagline,
-      description,
-      extra: [meta("keywords"), title, headings(html)].filter(Boolean).join(" \n "),
+      tagline: copy.tagline,
+      description: copy.description,
+      extra: [meta("keywords"), title, headings(html), copy.keywords].filter(Boolean).join(" \n "),
     }),
   };
+}
+
+/** Same-site pages (features, pricing, about) worth reading after the homepage, best first. */
+export function prefillPages(html: string, pageUrl: string, max = 2): string[] {
+  return readPage(html, pageUrl).more.slice(0, max);
 }

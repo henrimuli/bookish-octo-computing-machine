@@ -21,6 +21,7 @@ describe("extractPrefill", () => {
       name: "Acme Notes",
       tagline: "Fast notes for busy teams",
       description: "Acme Notes keeps your team's notes in sync. Works offline.",
+      shortDescription: "Acme Notes keeps your team's notes in sync.",
       logoUrl: "https://acme.app/apple.png",
       imageUrl: "https://acme.app/og.png",
       twitterUrl: "https://x.com/acmenotes",

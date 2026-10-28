@@ -10,7 +10,6 @@ describe("setupChecklist", () => {
     // PayPal needs both halves.
     expect(by.Payments.ok).toBe(false);
     expect(by["Email (Resend)"]).toMatchObject({ ok: false, required: true });
-    expect(by["AI prefill"]).toMatchObject({ ok: false, required: false });
   });
 
   it("names the R2 variables that are missing", () => {

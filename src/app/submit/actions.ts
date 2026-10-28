@@ -62,8 +62,7 @@ export async function orderStatusAction(
 export async function prefillAction(url: string): Promise<Result<Prefill>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first." };
-  // Signed-in callers are limited by account, so the client key is unused.
-  return prefillFromSite(url, { userId: user.id, clientKey: "web", source: "web" });
+  return prefillFromSite(url);
 }
 
 /** Creates or updates a listing; the caller then shows the plan step. */

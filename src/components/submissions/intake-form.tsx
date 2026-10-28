@@ -59,11 +59,7 @@ export function IntakeForm({
           ? s.categories
           : d.categories.filter((c) => categories.some((k) => k.slug === c)).slice(0, 3),
       }));
-      setNote(
-        d.drafted
-          ? "We drafted the copy from your site. Check it's accurate and adjust the wording."
-          : "Filled in from your site. Check and adjust the wording.",
-      );
+      setNote("Filled in from your site. Check and adjust the wording.");
     });
   }
 

@@ -69,6 +69,7 @@ export function ProductForm({
   const [uploading, setUploading] = useState(false);
   // The last address we fetched, so leaving the field again doesn't refetch it.
   const fetchedUrl = useRef<string | null>(initial?.websiteUrl ?? null);
+  const pricingTouched = useRef(Boolean(initial));
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -114,15 +115,17 @@ export function ProductForm({
         description: v.description || d.description || "",
         logoUrl: v.logoUrl || d.logoUrl || "",
         twitterUrl: v.twitterUrl || d.twitterUrl || "",
+        githubUrl: v.githubUrl || d.githubUrl || "",
+        // Only replace the default pricing, never one the maker chose.
+        pricingModel: !pricingTouched.current && d.pricingModel ? d.pricingModel : v.pricingModel,
         categories: v.categories.length ? v.categories : suggested,
       }));
       fetchedUrl.current = d.url;
       const names = picked.map((s) => categories.find((c) => c.slug === s)?.name).filter(Boolean);
-      const drafted = d.drafted ? " The tagline and description are AI drafts from your homepage." : "";
       setMessage(
-        (names.length
+        names.length
           ? `We filled in what we could find and picked ${names.join(", ")} as categories. Check everything before continuing.`
-          : "We filled in what we could find. Check everything before continuing.") + drafted,
+          : "We filled in what we could find. Check everything before continuing.",
       );
     });
   }
@@ -264,7 +267,10 @@ export function ProductForm({
           id="pricingModel"
           className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
           value={values.pricingModel}
-          onChange={(e) => set("pricingModel", e.target.value as ProductInput["pricingModel"])}
+          onChange={(e) => {
+            pricingTouched.current = true;
+            set("pricingModel", e.target.value as ProductInput["pricingModel"]);
+          }}
         >
           {pricingOptions.map((o) => (
             <option key={o.value} value={o.value}>
