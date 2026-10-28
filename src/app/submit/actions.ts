@@ -1,7 +1,6 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { referralCode } from "@/lib/affiliates/cookie";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,7 +11,9 @@ import type { ProviderId } from "@/lib/payments/types";
 import { notifyProductSubmitted } from "@/lib/notifications";
 import { productInput, TIERS, tierRank, type ProductInput, type Tier } from "@/lib/products/input";
 import type { Prefill } from "@/lib/products/prefill";
+import { planChoices, type PlanChoices } from "@/lib/products/plan-choices";
 import { prefillFromSite } from "@/lib/products/prefill-service";
+import { listCategories, uploadsEnabled } from "@/lib/products/queries";
 import {
   bookableWeeks,
   ProductError,
@@ -25,6 +26,38 @@ import { createUploadUrl, MAX_UPLOAD_BYTES } from "@/lib/storage";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
+/** What the debut modal needs before it can show the form. */
+export async function debutSetupAction(): Promise<
+  Result<{ categories: Array<{ slug: string; name: string }>; uploadsEnabled: boolean }>
+> {
+  if (!(await getCurrentUser())) return { ok: false, error: "Sign in first." };
+  return { ok: true, data: { categories: await listCategories(), uploadsEnabled: uploadsEnabled() } };
+}
+
+/** Plan options for the modal's plan step. */
+export async function planChoicesAction(productId: string): Promise<Result<PlanChoices>> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  const choices = await planChoices(user.id, productId);
+  return choices ? { ok: true, data: choices } : { ok: false, error: "Listing not found." };
+}
+
+/** Lets the modal follow a checkout that's happening in another tab. */
+export async function orderStatusAction(
+  orderId: string,
+): Promise<Result<{ status: "pending" | "paid" | "failed" | "refunded"; reason: string | null }>> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  if (!/^[0-9a-f-]{36}$/.test(orderId)) return { ok: false, error: "Order not found." };
+  const order = await db().query.orders.findFirst({
+    where: and(eq(schema.orders.id, orderId), eq(schema.orders.userId, user.id)),
+    columns: { status: true, failureReason: true },
+  });
+  if (!order) return { ok: false, error: "Order not found." };
+  const status = order.status === "partially_refunded" ? "refunded" : order.status;
+  return { ok: true, data: { status, reason: order.failureReason } };
+}
+
 /** Fetches the maker's site and suggests listing details. */
 export async function prefillAction(url: string): Promise<Result<Prefill>> {
   const user = await getCurrentUser();
@@ -33,7 +66,7 @@ export async function prefillAction(url: string): Promise<Result<Prefill>> {
   return prefillFromSite(url, { userId: user.id, clientKey: "web", source: "web" });
 }
 
-/** Creates or updates a listing, then sends the maker to the plan step. */
+/** Creates or updates a listing; the caller then shows the plan step. */
 export async function saveProductAction(input: ProductInput, productId?: string): Promise<Result<{ id: string }>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first." };
@@ -79,7 +112,7 @@ export async function submitFreeAction(productId: string): Promise<Result> {
     if (err instanceof ProductError) return { ok: false, error: err.message };
     throw err;
   }
-  redirect(`/dashboard?submitted=${productId}`);
+  return { ok: true, data: undefined };
 }
 
 /** Maker Pro: Fast Track with this quarter's free credit, no checkout. */
@@ -94,7 +127,7 @@ export async function redeemFastTrackAction(productId: string): Promise<Result> 
     if (err instanceof BillingError || err instanceof ProductError) return { ok: false, error: err.message };
     throw err;
   }
-  redirect(`/dashboard?submitted=${productId}`);
+  return { ok: true, data: undefined };
 }
 
 /** Paid debut: creates the order and returns the provider's checkout URL. */
@@ -104,7 +137,7 @@ export async function startTierCheckoutAction(args: {
   provider: ProviderId;
   weekKey?: string;
   coupon?: string;
-}): Promise<Result<{ url: string }>> {
+}): Promise<Result<{ url: string; orderId: string }>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first." };
 
@@ -139,7 +172,7 @@ export async function startTierCheckoutAction(args: {
       metadata: { productId: product.id, weekKey: weekKey ?? null, via: await referralCode() },
     });
     await db().insert(schema.productOrders).values({ orderId, productId: product.id });
-    return { ok: true, data: { url } };
+    return { ok: true, data: { url, orderId } };
   } catch (err) {
     if (err instanceof CouponError || err instanceof CheckoutError) return { ok: false, error: err.message };
     console.error("tier checkout failed", err);

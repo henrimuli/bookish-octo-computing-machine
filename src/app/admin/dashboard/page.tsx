@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { adminOverview, cronStatus } from "@/lib/admin/overview";
 import { setupChecklist } from "@/lib/admin/setup";
@@ -25,25 +25,14 @@ function ago(d: Date, now: number): string {
   return `${Math.floor(h / 24)} days ago`;
 }
 
-const SECTIONS = [
-  { href: "/admin/review", label: "Review queue", note: "Approve or reject listings" },
-  { href: "/admin/submissions", label: "Submissions", note: "Done-for-you orders" },
-  { href: "/admin/directories", label: "Directories", note: "Directory database and audit" },
-  { href: "/admin/ads", label: "Ads", note: "Featured slot inventory" },
-  { href: "/admin/blog", label: "Blog", note: "Posts and recap drafts" },
-  { href: "/admin/newsletter", label: "Newsletter", note: "Subscribers and issues" },
-  { href: "/admin/affiliates", label: "Affiliates", note: "Referrals and payouts" },
-  { href: "/admin/users", label: "Admin users", note: "Who can open admin" },
-];
-
 export default function AdminDashboardPage() {
   return (
-    <Container className="max-w-5xl py-10">
-      <Heading>Dashboard</Heading>
+    <div className="mx-auto max-w-5xl">
+      <Heading className="text-2xl sm:text-3xl">Overview</Heading>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Body />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 
@@ -256,18 +245,6 @@ async function Body() {
             ))}
           </ul>
         </Card>
-      </section>
-
-      <section>
-        <h2 className="font-display text-xl font-semibold">Sections</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {SECTIONS.map((s) => (
-            <Link key={s.href} href={s.href} className="rounded-lg border border-border bg-card p-4 hover:bg-muted">
-              <p className="font-medium">{s.label}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{s.note}</p>
-            </Link>
-          ))}
-        </div>
       </section>
     </div>
   );

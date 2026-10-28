@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { dofollowAction } from "@/app/tools/dofollow-checker/actions";
-import { drAction } from "@/app/tools/dr-checker/actions";
+import { dofollowAction } from "@/app/(site)/tools/dofollow-checker/actions";
+import { drAction } from "@/app/(site)/tools/dr-checker/actions";
 import { Button } from "@/components/ui/button";
 import { Card, Input, Label } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { nextDuelAction, pickWinnerAction } from "@/app/vote/actions";
+import { nextDuelAction, pickWinnerAction } from "@/app/(site)/vote/actions";
 import { Button } from "@/components/ui/button";
 import { Badge, Card } from "@/components/ui/primitives";
 import type { DuelProduct } from "@/lib/board/duels";

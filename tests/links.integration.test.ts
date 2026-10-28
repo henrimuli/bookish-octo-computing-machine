@@ -369,7 +369,7 @@ describe.skipIf(!TEST_DB)("Link Monitor (Postgres)", () => {
     const end = new Date(after.monitorUntil!.getTime() + 60_000);
     expect(await links.monitorLinks(end)).toMatchObject({ stopped: 1, kept: 0, checked: 0 });
     expect(sent[0]).toMatchObject({ to: "ada@acme.io", subject: "Link Monitor for Acme has ended" });
-    expect(sent[0].text).toContain("/pricing#plans");
+    expect(sent[0].text).toContain("/dashboard/billing#plans");
     expect((await linkFor(rows[0].s.id))?.active).toBe(false);
     // Handled once, and ops re-verifying the row doesn't quietly restart it.
     expect(await links.monitorLinks(end)).toMatchObject({ stopped: 0 });

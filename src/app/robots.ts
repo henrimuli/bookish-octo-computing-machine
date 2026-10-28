@@ -4,7 +4,13 @@ import { site } from "@/config/site";
 export default function robots(): MetadataRoute.Robots {
   const base = site.url.replace(/\/$/, "");
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/admin", "/dashboard", "/submit", "/checkout/"] }],
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/api/", "/admin", "/dashboard", "/submit", "/checkout/", "/sign-in", "/auth/"],
+      },
+    ],
     sitemap: `${base}/sitemap.xml`,
   };
 }

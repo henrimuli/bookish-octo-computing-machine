@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { CopyLink, JoinAffiliate, PayoutEmail } from "@/components/affiliates/affiliate-controls";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { APPROVE_AFTER_DAYS, DEFAULT_RATE_PCT, VIA_DAYS } from "@/lib/affiliates/rules";
 import { affiliateFor, referralsFor } from "@/lib/affiliates/service";
@@ -23,11 +22,8 @@ const STATUS = {
 
 export default function AffiliatePage() {
   return (
-    <Container className="max-w-4xl py-12">
-      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Dashboard
-      </Link>
-      <Heading className="mt-4">Affiliate program</Heading>
+    <div className="mx-auto max-w-4xl">
+      <Heading className="text-2xl sm:text-3xl">Affiliate program</Heading>
       <p className="mt-2 text-muted-foreground">
         Earn {DEFAULT_RATE_PCT}% of every submission package or paid debut bought within {VIA_DAYS} days of someone
         clicking your link.
@@ -35,7 +31,7 @@ export default function AffiliatePage() {
       <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-lg bg-muted/50" />}>
         <Affiliate />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

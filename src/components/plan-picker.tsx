@@ -1,26 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { redeemFastTrackAction, startTierCheckoutAction, submitFreeAction } from "@/app/submit/actions";
 import { Button } from "@/components/ui/button";
-import { Badge, Card, Input } from "@/components/ui/primitives";
+import { Badge, Input } from "@/components/ui/primitives";
+import type { PlanChoices } from "@/lib/products/plan-choices";
 import type { Tier } from "@/lib/products/input";
 import type { ProviderId } from "@/lib/payments/types";
 import { cn } from "@/lib/utils";
 
-export type PlanOption = {
-  tier: Tier;
-  label: string;
-  price: string;
-  perks: string[];
-  picksWeek: boolean;
-  available: boolean;
-  note?: string;
-};
+export type { PlanOption } from "@/lib/products/plan-choices";
 
 const providerLabels: Record<ProviderId, string> = { paystack: "Pay with card", paypal: "PayPal" };
 
+/**
+ * The plan step. On its own page it redirects to the dashboard or the
+ * provider; the debut modal passes callbacks instead and opens checkout in a
+ * new tab.
+ */
 export function PlanPicker({
   productId,
   productName,
@@ -29,16 +28,17 @@ export function PlanPicker({
   weeks,
   providers,
   freeFastTrack = null,
-}: {
-  productId: string;
-  productName: string;
-  status: string;
-  options: PlanOption[];
-  weeks: Array<{ key: string; label: string }>;
-  providers: ProviderId[];
-  /** Maker Pro: true when this quarter's free Fast Track is unused, false when used, null without Pro. */
-  freeFastTrack?: boolean | null;
+  onSubmitted,
+  onCheckout,
+  onEditDetails,
+}: PlanChoices & {
+  /** Free debut or Fast Track credit went through. */
+  onSubmitted?: () => void;
+  /** A paid checkout opened in `tab` (null if the browser blocked it). */
+  onCheckout?: (checkout: { orderId: string; url: string; tab: Window | null }) => void;
+  onEditDetails?: () => void;
 }) {
+  const router = useRouter();
   const firstAvailable = options.find((o) => o.available)?.tier ?? "pro";
   const [selected, setSelected] = useState<Tier>(firstAvailable);
   const [week, setWeek] = useState(weeks[0]?.key ?? "");
@@ -47,11 +47,14 @@ export function PlanPicker({
   const [pending, start] = useTransition();
   const option = options.find((o) => o.tier === selected)!;
 
+  const submitted = onSubmitted ?? (() => router.push(`/dashboard?submitted=${productId}`));
+
   function submitFree() {
     setError(null);
     start(async () => {
       const res = await submitFreeAction(productId);
-      if (res && !res.ok) setError(res.error);
+      if (!res.ok) return setError(res.error);
+      submitted();
     });
   }
 
@@ -59,12 +62,16 @@ export function PlanPicker({
     setError(null);
     start(async () => {
       const res = await redeemFastTrackAction(productId);
-      if (res && !res.ok) setError(res.error);
+      if (!res.ok) return setError(res.error);
+      submitted();
     });
   }
 
   function pay(provider: ProviderId) {
     setError(null);
+    // In the modal, open the tab inside the click so it isn't blocked, then point it at the provider.
+    const tab = onCheckout ? window.open("", "_blank") : null;
+    if (tab) tab.document.title = "Opening checkout…";
     start(async () => {
       const res = await startTierCheckoutAction({
         productId,
@@ -73,28 +80,44 @@ export function PlanPicker({
         weekKey: option.picksWeek ? week : undefined,
         coupon: coupon || undefined,
       });
-      if (!res.ok) return setError(res.error);
-      window.location.assign(res.data.url);
+      if (!res.ok) {
+        tab?.close();
+        return setError(res.error);
+      }
+      if (!onCheckout) return window.location.assign(res.data.url);
+      if (tab) {
+        // The provider page shouldn't be able to reach back into this one.
+        tab.opener = null;
+        tab.location.href = res.data.url;
+      }
+      onCheckout({ ...res.data, tab });
     });
   }
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
         Listing: <span className="font-medium text-foreground">{productName}</span>{" "}
-        <Link href={`/submit/${productId}`} className="text-primary hover:underline">
-          Edit details
-        </Link>
+        {onEditDetails ? (
+          <button type="button" onClick={onEditDetails} className="text-primary hover:underline">
+            Edit details
+          </button>
+        ) : (
+          <Link href={`/dashboard/products/${productId}`} className="text-primary hover:underline">
+            Edit details
+          </Link>
+        )}
         {status === "pending" && <Badge className="ml-2">In review</Badge>}
       </p>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {options.map((o) => (
           <button
             key={o.tier}
             type="button"
             disabled={!o.available}
             onClick={() => setSelected(o.tier)}
+            aria-pressed={selected === o.tier}
             className={cn(
               "flex flex-col rounded-lg border bg-card p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
               selected === o.tier
@@ -113,14 +136,16 @@ export function PlanPicker({
         ))}
       </div>
 
-      <Card className="space-y-4">
-        <h2 className="font-display text-lg font-semibold">
-          {option.label} · {option.price}
-        </h2>
-        {option.note && <p className="text-sm text-muted-foreground">{option.note}</p>}
+      <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="font-display text-lg font-semibold">
+            {option.label} · {option.price}
+          </h3>
+          {option.note && <p className="text-sm text-muted-foreground">{option.note}</p>}
+        </div>
 
         {option.picksWeek && (
-          <label className="block space-y-1.5">
+          <label className="block max-w-md space-y-1.5">
             <span className="text-sm font-medium">Debut week</span>
             <select
               className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
@@ -162,29 +187,30 @@ export function PlanPicker({
             Payments opening soon
           </Button>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Coupon (optional)"
               value={coupon}
               onChange={(e) => setCoupon(e.target.value)}
-              className="max-w-xs"
+              className="max-w-48"
             />
-            <div className="flex flex-wrap gap-2">
-              {providers.map((p) => (
-                <Button
-                  key={p}
-                  variant={p === "paystack" ? "primary" : "outline"}
-                  disabled={pending || !option.available}
-                  onClick={() => pay(p)}
-                >
-                  {pending ? "Redirecting…" : providerLabels[p]}
-                </Button>
-              ))}
-            </div>
+            {providers.map((p) => (
+              <Button
+                key={p}
+                variant={p === "paystack" ? "primary" : "outline"}
+                disabled={pending || !option.available}
+                onClick={() => pay(p)}
+              >
+                {pending ? "Opening checkout…" : providerLabels[p]}
+              </Button>
+            ))}
           </div>
         )}
+        {onCheckout && selected !== "free" && providers.length > 0 && (
+          <p className="text-xs text-muted-foreground">Checkout opens in a new tab. Keep this one open.</p>
+        )}
         {error && <p className="text-sm text-danger">{error}</p>}
-      </Card>
+      </div>
     </div>
   );
 }

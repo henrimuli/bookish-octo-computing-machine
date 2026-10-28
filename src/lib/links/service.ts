@@ -457,7 +457,7 @@ export async function endIncludedMonitoring(now = new Date()) {
           `The Link Monitor included with your order has ended, so we've stopped checking its ${ids.length} live links.`,
           "Directories change their link policies and remove listings over time. Keep getting an alert when that happens with the Link Monitor plan: $9/month for 100 links, with weekly checks.",
         ],
-        { label: "Keep monitoring", href: url("/pricing#plans") },
+        { label: "Keep monitoring", href: url("/dashboard/billing#plans") },
       );
     }
   }

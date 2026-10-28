@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { availabilityAction, bookAction } from "@/app/advertise/actions";
+import { availabilityAction, bookAction } from "@/app/(site)/advertise/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
 import { PLACEMENTS, WEEKS_PER, type Duration, type Placement } from "@/lib/ads/placements";

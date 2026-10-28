@@ -7,7 +7,6 @@ import { drEnabled } from "@/lib/metrics/service";
 
 const links: Array<{ href: string; label: string; dr?: boolean }> = [
   { href: "/blog", label: "Blog" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/advertise", label: "Advertise" },
   { href: "/submission-service", label: "Submission service" },
   { href: "/directories", label: "Directories" },

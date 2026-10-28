@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AffiliateAdminActions, ApproveReferral } from "@/components/affiliates/affiliate-controls";
-import { Badge, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Heading } from "@/components/ui/primitives";
 import { APPROVE_AFTER_DAYS } from "@/lib/affiliates/rules";
 import { listAffiliates, listReferrals } from "@/lib/affiliates/service";
 import { requireStaff } from "@/lib/auth";
@@ -13,12 +13,12 @@ const day = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: 
 
 export default function AffiliatesAdminPage() {
   return (
-    <Container className="max-w-6xl py-10">
-      <Heading>Affiliates</Heading>
+    <div className="mx-auto max-w-6xl">
+      <Heading className="text-2xl sm:text-3xl">Affiliates</Heading>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Body />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

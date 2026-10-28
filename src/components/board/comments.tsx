@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { addCommentAction, removeCommentAction } from "@/app/p/actions";
+import { addCommentAction, removeCommentAction } from "@/app/(site)/p/actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
 

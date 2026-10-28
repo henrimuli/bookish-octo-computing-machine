@@ -11,7 +11,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = env().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
   const staticPages = [
     "",
-    "/pricing",
     "/weeks",
     "/blog",
     "/vote",

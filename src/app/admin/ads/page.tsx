@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BookingStatsTable } from "@/components/ads/booking-stats";
-import { Container, Heading } from "@/components/ui/primitives";
+import { Heading } from "@/components/ui/primitives";
 import { PLACEMENTS, PLACEMENT_IDS } from "@/lib/ads/placements";
 import { allBookings, availability } from "@/lib/ads/service";
 import { requireStaff } from "@/lib/auth";
@@ -10,12 +10,12 @@ export const metadata: Metadata = { title: "Ads · Admin", robots: { index: fals
 
 export default function AdsAdminPage() {
   return (
-    <Container className="max-w-6xl py-10">
-      <Heading>Ads</Heading>
+    <div className="mx-auto max-w-6xl">
+      <Heading className="text-2xl sm:text-3xl">Ads</Heading>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Body />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

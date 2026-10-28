@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ApiTokens } from "@/components/api-tokens";
-import { Card, Container, Heading } from "@/components/ui/primitives";
+import { Card, Heading } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { listTokens } from "@/lib/api/tokens";
 import { requireUser } from "@/lib/auth";
@@ -11,11 +11,8 @@ export const metadata: Metadata = { title: "API tokens", robots: { index: false 
 
 export default function ApiTokensPage() {
   return (
-    <Container className="max-w-3xl py-12">
-      <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Dashboard
-      </Link>
-      <Heading className="mt-4">API tokens</Heading>
+    <div className="mx-auto max-w-3xl">
+      <Heading className="text-2xl sm:text-3xl">API tokens</Heading>
       <p className="mt-2 text-muted-foreground">
         Tokens let an AI agent or script draft listings and read your stats through our{" "}
         <Link href="/docs" className="text-primary hover:underline">
@@ -28,7 +25,7 @@ export default function ApiTokensPage() {
           <Tokens />
         </Suspense>
       </Card>
-    </Container>
+    </div>
   );
 }
 

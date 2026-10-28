@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { CsvImport } from "@/components/directories/csv-import";
 import { ButtonLink } from "@/components/ui/button";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { requireStaff } from "@/lib/auth";
 import { allDirectoriesForAdmin, effectiveLinkType } from "@/lib/directories/service";
 
@@ -11,9 +11,9 @@ export const metadata: Metadata = { title: "Directories · Admin", robots: { ind
 
 export default function DirectoriesAdminPage() {
   return (
-    <Container className="max-w-6xl py-10">
+    <div className="mx-auto max-w-6xl">
       <div className="flex items-center justify-between gap-4">
-        <Heading>Directories</Heading>
+        <Heading className="text-2xl sm:text-3xl">Directories</Heading>
         <ButtonLink href="/admin/directories/new">Add directory</ButtonLink>
       </div>
       <Card className="mt-6 p-5">
@@ -27,7 +27,7 @@ export default function DirectoriesAdminPage() {
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <List />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

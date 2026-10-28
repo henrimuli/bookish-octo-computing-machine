@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Badge, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Heading } from "@/components/ui/primitives";
 import { requireStaff } from "@/lib/auth";
 import { PACKAGES } from "@/lib/submissions/packages";
 import { listOrdersForOps } from "@/lib/submissions/service";
@@ -17,12 +17,12 @@ const COLUMNS = [
 
 export default function SubmissionsAdminPage() {
   return (
-    <Container className="max-w-7xl py-10">
-      <Heading>Submission orders</Heading>
+    <div className="mx-auto max-w-7xl">
+      <Heading className="text-2xl sm:text-3xl">Submission orders</Heading>
       <Suspense fallback={<p className="mt-8 text-muted-foreground">Loading…</p>}>
         <Board />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 

@@ -708,7 +708,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(ok.status).toBe(200);
     const created = (await ok.json()).data;
     expect(created).toMatchObject({ status: "draft", slug: "agent-io" });
-    expect(created.nextStep).toContain(`/submit/${created.id}`);
+    expect(created.nextStep).toContain(`/dashboard/products/${created.id}`);
     const row = await dbmod.db().query.products.findFirst({ where: eq(dbmod.schema.products.id, created.id) });
     expect(row).toMatchObject({ createdVia: "api", createdBy: u, status: "draft" });
 

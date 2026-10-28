@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { OpsRows } from "@/components/submissions/ops-rows";
 import { OrderControls, ResendBadgeBlock } from "@/components/submissions/order-controls";
-import { Badge, Card, Container, Heading } from "@/components/ui/primitives";
+import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireStaff } from "@/lib/auth";
 import { PACKAGES } from "@/lib/submissions/packages";
@@ -18,14 +18,14 @@ export const metadata: Metadata = { title: "Submission order · Admin", robots: 
 
 export default function OrderOpsPage(props: PageProps<"/admin/submissions/[id]">) {
   return (
-    <Container className="max-w-6xl py-10">
+    <div className="mx-auto max-w-6xl">
       <Link href="/admin/submissions" className="text-sm text-muted-foreground hover:text-foreground">
         ← All orders
       </Link>
       <Suspense fallback={<p className="mt-6 text-muted-foreground">Loading…</p>}>
         <Detail params={props.params} />
       </Suspense>
-    </Container>
+    </div>
   );
 }
 
@@ -66,7 +66,7 @@ async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "pa
   return (
     <div className="mt-4 space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Heading>{order.productName ?? order.email}</Heading>
+        <Heading className="text-2xl sm:text-3xl">{order.productName ?? order.email}</Heading>
         <Badge>{PACKAGES[order.package].label}</Badge>
         <Badge tone={order.status === "delivered" ? "success" : "default"}>{order.status.replace("_", " ")}</Badge>
       </div>
