@@ -12,4 +12,18 @@ describe("setupChecklist", () => {
     expect(by["Email (Resend)"]).toMatchObject({ ok: false, required: true });
     expect(by["AI prefill"]).toMatchObject({ ok: false, required: false });
   });
+
+  it("names the R2 variables that are missing", () => {
+    const items = setupChecklist({
+      R2_ACCOUNT_ID: "a",
+      R2_ACCESS_KEY_ID: "k",
+      R2_SECRET_ACCESS_KEY: "s",
+      R2_BUCKET: "b",
+      EMAIL_FROM: "x",
+    } as Env);
+    expect(items.find((i) => i.label === "File storage (R2)")).toMatchObject({
+      ok: false,
+      hint: "missing R2_PUBLIC_URL",
+    });
+  });
 });

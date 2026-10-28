@@ -16,13 +16,16 @@ export type NavGroup = { label?: string; items: NavItem[] };
  */
 export function AppShell({
   area,
+  badge,
   groups,
   actions,
   footer,
   children,
 }: {
-  /** Shown next to the logo, e.g. "Dashboard" or "Admin". */
+  /** Names the area in the mobile top bar, e.g. "Dashboard" or "Admin". */
   area: string;
+  /** Optional tag beside the sidebar logo; only admin uses one. */
+  badge?: string;
   groups: NavGroup[];
   /** Primary buttons under the logo. */
   actions?: ReactNode;
@@ -40,7 +43,11 @@ export function AppShell({
             Debut<span className="text-primary">Yard</span>
           </span>
         </Link>
-        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{area}</span>
+        {badge && (
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {badge}
+          </span>
+        )}
       </div>
       {actions && <div className="px-4 pb-2">{actions}</div>}
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">

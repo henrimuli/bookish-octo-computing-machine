@@ -44,6 +44,7 @@ export function ProductForm({
   initialWebsiteUrl,
   layout = "page",
   onSaved,
+  status,
 }: {
   categories: Category[];
   initial?: ProductInput;
@@ -53,6 +54,8 @@ export function ProductForm({
   layout?: "page" | "modal";
   /** Called with the listing id after saving. Defaults to the plan page. */
   onSaved?: (id: string) => void;
+  /** The caller's progress after saving (modal only), e.g. loading the plans. */
+  status?: { text: string; error?: boolean } | null;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<ProductInput>(
@@ -402,6 +405,7 @@ export function ProductForm({
   );
 
   if (modal) {
+    const note = message ? { text: message, error: false } : status;
     return (
       <form onSubmit={save} className="space-y-6">
         <div className="grid gap-x-10 gap-y-6 lg:grid-cols-2">
@@ -417,8 +421,15 @@ export function ProductForm({
             {socials}
           </div>
         </div>
-        <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-          {message ? <p className="rounded-md bg-muted p-3 text-sm sm:flex-1">{message}</p> : <span />}
+        {/* Pinned to the bottom of the modal's scroll area. */}
+        <div className="sticky -bottom-6 z-10 -mx-6 -mb-6 flex flex-col gap-3 border-t border-border bg-card px-6 py-4 sm:-mx-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          {note ? (
+            <p className={cn("rounded-md p-3 text-sm sm:flex-1", note.error ? "bg-danger/10 text-danger" : "bg-muted")}>
+              {note.text}
+            </p>
+          ) : (
+            <span />
+          )}
           <Button type="submit" size="lg" data-owns-fetch disabled={saving || uploading || prefilling}>
             {saving ? "Saving…" : "Continue to plan →"}
           </Button>

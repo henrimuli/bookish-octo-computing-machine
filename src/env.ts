@@ -65,8 +65,8 @@ const schema = z.object({
   /** SerpApi: its API key. DataForSEO: "login:password". */
   SERP_API_KEY: optional,
 
-  // Claude API: drafts tagline and descriptions in "Fill from site". Unset: metadata-only prefill.
-  ANTHROPIC_API_KEY: optional,
+  // Gemini API (free tier): drafts tagline and descriptions when the website is fetched. Unset: metadata-only prefill.
+  GEMINI_API_KEY: optional,
 
   /** Resend webhook signing secret (whsec_…) for newsletter open/click tracking. Unset disables the webhook. */
   RESEND_WEBHOOK_SECRET: optional,
