@@ -6,6 +6,7 @@ import { ViewBeacon, VisitLink } from "@/components/board/client-bits";
 import { Comments, type CommentView } from "@/components/board/comments";
 import { ProductLogo } from "@/components/board/product-logo";
 import { VoteButton } from "@/components/board/vote-button";
+import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge, Card, Container } from "@/components/ui/primitives";
 import { site } from "@/config/site";
@@ -171,18 +172,21 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
             <Row label="Pricing">{pricingLabels[p.pricingModel]}</Row>
             {data.maker && (
               <Row label="Maker">
-                {data.maker.handle ? (
-                  <Link href={`/builders/${data.maker.handle}`} className="hover:text-primary">
-                    {data.maker.name}
-                  </Link>
-                ) : (
-                  data.maker.name
-                )}
-                {pro.has(p.createdBy) && (
-                  <Badge tone="primary" className="ml-2" title="Maker Pro member">
-                    Pro
-                  </Badge>
-                )}
+                <span className="inline-flex items-center gap-2">
+                  <Avatar name={data.maker.name} src={data.maker.image} className="size-6 text-xs" />
+                  {data.maker.handle ? (
+                    <Link href={`/builders/${data.maker.handle}`} className="hover:text-primary">
+                      {data.maker.name}
+                    </Link>
+                  ) : (
+                    data.maker.name
+                  )}
+                  {pro.has(p.createdBy) && (
+                    <Badge tone="primary" title="Maker Pro member">
+                      Pro
+                    </Badge>
+                  )}
+                </span>
               </Row>
             )}
             {p.twitterUrl && (

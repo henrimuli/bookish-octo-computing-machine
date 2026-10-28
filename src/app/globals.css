@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
-/* DebutYard design tokens. Light is the default; dark follows the OS. */
+/*
+ * DebutYard design tokens. The theme follows the OS unless the visitor picked
+ * one in a dashboard sidebar, which sets data-theme on <html> (see theme.ts).
+ */
 :root {
+  color-scheme: light;
   /* Evergreen and black, shared with the Cleanly design language. */
   --background: #f3f7f5;
   --foreground: #10201b;
@@ -20,7 +24,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --background: #0d1714;
     --foreground: #e9f3ef;
     --card: #13211d;
@@ -35,6 +40,23 @@
     --danger: #ff7a6b;
     --ring: #3be0a0;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0d1714;
+  --foreground: #e9f3ef;
+  --card: #13211d;
+  --muted: #182a25;
+  --muted-foreground: #8fa89f;
+  --border: #233832;
+  --primary: #3be0a0;
+  --primary-foreground: #04251a;
+  --accent: #f2b84b;
+  --accent-foreground: #10201b;
+  --success: #3be0a0;
+  --danger: #ff7a6b;
+  --ring: #3be0a0;
 }
 
 @theme inline {

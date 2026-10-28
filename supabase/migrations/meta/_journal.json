@@ -162,6 +162,13 @@
       "when": 1793109503170,
       "tag": "20261027135823_admin_users",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793210742413,
+      "tag": "20261028180542_user_profile",
+      "breakpoints": true
     }
   ]
 }

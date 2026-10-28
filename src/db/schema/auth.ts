@@ -13,6 +13,10 @@ export const user = pgTable("user", {
   role: userRole("role").notNull().default("user"),
   /** Public builder handle for /builders/[handle]. */
   handle: text("handle").unique(),
+  /** Public profile, edited at /dashboard/profile and shown on the builder page. */
+  bio: text("bio"),
+  xUrl: text("x_url"),
+  githubUrl: text("github_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
