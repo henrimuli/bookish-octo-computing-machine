@@ -244,7 +244,16 @@ export async function commentsFor(productId: string) {
 export async function builderByHandle(handle: string) {
   const u = await db().query.user.findFirst({
     where: eq(schema.user.handle, handle),
-    columns: { id: true, name: true, handle: true, image: true, createdAt: true },
+    columns: {
+      id: true,
+      name: true,
+      handle: true,
+      image: true,
+      bio: true,
+      xUrl: true,
+      githubUrl: true,
+      createdAt: true,
+    },
   });
   if (!u) return null;
   const current = weekKeyFor(new Date());
