@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { logoUploadAction, prefillAction, saveProductAction } from "@/app/submit/actions";
+import { logoUploadAction, prefillAction, saveProductAction, screenshotAction } from "@/app/submit/actions";
+import { ScreenshotsField } from "@/components/screenshots";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Spinner } from "@/components/ui/primitives";
-import { MAX_CATEGORIES, type ProductInput } from "@/lib/products/input";
+import { MAX_CATEGORIES, MAX_SCREENSHOTS, type ProductInput } from "@/lib/products/input";
 import { normalizeWebsite } from "@/lib/products/website";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ const empty: ProductInput = {
   pricingModel: "freemium",
   twitterUrl: "",
   githubUrl: "",
+  screenshots: [],
 };
 
 /**
@@ -41,6 +43,7 @@ export function ProductForm({
   initial,
   productId,
   uploadsEnabled,
+  screenshotsEnabled = false,
   initialWebsiteUrl,
   layout = "page",
   onSaved,
@@ -50,6 +53,8 @@ export function ProductForm({
   initial?: ProductInput;
   productId?: string;
   uploadsEnabled: boolean;
+  /** The screenshot worker is set up: fetching also captures the homepage. */
+  screenshotsEnabled?: boolean;
   initialWebsiteUrl?: string;
   layout?: "page" | "modal";
   /** Called with the listing id after saving. Defaults to the plan page. */
@@ -70,6 +75,8 @@ export function ProductForm({
   // The last address we fetched, so leaving the field again doesn't refetch it.
   const fetchedUrl = useRef<string | null>(initial?.websiteUrl ?? null);
   const pricingTouched = useRef(Boolean(initial));
+  const [capturing, setCapturing] = useState(false);
+  const screenshots = values.screenshots ?? [];
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -96,9 +103,27 @@ export function ProductForm({
     return res.url;
   }
 
+  /** Screenshots the homepage into the first free slot. Runs beside the prefill, so the form fills first. */
+  async function capture(url: string) {
+    if (!screenshotsEnabled || screenshots.length >= MAX_SCREENSHOTS) return;
+    setCapturing(true);
+    try {
+      const res = await screenshotAction(url);
+      if (res.ok) {
+        setValues((v) => {
+          const shots = v.screenshots ?? [];
+          return shots.length < MAX_SCREENSHOTS ? { ...v, screenshots: [...shots, res.data.url] } : v;
+        });
+      }
+    } finally {
+      setCapturing(false);
+    }
+  }
+
   function prefill(url: string) {
     fetchedUrl.current = url;
     setMessage(null);
+    void capture(url);
     startPrefill(async () => {
       const res = await prefillAction(url);
       if (!res.ok) return setMessage(res.error);
@@ -348,6 +373,16 @@ export function ProductForm({
     </section>
   );
 
+  const screenshotPicker = (
+    <ScreenshotsField
+      value={screenshots}
+      onChange={(update) => setValues((v) => ({ ...v, screenshots: update(v.screenshots ?? []) }))}
+      capturing={capturing}
+      uploadsEnabled={uploadsEnabled}
+      error={errors.screenshots}
+    />
+  );
+
   const categoryPicker = (
     <section className="space-y-2">
       <Label>Categories (up to {MAX_CATEGORIES})</Label>
@@ -423,6 +458,7 @@ export function ProductForm({
             {description}
           </div>
           <div className="space-y-6">
+            {screenshotPicker}
             {categoryPicker}
             {socials}
           </div>
@@ -451,6 +487,7 @@ export function ProductForm({
       {tagline}
       {description}
       {logo}
+      {screenshotPicker}
       {categoryPicker}
       {socials}
       {footer}

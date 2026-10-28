@@ -6,6 +6,7 @@ import { ViewBeacon, VisitLink } from "@/components/board/client-bits";
 import { Comments, type CommentView } from "@/components/board/comments";
 import { ProductLogo } from "@/components/board/product-logo";
 import { VoteButton } from "@/components/board/vote-button";
+import { ScreenshotGallery } from "@/components/screenshots";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge, Card, Container } from "@/components/ui/primitives";
@@ -147,14 +148,7 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
             <p className="whitespace-pre-line leading-7">{p.description}</p>
           </section>
 
-          {data.media.length > 0 && (
-            <section className="flex gap-4 overflow-x-auto pb-2">
-              {data.media.map((m) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={m.id} src={m.url} alt="" className="h-64 rounded-lg border border-border object-cover" />
-              ))}
-            </section>
-          )}
+          {data.media.length > 0 && <ScreenshotGallery urls={data.media.map((m) => m.url)} name={p.name} />}
 
           <Comments productId={p.id} comments={commentViews} live={data.live} />
         </div>

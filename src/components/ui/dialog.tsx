@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 
 const sizes = { sm: "max-w-md", md: "max-w-xl", xl: "max-w-6xl" } as const;
 
+// Open dialogs, innermost last: Escape closes only the top one (e.g. a screenshot viewer over the debut modal).
+const stack: symbol[] = [];
+
 /**
  * Modal dialog over the page: Escape and the backdrop close it, the page
  * behind stops scrolling, and focus moves into the panel and back out.
@@ -35,11 +38,14 @@ export function Dialog({
     const { overflow } = document.body.style;
     document.body.style.overflow = "hidden";
     panel.current?.focus();
+    const id = Symbol("dialog");
+    stack.push(id);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCloseRef.current();
+      if (e.key === "Escape" && stack.at(-1) === id) onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => {
+      stack.splice(stack.indexOf(id), 1);
       document.body.style.overflow = overflow;
       document.removeEventListener("keydown", onKey);
       previous?.focus?.();

@@ -65,6 +65,16 @@ async function setCategories(productId: string, slugs: string[]) {
     .values(valid.map((c) => ({ productId, categorySlug: c.slug })));
 }
 
+/** Replaces the listing's gallery, keeping the given order. */
+async function setScreenshots(productId: string, urls: string[]) {
+  await db().delete(schema.productMedia).where(eq(schema.productMedia.productId, productId));
+  if (urls.length) {
+    await db()
+      .insert(schema.productMedia)
+      .values(urls.map((url, position) => ({ productId, url, position })));
+  }
+}
+
 /** Another live or upcoming listing for the same site blocks a new one (relaunches come later). */
 async function assertNotDuplicate(domain: string, exceptId?: string) {
   const existing = await db().query.products.findFirst({
@@ -116,6 +126,7 @@ export async function saveProduct(userId: string, input: ProductInput, productId
       .onConflictDoNothing();
   }
   await setCategories(product.id, input.categories);
+  if (input.screenshots) await setScreenshots(product.id, input.screenshots);
   return product;
 }
 

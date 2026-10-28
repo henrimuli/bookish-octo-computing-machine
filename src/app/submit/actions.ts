@@ -13,7 +13,8 @@ import { productInput, TIERS, tierRank, type ProductInput, type Tier } from "@/l
 import type { Prefill } from "@/lib/products/prefill";
 import { planChoices, type PlanChoices } from "@/lib/products/plan-choices";
 import { prefillFromSite } from "@/lib/products/prefill-service";
-import { listCategories, uploadsEnabled } from "@/lib/products/queries";
+import { listCategories, screenshotsEnabled, uploadsEnabled } from "@/lib/products/queries";
+import { captureHomepage, SCREENSHOTS_PER_HOUR } from "@/lib/products/screenshots";
 import {
   bookableWeeks,
   ProductError,
@@ -23,15 +24,23 @@ import {
   submitForReview,
 } from "@/lib/products/service";
 import { createUploadUrl, MAX_UPLOAD_BYTES } from "@/lib/storage";
+import { spend, ToolError } from "@/lib/tools/service";
 
 type Result<T = undefined> = { ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 /** What the debut modal needs before it can show the form. */
 export async function debutSetupAction(): Promise<
-  Result<{ categories: Array<{ slug: string; name: string }>; uploadsEnabled: boolean }>
+  Result<{ categories: Array<{ slug: string; name: string }>; uploadsEnabled: boolean; screenshotsEnabled: boolean }>
 > {
   if (!(await getCurrentUser())) return { ok: false, error: "Sign in first." };
-  return { ok: true, data: { categories: await listCategories(), uploadsEnabled: uploadsEnabled() } };
+  return {
+    ok: true,
+    data: {
+      categories: await listCategories(),
+      uploadsEnabled: uploadsEnabled(),
+      screenshotsEnabled: screenshotsEnabled(),
+    },
+  };
 }
 
 /** Plan options for the modal's plan step. */
@@ -82,6 +91,36 @@ export async function saveProductAction(input: ProductInput, productId?: string)
   } catch (err) {
     if (err instanceof ProductError) return { ok: false, error: err.message };
     throw err;
+  }
+}
+
+/** Screenshots the product's homepage (screenshot worker → R2). Runs alongside the prefill so it never holds the form up. */
+export async function screenshotAction(url: string): Promise<Result<{ url: string }>> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  if (!screenshotsEnabled()) return { ok: false, error: "Screenshots aren't set up." };
+  try {
+    await spend("screenshot", url, { userId: user.id, clientKey: "web", source: "web" }, SCREENSHOTS_PER_HOUR);
+  } catch (err) {
+    if (err instanceof ToolError) return { ok: false, error: err.message };
+    throw err;
+  }
+  const shot = await captureHomepage(url);
+  return shot ? { ok: true, data: { url: shot } } : { ok: false, error: "We couldn't screenshot that site." };
+}
+
+/** Presigned upload for a listing screenshot (R2). */
+export async function screenshotUploadAction(
+  contentType: string,
+  size: number,
+): Promise<Result<{ uploadUrl: string; publicUrl: string }>> {
+  if (!(await getCurrentUser())) return { ok: false, error: "Sign in first." };
+  if (size > MAX_UPLOAD_BYTES) return { ok: false, error: "Screenshots must be under 5 MB." };
+  try {
+    const { uploadUrl, publicUrl } = await createUploadUrl({ folder: "screenshots", contentType, contentLength: size });
+    return { ok: true, data: { uploadUrl, publicUrl } };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Upload failed" };
   }
 }
 

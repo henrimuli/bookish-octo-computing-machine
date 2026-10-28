@@ -56,6 +56,13 @@ describe("readPage", () => {
     expect(p.features).toEqual(["Connect your calendar"]);
   });
 
+  it("doesn't call a product open source for its open-source SDKs", () => {
+    const sdks = readPage("<main><p>Open-source SDKs for all platforms.</p></main>", "https://a.io/");
+    const product = readPage("<main><p>Acme is free and open source.</p></main>", "https://a.io/");
+    expect(sdks.pricing.openSource).toBe(false);
+    expect(product.pricing.openSource).toBe(true);
+  });
+
   it("converts yearly prices to monthly and ignores $0", () => {
     const p = readPage("<main><p>Starter $0/month. Team $120 per year billed annually.</p></main>", "https://a.io/");
     expect(p.pricing.price).toEqual({ amount: 10, label: "$10/month" });
@@ -69,39 +76,35 @@ describe("extractPrefill with site copy", () => {
     expect(p.description).toContain(
       "Pulseboard monitors websites, APIs and cron jobs from 12 regions and alerts your team in seconds.",
     );
-    expect(p.description).toContain(
-      "Features include multi-region checks, status pages, cron job monitoring and on-call alerts.",
-    );
-    expect(p.description).toContain("Free plan available; paid plans from $19/month.");
-    expect(p.description).not.toMatch(/game changer|cookies/);
+    // Features, audience and pricing aren't written into the description.
+    expect(p.description).not.toMatch(/Features include|Built for|Free plan available|game changer|cookies/);
     expect(p.description!.length).toBeLessThanOrEqual(900);
     expect(p.shortDescription!.length).toBeLessThanOrEqual(160);
     expect(p.pricingModel).toBe("freemium");
     expect(p.githubUrl).toBe("https://github.com/pulseboard/agent");
     expect(p.twitterUrl).toBe("https://x.com/pulseboard");
-    expect(p.categories).toContain("developer-tools");
+    expect(p.categories).toContain("devops");
   });
 
   it("phrases an imperative hero as what the product helps you do", () => {
     const p = extractPrefill(fixture("oss-home.html"), "https://inkwell.dev/");
     expect(p.description).toMatch(/^Inkwell helps you write docs your team will actually read\./);
-    expect(p.description).toContain("Features include instant full-text search, versioned docs and dark mode");
-    // The page already says it's free and open source, so the pricing line isn't repeated.
-    expect(p.description!.match(/free and open source/gi)).toHaveLength(1);
+    expect(p.description).not.toMatch(/Features include/);
     expect(p.description).not.toMatch(/newsletter/);
     expect(p.pricingModel).toBe("open_source");
     expect(p.githubUrl).toBe("https://github.com/inkwell-docs/inkwell");
   });
 
-  it("uses features and pricing from the extra pages it was given", () => {
+  it("reads pricing and copy from the extra pages it was given", () => {
     const features = {
       url: "https://inkwell.dev/features",
-      html: "<main><h3>Plugin API</h3><p>Extend the build with a few lines of JavaScript.</p></main>",
+      html: "<main><p>Inkwell plugins let you extend the build with a few lines of JavaScript.</p></main>",
     };
     const pricing = { url: "https://inkwell.dev/pricing", html: "<main><p>Cloud hosting from $8/month.</p></main>" };
-    const p = extractPrefill(fixture("oss-home.html"), "https://inkwell.dev/", [features, pricing]);
-    expect(p.description).toContain("plugin API");
-    expect(p.description).toContain("Open source, with paid plans from $8/month.");
+    const home = "<title>Inkwell</title><main><h1>Inkwell</h1><p>Free plan for personal docs.</p></main>";
+    const p = extractPrefill(home, "https://inkwell.dev/", [features, pricing]);
+    expect(p.description).toContain("Inkwell plugins let you extend the build");
+    expect(p.pricingModel).toBe("freemium");
   });
 
   it("falls back to the meta description on a page with no content", () => {

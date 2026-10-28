@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const MAX_CATEGORIES = 3;
+/** Product page gallery: one captured from the homepage on fetch, the rest uploaded. */
+export const MAX_SCREENSHOTS = 3;
 
 const httpUrl = z
   .string()
@@ -29,6 +31,8 @@ export const productInput = z.object({
   pricingModel: z.enum(["free", "freemium", "paid", "open_source", "trial"]),
   twitterUrl: optionalUrl,
   githubUrl: optionalUrl,
+  /** In display order. Left out (API drafts), the listing's screenshots stay as they are. */
+  screenshots: z.array(httpUrl).max(MAX_SCREENSHOTS, `Add up to ${MAX_SCREENSHOTS} screenshots`).optional(),
 });
 
 export type ProductInput = z.infer<typeof productInput>;
