@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Input, Label, Spinner } from "@/components/ui/primitives";
 import { BIO_MAX, type ProfileValues } from "@/lib/profile";
+import { putToStorage } from "@/lib/upload";
 
 export function ProfileForm({ initial, uploadsEnabled }: { initial: ProfileValues; uploadsEnabled: boolean }) {
   const router = useRouter();
@@ -24,12 +25,7 @@ export function ProfileForm({ initial, uploadsEnabled }: { initial: ProfileValue
     try {
       const res = await avatarUploadAction(file.type, file.size);
       if (!res.ok) throw new Error(res.error);
-      const put = await fetch(res.data.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      if (!put.ok) throw new Error("Upload failed");
+      await putToStorage(res.data.uploadUrl, file);
       set("image", res.data.publicUrl);
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : "Upload failed", error: true });
