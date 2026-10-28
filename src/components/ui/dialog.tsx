@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
-const sizes = { sm: "max-w-md", xl: "max-w-6xl" } as const;
+const sizes = { sm: "max-w-md", md: "max-w-xl", xl: "max-w-6xl" } as const;
 
 /**
  * Modal dialog over the page: Escape and the backdrop close it, the page

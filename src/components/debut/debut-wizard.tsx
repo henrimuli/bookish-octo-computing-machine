@@ -69,8 +69,17 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
   const visibleSteps = STEPS.filter((s) => s.id !== "payment" || checkout);
 
   return (
-    <Dialog onClose={onClose} size={wide ? "xl" : "sm"} label="Debut your product">
-      <div className="border-b border-border px-6 pb-4 pt-6 sm:px-8">
+    <Dialog
+      onClose={onClose}
+      size={wide ? "xl" : "md"}
+      label="Debut your product"
+      // Wide steps keep one height and scroll inside, so a long form doesn't stretch the modal.
+      className={cn(
+        "flex flex-col overflow-hidden",
+        wide && "h-[calc(100dvh-1.5rem)] sm:h-[min(46rem,calc(100dvh-3rem))]",
+      )}
+    >
+      <div className="shrink-0 border-b border-border px-6 pb-4 pr-12 pt-6 sm:px-8">
         <h2 className="font-display text-2xl font-bold tracking-tight">Debut your product</h2>
         {step === "details" && (
           <p className="mt-1 text-sm text-muted-foreground">Paste your URL and we&apos;ll fill in what we can.</p>
@@ -80,12 +89,12 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
             Pick a free or paid debut. Every paid debut is covered by our money-back guarantee.
           </p>
         )}
-        <ol className="mt-4 flex items-center gap-2 text-xs">
+        <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs">
           {visibleSteps.map((s, i) => {
             const current = visibleSteps.findIndex((v) => v.id === step);
             return (
               <li key={s.id} className="flex items-center gap-2">
-                {i > 0 && <span className="h-px w-6 bg-border" />}
+                {i > 0 && <span className="h-px w-4 bg-border sm:w-6" />}
                 <span
                   className={cn(
                     "flex items-center gap-1.5",
@@ -112,7 +121,7 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
         </ol>
       </div>
 
-      <div className="px-6 py-6 sm:px-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
         {setupError ? (
           <p className="text-sm text-danger">{setupError}</p>
         ) : !setup ? (
@@ -130,12 +139,8 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
                 initialWebsiteUrl={initialUrl && /^https?:\/\//.test(initialUrl) ? initialUrl : undefined}
                 productId={productId}
                 onSaved={toPlan}
+                status={planError ? { text: planError, error: true } : loadingPlans ? { text: "Loading plans…" } : null}
               />
-              {(loadingPlans || planError) && (
-                <p className={cn("mt-3 text-sm", planError ? "text-danger" : "text-muted-foreground")}>
-                  {planError ?? "Loading plans…"}
-                </p>
-              )}
             </div>
 
             {step === "plan" && choices && (

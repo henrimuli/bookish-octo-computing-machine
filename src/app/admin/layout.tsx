@@ -46,6 +46,7 @@ async function AdminFrame({ children }: { children: ReactNode }) {
   return (
     <AppShell
       area="Admin"
+      badge="Admin"
       groups={groups}
       footer={
         <Suspense fallback={<div className="h-12 animate-pulse rounded-md bg-muted" />}>

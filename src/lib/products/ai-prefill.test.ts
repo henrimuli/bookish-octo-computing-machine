@@ -57,4 +57,55 @@ describe("AI prefill", async () => {
     expect(await ai.withDraftedCopy(base, "<p>Hi</p>")).toBe(base);
     expect(called).not.toHaveBeenCalled();
   });
+
+  describe("Gemini model fallback", () => {
+    const input = { url: "https://acme.io/", name: "Acme", text: "Acme chases late invoices." };
+    const copy = { tagline: "Polite invoice reminders", shortDescription: "Short.", longDescription: "Long." };
+    const ok = (body: unknown) =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }));
+    const modelOf = (url: string) => url.split("/models/")[1].split(":")[0];
+
+    it("moves on from busy, out-of-quota and broken models", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const tried: string[] = [];
+      const fake = vi.fn(async (url: string | URL | Request) => {
+        const model = modelOf(String(url));
+        tried.push(model);
+        if (model === "m1") return new Response("quota", { status: 429 });
+        if (model === "m2") return new Response("overloaded", { status: 503 });
+        if (model === "m3") return ok({ tagline: 1 });
+        if (model === "m4") throw new Error("timeout");
+        return ok(copy);
+      });
+      const out = await ai.draftWithGemini(input, {
+        apiKey: "k",
+        models: ["m1", "m2", "m3", "m4", "m5", "m6"],
+        fetch: fake as typeof fetch,
+      });
+      expect(out).toEqual(copy);
+      expect(tried).toEqual(["m1", "m2", "m3", "m4", "m5"]);
+    });
+
+    it("returns null when every model fails", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const fake = vi.fn(async () => new Response("quota", { status: 429 }));
+      expect(await ai.draftWithGemini(input, { apiKey: "k", models: ["a", "b"], fetch: fake as typeof fetch })).toBe(
+        null,
+      );
+      expect(fake).toHaveBeenCalledTimes(2);
+    });
+
+    it("stops at a rejected key instead of trying every model", async () => {
+      const fake = vi.fn(async () => new Response("API key not valid", { status: 400 }));
+      await expect(
+        ai.draftWithGemini(input, { apiKey: "bad", models: ["a", "b"], fetch: fake as typeof fetch }),
+      ).rejects.toThrow(/API key/);
+      expect(fake).toHaveBeenCalledTimes(1);
+    });
+
+    it("tries the requested models in order, starting with gemini-3.8-flash", () => {
+      expect(ai.GEMINI_MODELS[0]).toBe("gemini-3.8-flash");
+      expect(ai.GEMINI_MODELS.at(-1)).toBe("gemini-3.1-flash-lite");
+    });
+  });
 });

@@ -8,6 +8,8 @@ export type SetupItem = { label: string; ok: boolean; required: boolean; hint: s
  */
 export function setupChecklist(e: Env): SetupItem[] {
   const has = (...keys: Array<keyof Env>) => keys.every((k) => Boolean(e[k]));
+  const r2 = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_URL"] as const;
+  const r2Missing = r2.filter((k) => !e[k]);
   return [
     { label: "Admin email", ok: has("ADMIN_EMAIL"), required: true, hint: "ADMIN_EMAIL" },
     {
@@ -25,9 +27,10 @@ export function setupChecklist(e: Env): SetupItem[] {
     },
     {
       label: "File storage (R2)",
-      ok: has("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_URL"),
+      ok: r2Missing.length === 0,
       required: true,
-      hint: "R2_*",
+      // Name what's missing: all five are needed, and one gap is easy to miss.
+      hint: r2Missing.length ? `missing ${r2Missing.join(", ")}` : r2.join(", "),
     },
     {
       label: "Resend webhook",
@@ -42,7 +45,7 @@ export function setupChecklist(e: Env): SetupItem[] {
       hint: "INBOUND_EMAIL_DOMAIN",
     },
     { label: "Directory logins", ok: has("CREDENTIALS_KEY"), required: false, hint: "CREDENTIALS_KEY" },
-    { label: "AI prefill", ok: has("ANTHROPIC_API_KEY"), required: false, hint: "ANTHROPIC_API_KEY" },
+    { label: "AI prefill", ok: has("GEMINI_API_KEY"), required: false, hint: "GEMINI_API_KEY" },
     { label: "DR provider", ok: has("DR_PROVIDER", "DR_API_KEY"), required: false, hint: "DR_PROVIDER, DR_API_KEY" },
     {
       label: "Index check",
