@@ -414,9 +414,9 @@ export function ProductForm({
             {nameAndPricing}
             {tagline}
             {logo}
+            {description}
           </div>
           <div className="space-y-6">
-            {description}
             {categoryPicker}
             {socials}
           </div>
