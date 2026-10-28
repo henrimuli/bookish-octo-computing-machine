@@ -65,7 +65,7 @@ const schema = z.object({
   /** SerpApi: its API key. DataForSEO: "login:password". */
   SERP_API_KEY: optional,
 
-  // Gemini API (free tier): drafts tagline and descriptions when the website is fetched. Unset: metadata-only prefill.
+  // Gemini API (free tier). Reserved for upcoming AI features; listing prefill doesn't use it.
   GEMINI_API_KEY: optional,
 
   /** Resend webhook signing secret (whsec_…) for newsletter open/click tracking. Unset disables the webhook. */

@@ -19,7 +19,7 @@ export class ToolError extends Error {
 export const TOOL_RUNS_PER_HOUR = 15;
 
 export type ToolCaller = { clientKey: string; userId?: string | null; source: "web" | "api" | "mcp" };
-type Tool = "dofollow" | "dr" | "ai_prefill";
+type Tool = "dofollow" | "dr";
 
 /** Counts the run against the caller's hourly allowance, or throws when it's used up. */
 export async function spend(

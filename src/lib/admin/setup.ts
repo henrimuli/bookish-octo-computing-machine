@@ -45,7 +45,6 @@ export function setupChecklist(e: Env): SetupItem[] {
       hint: "INBOUND_EMAIL_DOMAIN",
     },
     { label: "Directory logins", ok: has("CREDENTIALS_KEY"), required: false, hint: "CREDENTIALS_KEY" },
-    { label: "AI prefill", ok: has("GEMINI_API_KEY"), required: false, hint: "GEMINI_API_KEY" },
     { label: "DR provider", ok: has("DR_PROVIDER", "DR_API_KEY"), required: false, hint: "DR_PROVIDER, DR_API_KEY" },
     {
       label: "Index check",

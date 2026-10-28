@@ -12,8 +12,7 @@ export async function intakePrefillAction(
 ): Promise<{ ok: true; data: Prefill } | { ok: false; error: string }> {
   const order = await orderByIntakeToken(token);
   if (!order || order.status !== "awaiting_intake") return { ok: false, error: "Order not found." };
-  // The order is the caller, so one order link can't run up drafts.
-  return prefillFromSite(url, { userId: null, clientKey: `order:${order.id}`, source: "web" });
+  return prefillFromSite(url);
 }
 
 export async function submitIntakeAction(
