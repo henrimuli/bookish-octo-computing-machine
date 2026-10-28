@@ -110,7 +110,8 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
 
       {params.submitted && (
         <p className="rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">
-          Submitted! We review new listings within 24 hours and will email you when it&apos;s scheduled.
+          Submitted! We review new listings within 24 hours and will email you when it&apos;s scheduled. Paid debuts go
+          live the moment they&apos;re approved.
         </p>
       )}
 

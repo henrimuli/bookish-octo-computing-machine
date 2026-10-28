@@ -5,7 +5,7 @@ import type { ProviderId } from "@/lib/payments/types";
 import { TIERS, tierRank, type Tier } from "@/lib/products/input";
 import { getEditableProduct } from "@/lib/products/queries";
 import { activeFreeCount, bookableWeeks, MAX_ACTIVE_FREE, nextFreeWeek } from "@/lib/products/service";
-import { formatWeekLabel, formatWeekRange, upcomingWeekKeys } from "@/lib/weeks";
+import { formatWeekLabel, formatWeekRange, weekKeyFor } from "@/lib/weeks";
 
 export type PlanOption = {
   tier: Tier;
@@ -29,26 +29,32 @@ export type PlanChoices = {
   freeFastTrack: boolean | null;
 };
 
+/** Every paid tier's first perk: no queue, and no waiting for Monday. */
+const INSTANT = "Instant debut: live as soon as it's approved, no queue";
+
 const perks: Record<Tier, string[]> = {
   free: [
-    "Next week with a free slot",
+    "Debuts on a Monday, in the next week with a free slot",
     "Dofollow link while our badge is on your site",
     "Top 3 of the week keep the link for good",
   ],
-  fast_track: ["Debut next week, no queue", "No badge required", "Guaranteed dofollow link"],
+  fast_track: [INSTANT, "No badge required", "Guaranteed dofollow link"],
   pro: [
-    "Pick your debut week",
+    INSTANT,
+    "Or pick a later debut week",
     "7 days featured on the homepage",
     "Weekly newsletter inclusion",
     "Guaranteed dofollow link",
   ],
   premium: [
+    INSTANT,
     "Everything in Pro",
     "30 days featured",
     "Social posts on X, LinkedIn and Bluesky",
     "Written launch post on our blog",
   ],
   spotlight: [
+    INSTANT,
     "Everything in Premium",
     "Homepage hero for your debut week (3 spots a week)",
     "Top newsletter slot",
@@ -69,7 +75,7 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
   ]);
   const freeAvailable =
     (p.status === "draft" || p.status === "rejected") && p.tier === "free" && activeFree < MAX_ACTIVE_FREE;
-  const nextWeek = upcomingWeekKeys(new Date(), 1)[0];
+  const thisWeek = weekKeyFor(new Date());
 
   const options: PlanOption[] = (Object.keys(TIERS) as Tier[]).map((tier) => {
     const sku = TIERS[tier].sku ? getSku(TIERS[tier].sku!) : undefined;
@@ -84,15 +90,13 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
       note:
         tier === "free"
           ? freeAvailable
-            ? `Estimated debut: ${formatWeekLabel(freeWeek)} (${formatWeekRange(freeWeek)}), after review`
+            ? `Free debuts go live on Mondays. Yours: ${formatWeekLabel(freeWeek)} (${formatWeekRange(freeWeek)}), after review`
             : p.tier !== "free"
               ? "You already have a paid debut"
               : activeFree >= MAX_ACTIVE_FREE
                 ? `You have ${MAX_ACTIVE_FREE} free debuts waiting already`
                 : "Already submitted"
-          : tier === "fast_track"
-            ? `Debuts ${formatWeekLabel(nextWeek)} (${formatWeekRange(nextWeek)}), after review`
-            : undefined,
+          : "Goes live the moment it's approved (usually within 24 hours) and joins this week's board",
     };
   });
 
@@ -101,7 +105,13 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
     productName: p.name,
     status: p.status,
     options,
-    weeks: bookableWeeks().map((k) => ({ key: k, label: `${formatWeekLabel(k)} · ${formatWeekRange(k)}` })),
+    weeks: bookableWeeks().map((k) => ({
+      key: k,
+      label:
+        k === thisWeek
+          ? "Now: live as soon as it's approved, on this week's board"
+          : `${formatWeekLabel(k)} · ${formatWeekRange(k)}`,
+    })),
     providers: enabledProviders(),
     freeFastTrack: credit.eligible ? credit.available : null,
   };

@@ -3,7 +3,7 @@
  * moderation refunds, voting, ranking and the weekly rollover.
  * Runs when TEST_DATABASE_URL is set; the database is wiped.
  */
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaymentProvider, VerifiedPayment, WebhookEvent } from "@/lib/payments/types";
 import { addWeeks, weekBounds, weekKeyFor } from "@/lib/weeks";
@@ -217,6 +217,29 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     const after = await dbmod.db().query.products.findFirst({ where: eq(dbmod.schema.products.id, p.id) });
     expect(after).toMatchObject({ tier: "pro", status: "pending", requestedWeekKey: wanted });
     expect((await moderation.approve(p.id)).launchWeekKey).toBe(wanted);
+  });
+
+  it("puts paid debuts live on approval, skipping the Monday queue", async () => {
+    const u = await makeUser();
+    const p = await products.saveProduct(u, input("instant.io"));
+    const { orderId } = await payments.startCheckout({
+      skuId: "launch_fast_track",
+      provider: "paystack",
+      email: `${u}@x.test`,
+      userId: u,
+      metadata: { productId: p.id, weekKey: null },
+    });
+    await dbmod.db().insert(dbmod.schema.productOrders).values({ orderId, productId: p.id });
+    fake.verifyResult = { status: "paid", providerRef: `ref-${orderId}`, orderId, amountCents: 1500, currency: "USD" };
+    await payments.confirmPayment("paystack", `ref-${orderId}`);
+
+    expect((await moderation.approve(p.id)).launchWeekKey).toBe(thisWeek);
+    const live = await dbmod
+      .db()
+      .select({ id: dbmod.schema.products.id })
+      .from(dbmod.schema.products)
+      .where(and(eq(dbmod.schema.products.id, p.id), products.isLiveCondition()));
+    expect(live).toHaveLength(1);
   });
 
   it("refunds paid listings when they're rejected (money-back guarantee)", async () => {
