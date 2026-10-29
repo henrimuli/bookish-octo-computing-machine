@@ -24,7 +24,8 @@ const groups: NavGroup[] = [
     label: "Account",
     items: [
       { href: "/dashboard/billing", label: "Billing & plans", icon: "card" },
-      { href: "/dashboard/affiliate", label: "Affiliate", icon: "gift" },
+      // Affiliates are paused (see src/lib/affiliates/PAUSED.md).
+      // { href: "/dashboard/affiliate", label: "Affiliate", icon: "gift" },
       { href: "/dashboard/api", label: "API & agents", icon: "code" },
     ],
   },

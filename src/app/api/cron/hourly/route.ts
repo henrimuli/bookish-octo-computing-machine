@@ -4,12 +4,11 @@ import { reconcilePendingOrders } from "@/lib/payments/service";
 import { notifySpotlightWaitlist } from "@/lib/products/spotlight";
 
 /**
- * Faster catch-up for payments whose webhook never arrived and for ad
- * bookings to settle, and for telling the Spotlight waitlist a spot opened. Not in vercel.json: Vercel Hobby rejects sub-daily
- * crons, so the daily job covers these until the project is on Pro. To turn
- * it on, add `{ "path": "/api/cron/hourly", "schedule": "5 * * * *" }` to
- * vercel.json's crons. Both tasks are idempotent, so running them from both
- * jobs is safe.
+ * Faster catch-up for payments whose webhook never arrived, for ad bookings
+ * to settle, and for telling the Spotlight waitlist a spot opened. Supabase
+ * Cron calls it at :05 every hour (see the spotlight_waitlist_cron
+ * migration), since Vercel Hobby rejects sub-daily crons. Every task is
+ * idempotent, so running them from the daily job too is safe.
  */
 export function GET(request: Request) {
   return runCron(request, "hourly", [

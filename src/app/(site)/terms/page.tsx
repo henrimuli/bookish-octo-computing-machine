@@ -64,6 +64,7 @@ export default function TermsPage() {
         details. Refunds follow our <Link href="/refund-policy">refund policy</Link>.
       </p>
 
+      {/* Affiliates are paused (see src/lib/affiliates/PAUSED.md).
       <h2 id="affiliates">Affiliate program</h2>
       <p>
         Affiliates earn 30% of the first payment for a submission package or paid debut bought within 60 days of a
@@ -73,6 +74,7 @@ export default function TermsPage() {
         search on our name, misleading claims and self-referrals aren&apos;t allowed; we may suspend an affiliate and
         withhold unpaid commission for breaking these rules.
       </p>
+      */}
 
       <h2>Liability</h2>
       <p>

@@ -183,6 +183,13 @@
       "when": 1793299107144,
       "tag": "20261029183827_spotlight_waitlist",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793301088301,
+      "tag": "20261029191128_spotlight_waitlist_cron",
+      "breakpoints": true
     }
   ]
 }

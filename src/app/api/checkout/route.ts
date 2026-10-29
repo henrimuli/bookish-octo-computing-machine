@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
-import { referralCode } from "@/lib/affiliates/cookie";
 import { getCurrentUser } from "@/lib/auth";
 import { enabledProviders } from "@/lib/payments";
 import { CouponError } from "@/lib/payments/pricing";
@@ -57,8 +56,9 @@ export async function POST(request: Request) {
       });
       if (owned) metadata = { productId: owned.id };
     }
-    const via = await referralCode();
-    if (via) metadata = { ...metadata, via };
+    // Affiliates are paused (see src/lib/affiliates/PAUSED.md).
+    // const via = await referralCode();
+    // if (via) metadata = { ...metadata, via };
     const { url } = await startCheckout({
       skuId: sku.id,
       provider: input.provider,

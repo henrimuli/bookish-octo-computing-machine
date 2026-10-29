@@ -21,11 +21,14 @@ export function BookingForm({
   categories,
   providers,
   initialWeeks,
+  returnTo,
 }: {
   products: Array<{ id: string; name: string }>;
   categories: Array<{ slug: string; name: string }>;
   providers: ProviderId[];
   initialWeeks: Week[];
+  /** "dashboard": checkout comes back to the dashboard instead of the main site. */
+  returnTo?: "dashboard";
 }) {
   const [placement, setPlacement] = useState<Placement>("leaderboard");
   const [chosenDuration, setDuration] = useState<Duration>("week");
@@ -71,6 +74,7 @@ export function BookingForm({
       weekKey: week,
       provider,
       coupon: coupon || undefined,
+      returnTo,
     });
     if (res.ok) {
       window.location.assign(res.url);

@@ -83,13 +83,14 @@ async function Body() {
       tone: "warn",
     });
   }
-  if (o.affiliateOwedCents) {
-    attention.push({
-      text: `${formatUsd(o.affiliateOwedCents)} in approved affiliate commission to pay out.`,
-      href: "/admin/affiliates",
-      tone: "warn",
-    });
-  }
+  // Affiliates are paused (see src/lib/affiliates/PAUSED.md).
+  // if (o.affiliateOwedCents) {
+  //   attention.push({
+  //     text: `${formatUsd(o.affiliateOwedCents)} in approved affiliate commission to pay out.`,
+  //     href: "/admin/affiliates",
+  //     tone: "warn",
+  //   });
+  // }
 
   const change = o.revenue.prev30Cents
     ? Math.round(((o.revenue.last30Cents - o.revenue.prev30Cents) / o.revenue.prev30Cents) * 100)

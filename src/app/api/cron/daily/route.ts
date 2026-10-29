@@ -1,4 +1,3 @@
-import { approveReferrals } from "@/lib/affiliates/service";
 import { recheckBadges } from "@/lib/badges/service";
 import { syncSubscriptions } from "@/lib/billing/service";
 import { closeEndedPeriods, closeEndedWeeks } from "@/lib/board/rollover";
@@ -39,7 +38,8 @@ export function GET(request: Request) {
     ["indexed", () => checkIndexed()],
     ["directory audit", () => auditDirectories()],
     ["dr", () => snapshotDomains()],
-    ["affiliates", () => approveReferrals()],
+    // Affiliates are paused (see src/lib/affiliates/PAUSED.md).
+    // ["affiliates", () => approveReferrals()],
     ["cron history", () => pruneCronRuns()],
   ]);
 }
