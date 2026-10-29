@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
 const sizes = {
-  sm: { box: "size-8", text: "text-[8.5px] tracking-tight", stroke: 3.5 },
+  // Drawn at 10px and scaled to an effective 5px: browsers with a minimum font size ignore smaller font sizes.
+  sm: { box: "size-8", text: "text-[10px] scale-50", stroke: 3.5 },
   md: { box: "size-12", text: "text-sm", stroke: 3.5 },
   lg: { box: "size-28", text: "text-3xl", stroke: 3 },
 } as const;
