@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { redeemFastTrackAction, startTierCheckoutAction, submitFreeAction } from "@/app/submit/actions";
+import { BadgePanel } from "@/components/badge-panel";
 import { Button } from "@/components/ui/button";
 import { Badge, Input } from "@/components/ui/primitives";
 import type { PlanChoices } from "@/lib/products/plan-choices";
@@ -28,6 +29,7 @@ export function PlanPicker({
   weeks,
   providers,
   freeFastTrack = null,
+  badge,
   onSubmitted,
   onCheckout,
   onEditDetails,
@@ -44,6 +46,7 @@ export function PlanPicker({
   const [week, setWeek] = useState(weeks[0]?.key ?? "");
   const [coupon, setCoupon] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [badgeFound, setBadgeFound] = useState(badge.verified);
   const [pending, start] = useTransition();
   const option = options.find((o) => o.tier === selected)!;
 
@@ -178,10 +181,40 @@ export function PlanPicker({
           </div>
         )}
 
+        {selected === "free" && option.available && (
+          <div className="space-y-3 rounded-md border border-border bg-card p-4">
+            {badgeFound ? (
+              <p className="text-sm font-medium text-success">Badge found on your site. You can submit now.</p>
+            ) : (
+              <>
+                <p className="text-sm font-medium">
+                  Free debuts need our badge on your site. Add it, and you can submit once our check finds it.
+                </p>
+                <BadgePanel
+                  productId={productId}
+                  required
+                  snippets={badge.snippets}
+                  previewUrls={badge.previewUrls}
+                  dnsHost={badge.dnsHost}
+                  dnsValue={badge.dnsValue}
+                  onVerified={() => setBadgeFound(true)}
+                />
+              </>
+            )}
+          </div>
+        )}
+
         {selected === "free" ? (
-          <Button onClick={submitFree} disabled={pending || !option.available}>
-            {pending ? "Submitting…" : "Submit for review"}
-          </Button>
+          <div className="space-y-1.5">
+            <Button onClick={submitFree} disabled={pending || !option.available || !badgeFound}>
+              {pending ? "Submitting…" : "Submit for review"}
+            </Button>
+            {option.available && !badgeFound && (
+              <p className="text-xs text-muted-foreground">
+                Locked until we find the badge. Paste it, then click “Check my site”. Paid plans don&apos;t need it.
+              </p>
+            )}
+          </div>
         ) : providers.length === 0 ? (
           <Button disabled variant="outline">
             Payments opening soon

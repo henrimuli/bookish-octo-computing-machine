@@ -81,7 +81,8 @@ export function ReadinessTool() {
                 Free debut: <span className="text-foreground">{report.nextWeeks.free.label}</span>
               </p>
               <p className="text-muted-foreground">
-                Paid debut: pick from <span className="text-foreground">{report.nextWeeks.paid[0]?.label}</span> on
+                Paid debut: <span className="text-foreground">live as soon as it&apos;s approved</span>, or pick a later
+                week
               </p>
             </div>
             {report.suggested?.name && (

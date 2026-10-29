@@ -5,7 +5,7 @@ import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
 import { formatPeriodLabel } from "@/lib/periods";
-import { formatWeekLabel, formatWeekRange } from "@/lib/weeks";
+import { formatWeekLabel, formatWeekRange, weekKeyFor } from "@/lib/weeks";
 
 type Product = typeof schema.products.$inferSelect;
 
@@ -50,8 +50,12 @@ export async function notifyProductSubmitted(p: Product) {
 
 export async function notifyProductApproved(p: Product) {
   const week = p.launchWeekKey!;
-  await toMaker(p, `${p.name} is approved for ${formatWeekLabel(week)}`, [
-    `Good news: ${p.name} is approved and debuts in ${formatWeekLabel(week)} (${formatWeekRange(week)}). Voting opens Monday at 00:00 UTC and runs all week.`,
+  // Paid debuts go into the current week, so they're live now.
+  const liveNow = week <= weekKeyFor(new Date());
+  await toMaker(p, liveNow ? `${p.name} is approved and live` : `${p.name} is approved for ${formatWeekLabel(week)}`, [
+    liveNow
+      ? `Good news: ${p.name} is approved and live now on this week's board (${formatWeekRange(week)}). Voting runs until Sunday at 23:59 UTC.`
+      : `Good news: ${p.name} is approved and debuts in ${formatWeekLabel(week)} (${formatWeekRange(week)}). Voting opens Monday at 00:00 UTC and runs all week.`,
     p.tier === "free"
       ? `To keep a followed (dofollow) link from your listing, add the DebutYard badge to your homepage. Your snippet and a one-click check are in your [dashboard](${url("/dashboard")}).`
       : `Your paid debut includes a followed link, no badge needed.`,
@@ -73,8 +77,10 @@ export async function notifyPaidTierApplied(p: Product, tierLabel: string) {
   await toMaker(p, `${tierLabel} confirmed for ${p.name}`, [
     `Payment received: ${p.name} now has ${tierLabel}.`,
     p.status === "approved" && p.launchWeekKey
-      ? `It's scheduled for ${formatWeekLabel(p.launchWeekKey)} (${formatWeekRange(p.launchWeekKey)}).`
-      : "We review new listings within 24 hours and will email you the moment it's scheduled.",
+      ? p.launchWeekKey <= weekKeyFor(new Date())
+        ? "It's live now on this week's board."
+        : `It's scheduled for ${formatWeekLabel(p.launchWeekKey)} (${formatWeekRange(p.launchWeekKey)}).`
+      : "We review new listings within 24 hours. It goes live the moment it's approved, and we'll email you then.",
     `Track it in your [dashboard](${url("/dashboard")}).`,
   ]);
 }

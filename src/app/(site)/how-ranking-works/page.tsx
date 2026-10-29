@@ -16,11 +16,11 @@ export const metadata: Metadata = {
 
 export default function HowRankingWorksPage() {
   return (
-    <LegalPage title="How ranking works" updated="October 26, 2026">
+    <LegalPage title="How ranking works" updated="October 29, 2026">
       <p>
         Every week&apos;s debuts are ranked by the community, using rules we publish here. Paid plans buy{" "}
-        <strong>placement</strong> (featured spots, a chosen week, no badge requirement). They never buy votes, vote
-        multipliers or a head start.
+        <strong>placement</strong> (an instant debut on approval, featured spots, a chosen week, no badge requirement).
+        They never buy votes, vote multipliers or a head start.
       </p>
 
       <h2>The weekly score</h2>
@@ -31,6 +31,10 @@ export default function HowRankingWorksPage() {
           the week adds {COMMENT_BONUS}. Conversation counts, but it can&apos;t outweigh real votes.
         </li>
         <li>Ties go to the product with more total votes, then to the one approved first.</li>
+        <li>
+          Free debuts start on Monday. Paid debuts go live as soon as they&apos;re approved and join the week in
+          progress, so they get fewer days of voting, never extra ones.
+        </li>
         <li>
           The week closes on Sunday at 23:59 UTC. The top three become Debut of the Week and keep a followed link
           permanently.

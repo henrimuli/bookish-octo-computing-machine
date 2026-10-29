@@ -12,6 +12,7 @@ export function BadgePanel({
   dnsHost,
   dnsValue,
   required,
+  onVerified,
 }: {
   productId: string;
   snippets: { light: string; dark: string };
@@ -19,6 +20,8 @@ export function BadgePanel({
   dnsHost: string;
   dnsValue: string;
   required: boolean;
+  /** Called when a check finds the badge. */
+  onVerified?: () => void;
 }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [copied, setCopied] = useState(false);
@@ -37,6 +40,7 @@ export function BadgePanel({
     start(async () => {
       const res = await verifyBadgeAction(productId);
       setMessage({ ok: res.ok, text: res.message });
+      if (res.status === "verified") onVerified?.();
     });
   }
 

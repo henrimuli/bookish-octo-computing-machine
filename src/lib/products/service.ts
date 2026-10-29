@@ -3,8 +3,11 @@ import { and, count, eq, gt, inArray, ne, notInArray, or, sql } from "drizzle-or
 import { randomBytes } from "node:crypto";
 import { db, schema } from "@/db";
 import { domainOf, slugify, uniqueSlug } from "@/lib/slug";
-import { isWeekKey, upcomingWeekKeys, weekBounds, weekKeyFor } from "@/lib/weeks";
+import { upcomingWeekKeys, weekBounds, weekKeyFor } from "@/lib/weeks";
 import { tierRank, type ProductInput, type Tier } from "./input";
+import { paidWeek } from "./schedule";
+
+export { BOOKABLE_WEEKS, bookableWeeks } from "./schedule";
 
 const { products, productCategories, launchWeeks, categories, badgeVerifications } = schema;
 
@@ -36,8 +39,6 @@ export async function spotlightsBooked(weekKey: string, exceptId?: string): Prom
 
 /** Free debuts a maker can have waiting or scheduled at once. */
 export const MAX_ACTIVE_FREE = 2;
-/** How far ahead paid tiers can book a week. */
-export const BOOKABLE_WEEKS = 8;
 const DEFAULT_FREE_CAPACITY = 30;
 
 export async function ensureWeek(key: string) {
@@ -148,13 +149,26 @@ export async function activeFreeCount(userId: string, exceptId?: string): Promis
   return row?.n ?? 0;
 }
 
-/** Moves a draft into the review queue. Paid tiers arrive here via checkout instead. */
+/** The listing's badge record: its status from our last check, and its DNS token. */
+export async function badgeRecord(productId: string) {
+  return db().query.badgeVerifications.findFirst({
+    where: eq(badgeVerifications.productId, productId),
+    columns: { status: true, dnsToken: true },
+  });
+}
+
+/** Moves a draft into the review queue. Free debuts need a verified badge; paid tiers arrive via checkout. */
 export async function submitForReview(productId: string, userId: string): Promise<Product> {
   const p = await getOwned(productId, userId);
   if (p.status !== "draft" && p.status !== "rejected") return p;
   if (p.tier === "free" && (await activeFreeCount(userId, p.id)) >= MAX_ACTIVE_FREE) {
     throw new ProductError(
       `You can have ${MAX_ACTIVE_FREE} free debuts waiting at a time. Upgrade this one, or wait for one to launch.`,
+    );
+  }
+  if (p.tier === "free" && (await badgeRecord(p.id))?.status !== "verified") {
+    throw new ProductError(
+      "Free debuts need the DebutYard badge on your site. Add it, run the check, and submit once we've found it.",
     );
   }
   const [updated] = await db()
@@ -182,19 +196,13 @@ export async function nextFreeWeek(now = new Date()): Promise<string> {
   return candidates.find((k) => (usedBy.get(k) ?? 0) < (capBy.get(k) ?? DEFAULT_FREE_CAPACITY)) ?? candidates.at(-1)!;
 }
 
-/** Weeks a paid tier can pick: the next BOOKABLE_WEEKS weeks. */
-export function bookableWeeks(now = new Date()): string[] {
-  return upcomingWeekKeys(now, BOOKABLE_WEEKS);
-}
-
-/** Which week a product goes into when approved (or re-scheduled after an upgrade). */
+/**
+ * Which week a product goes into when approved (or re-scheduled after an upgrade).
+ * Free: the next Monday with a free slot. Paid: this week, so it's live on approval (see schedule.ts).
+ */
 export async function weekForProduct(p: Pick<Product, "tier" | "requestedWeekKey">, now = new Date()): Promise<string> {
-  const next = upcomingWeekKeys(now, 1)[0];
   if (p.tier === "free") return nextFreeWeek(now);
-  if (p.tier === "fast_track") return next;
-  const requested = p.requestedWeekKey;
-  if (requested && isWeekKey(requested) && bookableWeeks(now).includes(requested)) return requested;
-  return next;
+  return paidWeek(p.tier, p.requestedWeekKey, now);
 }
 
 export function hasStarted(weekKey: string | null, now = new Date()): boolean {
