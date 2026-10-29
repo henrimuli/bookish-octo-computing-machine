@@ -152,7 +152,7 @@ Add one webhook to `https://debutyard.com/api/webhooks/resend` and copy its sign
    - `submission digests`, `badge blocks`: client status emails; detect client badges and swap held directories
    - `directory stats`, `badges`: directory acceptance/observed link type; badge re-checks
    - `links`, `indexed`: Link Monitor checks (batched); weekly Google index check
-   - `directory audit`, `dr`: monthly directory liveness audit; Authority Score snapshots
+   - `directory audit`, `dr`: monthly directory liveness audit; Authority Score snapshots (one request per tracked domain, weekly) and directory scores (one DataForSEO bulk request for every directory, monthly)
    - `affiliates`: approve commissions past the refund window
 5. `/api/cron/hourly` re-runs `payments` and `ads` hourly. It isn't scheduled, because Hobby rejects sub-daily crons. On Vercel Pro, add `{ "path": "/api/cron/hourly", "schedule": "5 * * * *" }` to `crons` in `vercel.json`.
 

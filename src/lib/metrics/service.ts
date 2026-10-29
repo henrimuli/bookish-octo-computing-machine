@@ -1,12 +1,12 @@
 import "server-only";
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
 import { entitled } from "@/lib/billing/entitlements";
 import { domainOf } from "@/lib/slug";
-import { createDrProvider, DR_DROP_ALERT, type DrProvider } from "./providers";
+import { BULK_MAX, createDrProvider, DR_DROP_ALERT, type DrProvider, type DrReading } from "./providers";
 
 const { domainMetrics, products, subscriptions, submissionOrders, directories } = schema;
 export type DomainMetric = typeof domainMetrics.$inferSelect;
@@ -138,11 +138,11 @@ async function trackedDomains(now: Date): Promise<Map<string, Watcher[]>> {
 }
 
 /**
- * Daily: snapshots tracked domains not measured in a week (bounded batch),
- * emails watchers when DR drops by DR_DROP_ALERT or more, then backfills
- * directories with no DR yet.
+ * Daily: snapshots tracked domains not measured in a week (bounded batch,
+ * one request each), emails watchers when the score drops by DR_DROP_ALERT or
+ * more, then refreshes directory scores in bulk when they're due.
  */
-export async function snapshotDomains(now = new Date(), { batch = 100, backfill = 50 } = {}) {
+export async function snapshotDomains(now = new Date(), { batch = 100 } = {}) {
   if (!drEnabled()) return { skipped: "no DR provider configured" };
   const watched = await trackedDomains(now);
   const recent = new Set(
@@ -182,32 +182,93 @@ export async function snapshotDomains(now = new Date(), { batch = 100, backfill 
       console.error(`DR snapshot ${domain}`, err);
     }
   }
-  const backfilled = await backfillDirectoryDr(Math.max(0, backfill - measured));
-  return { measured, alerts, backfilled };
+  const directoriesScored = await refreshDirectoryScores(now);
+  return { measured, alerts, directories: directoriesScored };
 }
 
-/** Fills `directories.dr` where it's empty, a few a day. Staff-entered values are never overwritten. */
-export async function backfillDirectoryDr(limit = 50) {
-  if (limit === 0 || !drEnabled()) return 0;
-  const empty = await db()
-    .select({ id: directories.id, url: directories.url })
+/** Directory scores are re-measured this often, all together. */
+export const DIRECTORY_REFRESH_DAYS = 30;
+/** Without a bulk API (Ahrefs, Open PageRank), single lookups per run, so a run stays short. */
+const SINGLE_LOOKUPS_PER_RUN = 50;
+
+/**
+ * Scores every active directory that has none, or whose last reading is
+ * DIRECTORY_REFRESH_DAYS old, in as few requests as the provider allows: one
+ * bulk request (up to 1,000 domains) with DataForSEO. In practice that's one
+ * request a month for the whole list, plus a small one when directories are
+ * added. Readings go into domain_metrics too, so directories have history.
+ * Returns how many directories got a score.
+ */
+export async function refreshDirectoryScores(now = new Date()) {
+  const provider = drProvider();
+  if (!provider) return 0;
+  const active = await db()
+    .select({ id: directories.id, url: directories.url, dr: directories.dr })
     .from(directories)
-    .where(and(isNull(directories.dr), eq(directories.isActive, true)))
-    .orderBy(asc(directories.name))
-    .limit(limit);
-  let filled = 0;
-  for (const d of empty) {
+    .where(eq(directories.isActive, true));
+  const byDomain = new Map<string, Array<{ id: string; dr: number | null }>>();
+  for (const d of active) {
+    let domain: string;
     try {
-      const reading = await drFor(domainOf(d.url));
-      if (!reading) continue;
-      await db()
-        .update(directories)
-        .set({ dr: Math.round(reading.dr) })
-        .where(and(eq(directories.id, d.id), isNull(directories.dr)));
-      filled++;
-    } catch (err) {
-      console.error(`DR backfill ${d.url}`, err);
+      domain = domainOf(d.url);
+    } catch {
+      continue;
     }
+    byDomain.set(domain, [...(byDomain.get(domain) ?? []), { id: d.id, dr: d.dr }]);
   }
-  return filled;
+  if (byDomain.size === 0) return 0;
+
+  const fresh = new Set(
+    (
+      await db()
+        .selectDistinct({ domain: domainMetrics.domain })
+        .from(domainMetrics)
+        .where(
+          and(
+            inArray(domainMetrics.domain, [...byDomain.keys()]),
+            gt(domainMetrics.measuredAt, ts(new Date(now.getTime() - DIRECTORY_REFRESH_DAYS * DAY))),
+          ),
+        )
+    ).map((r) => r.domain),
+  );
+  const due = [...byDomain.entries()]
+    .filter(([domain, rows]) => !fresh.has(domain) || rows.some((r) => r.dr === null))
+    .map(([domain]) => domain);
+  if (due.length === 0) return 0;
+
+  const readings = new Map<string, DrReading>();
+  try {
+    if (provider.fetchBulk) {
+      for (let i = 0; i < due.length; i += BULK_MAX) {
+        for (const [domain, r] of await provider.fetchBulk(due.slice(i, i + BULK_MAX))) readings.set(domain, r);
+      }
+    } else {
+      for (const domain of due.slice(0, SINGLE_LOOKUPS_PER_RUN)) {
+        try {
+          readings.set(domain, await provider.fetchDr(domain));
+        } catch (err) {
+          console.error(`Directory score ${domain}`, err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Directory score refresh failed", err);
+    return 0;
+  }
+  if (readings.size === 0) return 0;
+
+  await db()
+    .insert(domainMetrics)
+    .values([...readings].map(([domain, r]) => ({ domain, ...r, provider: provider.id, measuredAt: now })));
+  let scored = 0;
+  for (const [domain, r] of readings) {
+    const ids = (byDomain.get(domain) ?? []).map((d) => d.id);
+    if (ids.length === 0) continue;
+    await db()
+      .update(directories)
+      .set({ dr: Math.round(r.dr) })
+      .where(inArray(directories.id, ids));
+    scored += ids.length;
+  }
+  return scored;
 }

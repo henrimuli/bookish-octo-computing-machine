@@ -17,7 +17,12 @@ export const providerLabels: Record<DrProviderId, string> = {
 export interface DrProvider {
   readonly id: DrProviderId;
   fetchDr(domain: string): Promise<DrReading>;
+  /** Many domains in one request (up to BULK_MAX), keyed by domain. Missing for providers without a bulk API. */
+  fetchBulk?(domains: string[]): Promise<Map<string, DrReading>>;
 }
+
+/** Targets per bulk request (DataForSEO bulk_ranks accepts up to 1,000). */
+export const BULK_MAX = 1000;
 
 type FetchLike = typeof fetch;
 
@@ -41,6 +46,20 @@ export function parseDataForSeo(body: unknown): DrReading {
   return { dr: clamp(r.rank), referringDomains: r.referring_domains ?? null };
 }
 
+/** DataForSEO backlinks/bulk_ranks: one `rank` (0–100, same scale as summary) per target. */
+export function parseDataForSeoBulk(body: unknown): Map<string, DrReading> {
+  const b = body as { tasks?: Array<{ result?: Array<{ items?: Array<{ target?: string; rank?: number }> }> }> };
+  const items = b.tasks?.[0]?.result?.[0]?.items;
+  if (!Array.isArray(items)) throw new DrProviderError("DataForSEO returned no bulk ranks");
+  const out = new Map<string, DrReading>();
+  for (const i of items) {
+    if (typeof i.target === "string" && typeof i.rank === "number") {
+      out.set(i.target.toLowerCase(), { dr: clamp(i.rank), referringDomains: null });
+    }
+  }
+  return out;
+}
+
 /** Ahrefs site-explorer/domain-rating. */
 export function parseAhrefs(body: unknown): DrReading {
   const dr = (body as { domain_rating?: { domain_rating?: number } }).domain_rating?.domain_rating;
@@ -60,22 +79,34 @@ export function parseOpenPageRank(body: unknown): DrReading {
 export function createDrProvider(id: DrProviderId, apiKey: string, fetchImpl: FetchLike = fetch): DrProvider {
   const timeout = () => AbortSignal.timeout(15_000);
   switch (id) {
-    case "dataforseo":
+    case "dataforseo": {
+      const post = (path: string, task: object, signal = timeout()) =>
+        fetchImpl(`https://api.dataforseo.com/v3/backlinks/${path}/live`, {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(apiKey).toString("base64")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify([task]),
+          signal,
+        });
       return {
         id,
         async fetchDr(domain) {
-          const res = await fetchImpl("https://api.dataforseo.com/v3/backlinks/summary/live", {
-            method: "POST",
-            headers: {
-              Authorization: `Basic ${Buffer.from(apiKey).toString("base64")}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify([{ target: domain, include_subdomains: true, rank_scale: "one_hundred" }]),
-            signal: timeout(),
-          });
+          const res = await post("summary", { target: domain, include_subdomains: true, rank_scale: "one_hundred" });
           return parseDataForSeo(await json(res, "DataForSEO"));
         },
+        async fetchBulk(domains) {
+          if (domains.length > BULK_MAX) throw new DrProviderError(`At most ${BULK_MAX} domains per bulk request`);
+          const res = await post(
+            "bulk_ranks",
+            { targets: domains, rank_scale: "one_hundred" },
+            AbortSignal.timeout(60_000),
+          );
+          return parseDataForSeoBulk(await json(res, "DataForSEO"));
+        },
       };
+    }
     case "ahrefs":
       return {
         id,

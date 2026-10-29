@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { chartPoints, createDrProvider, drChange, parseAhrefs, parseDataForSeo, parseOpenPageRank } from "./providers";
+import {
+  BULK_MAX,
+  chartPoints,
+  createDrProvider,
+  drChange,
+  parseAhrefs,
+  parseDataForSeo,
+  parseDataForSeoBulk,
+  parseOpenPageRank,
+} from "./providers";
 
 describe("provider responses", () => {
   it("reads DataForSEO rank and referring domains", () => {
@@ -8,6 +17,32 @@ describe("provider responses", () => {
       referringDomains: 120,
     });
     expect(() => parseDataForSeo({ tasks: [{ result: null }] })).toThrow();
+  });
+
+  it("reads DataForSEO bulk ranks by target", () => {
+    const out = parseDataForSeoBulk({
+      tasks: [
+        { result: [{ items: [{ target: "Uneed.best", rank: 54 }, { target: "x.io", rank: 0 }, { target: "y.io" }] }] },
+      ],
+    });
+    expect([...out]).toEqual([
+      ["uneed.best", { dr: 54, referringDomains: null }],
+      ["x.io", { dr: 0, referringDomains: null }],
+    ]);
+    expect(() => parseDataForSeoBulk({ tasks: [{ result: null }] })).toThrow();
+  });
+
+  it("asks DataForSEO for every domain in one bulk_ranks request", async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response(JSON.stringify({ tasks: [{ result: [{ items: [{ target: "a.io", rank: 12 }] }] }] })),
+    );
+    const p = createDrProvider("dataforseo", "login:pw", fetchImpl as unknown as typeof fetch);
+    expect((await p.fetchBulk!(["a.io", "b.io"])).get("a.io")).toEqual({ dr: 12, referringDomains: null });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.dataforseo.com/v3/backlinks/bulk_ranks/live");
+    expect(JSON.parse(init.body as string)).toEqual([{ targets: ["a.io", "b.io"], rank_scale: "one_hundred" }]);
+    await expect(p.fetchBulk!(Array.from({ length: BULK_MAX + 1 }, (_, i) => `${i}.io`))).rejects.toThrow();
   });
 
   it("reads Ahrefs domain rating", () => {
