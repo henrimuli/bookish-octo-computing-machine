@@ -9,6 +9,7 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { DebutLink } from "@/components/debut/debut-link";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container } from "@/components/ui/primitives";
+import { SectionWave } from "@/components/ui/section-wave";
 import { liveAds, type AdItem } from "@/lib/ads/service";
 import { getCurrentUser } from "@/lib/auth";
 import { cardMediaForSlugs, featuredNow } from "@/lib/board/featured";
@@ -18,7 +19,7 @@ import { addWeeks, formatWeekLabel, formatWeekRange, weekBounds, weekKeyFor } fr
 export default function Home() {
   return (
     <>
-      <section className="border-b border-border">
+      <section>
         <Container className="flex flex-col gap-6 py-12 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="max-w-2xl font-display text-4xl font-bold tracking-tight sm:text-5xl">
@@ -36,6 +37,8 @@ export default function Home() {
           </div>
         </Container>
       </section>
+
+      <SectionWave />
 
       {/* Spotlight and featured span the page; renders nothing when there are none. */}
       <Suspense fallback={null}>
@@ -56,7 +59,7 @@ export default function Home() {
           </Suspense>
         </section>
         {/* Stays in view while the rows scroll; scrolls itself if it's taller than the screen. */}
-        <aside className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
+        <aside className="space-y-6 lg:sticky lg:top-22 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
           <Suspense fallback={<Card className="h-48 animate-pulse" />}>
             <Sidebar />
           </Suspense>
@@ -88,12 +91,15 @@ async function Sponsored() {
     cardMediaForSlugs([...featured.map((f) => f.slug), ...rail.map((a) => a.slug)]),
   ]);
   return (
-    <section aria-label="Sponsored" className="border-b border-border">
-      <Container className="py-12">
-        {top && <SponsorBanner ad={top} />}
-        <FeaturedRail items={featured} ads={rail} applause={applause} media={media} signedIn={Boolean(user)} />
-      </Container>
-    </section>
+    <>
+      <section aria-label="Sponsored">
+        <Container className="py-12">
+          {top && <SponsorBanner ad={top} />}
+          <FeaturedRail items={featured} ads={rail} applause={applause} media={media} signedIn={Boolean(user)} />
+        </Container>
+      </section>
+      <SectionWave />
+    </>
   );
 }
 

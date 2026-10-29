@@ -1,47 +1,91 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { NewsletterForm } from "@/components/newsletter-form";
+import { freeTools } from "@/components/tools/tool-list";
 import { Container } from "@/components/ui/primitives";
+import { SectionWave } from "@/components/ui/section-wave";
 import { site } from "@/config/site";
-import { drEnabled } from "@/lib/metrics/service";
 
-const links: Array<{ href: string; label: string; dr?: boolean }> = [
-  { href: "/blog", label: "Blog" },
-  { href: "/advertise", label: "Advertise" },
-  { href: "/submission-service", label: "Submission service" },
-  { href: "/directories", label: "Directories" },
-  { href: "/launch-wall", label: "Launch wall" },
-  { href: "/tools/launch-readiness", label: "Readiness check" },
-  { href: "/tools/dofollow-checker", label: "Dofollow checker" },
-  { href: "/tools/dr-checker", label: "Authority Score checker", dr: true },
-  { href: "/docs", label: "API & MCP" },
-  { href: "/refund-policy", label: "Refund policy" },
+type FooterLink = { href: Route; label: string };
+
+const columns: Array<{ heading: string; links: FooterLink[] }> = [
+  {
+    heading: "Explore",
+    links: [
+      { href: "/", label: "This week" },
+      { href: "/weeks", label: "Past weeks" },
+      { href: "/categories", label: "Categories" },
+      { href: "/launch-wall", label: "Launch wall" },
+      { href: "/blog", label: "Blog" },
+    ],
+  },
+  {
+    heading: "For makers",
+    links: [
+      { href: "/submission-service", label: "Submission service" },
+      { href: "/directories", label: "Directories" },
+      { href: "/advertise", label: "Advertise" },
+      { href: "/docs", label: "API & MCP" },
+    ],
+  },
+];
+
+const legal: FooterLink[] = [
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
+  { href: "/refund-policy", label: "Refund policy" },
 ];
 
 export function SiteFooter() {
+  const groups = [
+    ...columns,
+    { heading: "Free tools", links: freeTools().map((t) => ({ href: t.href, label: t.label })) },
+  ];
   return (
-    <footer className="mt-24 border-t border-border print:hidden">
-      <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
+    <footer className="mt-24 print:hidden">
+      <SectionWave />
+      <Container className="grid gap-10 pb-8 pt-14 md:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] md:gap-8">
+        <div className="space-y-3">
           <Logo className="text-lg" />
           <p className="text-sm text-muted-foreground">{site.tagline}</p>
-          <div className="pt-2">
+          <div className="pt-3">
             <p className="mb-2 text-sm font-medium">Weekly digest: winners and new debuts, every Monday.</p>
             <NewsletterForm source="footer" className="max-w-sm" />
           </div>
         </div>
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          {links
-            .filter((l) => !l.dr || drEnabled())
-            .map((l) => (
-              <Link key={l.href} href={l.href} className="hover:text-foreground">
-                {l.label}
-              </Link>
-            ))}
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:contents">
+          {groups.map((g) => (
+            <nav key={g.heading} aria-label={g.heading}>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">{g.heading}</h2>
+              <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
+                {g.links.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="hover:text-foreground">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+      </Container>
+      <Container className="flex flex-col gap-3 border-t border-border/70 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          © {site.legalName} ·{" "}
           <a href={`mailto:${site.supportEmail}`} className="hover:text-foreground">
             {site.supportEmail}
+          </a>
+        </p>
+        <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
+          {legal.map((l) => (
+            <Link key={l.href} href={l.href} className="hover:text-foreground">
+              {l.label}
+            </Link>
+          ))}
+          <a href={site.social.x} rel="noopener" target="_blank" className="hover:text-foreground">
+            X / Twitter
           </a>
         </nav>
       </Container>
