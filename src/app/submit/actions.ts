@@ -2,7 +2,6 @@
 
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { referralCode } from "@/lib/affiliates/cookie";
 import { getCurrentUser } from "@/lib/auth";
 import { enabledProviders } from "@/lib/payments";
 import { CouponError } from "@/lib/payments/pricing";
@@ -217,7 +216,8 @@ export async function startTierCheckoutAction(args: {
       email: user.email,
       userId: user.id,
       couponCode: args.coupon || null,
-      metadata: { productId: product.id, weekKey: weekKey ?? null, via: await referralCode() },
+      // Affiliates are paused (see src/lib/affiliates/PAUSED.md); this also sent `via: await referralCode()`.
+      metadata: { productId: product.id, weekKey: weekKey ?? null },
     });
     await db().insert(schema.productOrders).values({ orderId, productId: product.id });
     return { ok: true, data: { url, orderId } };

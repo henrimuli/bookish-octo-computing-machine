@@ -31,6 +31,7 @@ const input = z.object({
   weekKey: z.string().regex(/^\d{4}-W\d{2}$/),
   provider: z.enum(["paystack", "paypal"]),
   coupon: z.string().max(64).optional(),
+  returnTo: z.literal("dashboard").optional(),
 });
 
 export async function bookAction(
@@ -54,6 +55,7 @@ export async function bookAction(
       weekKey: data.weekKey,
       provider: data.provider,
       couponCode: data.coupon || null,
+      returnTo: data.returnTo,
     });
     return { ok: true, url };
   } catch (err) {

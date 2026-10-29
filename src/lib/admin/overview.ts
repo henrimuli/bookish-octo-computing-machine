@@ -16,7 +16,7 @@ export async function adminOverview(now = new Date()) {
     user,
     newsletterSubscribers,
     subscriptions,
-    affiliateReferrals,
+    // affiliateReferrals, (affiliates are paused)
     adBookings,
     trackedLinks,
   } = schema;
@@ -38,7 +38,7 @@ export async function adminOverview(now = new Date()) {
     newUsers,
     subscribers,
     subs,
-    affiliateOwed,
+    // affiliateOwed, (affiliates are paused)
     activeAds,
     links,
     recentOrders,
@@ -85,10 +85,11 @@ export async function adminOverview(now = new Date()) {
       .from(subscriptions)
       .where(inArray(subscriptions.status, ["active", "non_renewing", "past_due"]))
       .groupBy(subscriptions.sku),
-    db()
-      .select({ cents: sum(affiliateReferrals.commissionCents) })
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.status, "approved")),
+    // Affiliates are paused (see src/lib/affiliates/PAUSED.md).
+    // db()
+    //   .select({ cents: sum(affiliateReferrals.commissionCents) })
+    //   .from(affiliateReferrals)
+    //   .where(eq(affiliateReferrals.status, "approved")),
     db().select({ n: count() }).from(adBookings).where(eq(adBookings.status, "active")),
     db()
       .select({ verdict: trackedLinks.lastVerdict, n: count() })
@@ -126,7 +127,7 @@ export async function adminOverview(now = new Date()) {
     users: { total: users[0]?.n ?? 0, new7: newUsers[0]?.n ?? 0 },
     subscribers: subscribers[0]?.n ?? 0,
     subscriptions: subs.map((s) => ({ sku: s.sku, n: s.n })),
-    affiliateOwedCents: num(affiliateOwed[0]?.cents),
+    // affiliateOwedCents: num(affiliateOwed[0]?.cents), (affiliates are paused)
     activeAds: activeAds[0]?.n ?? 0,
     links: {
       active: links.reduce((t, l) => t + l.n, 0),

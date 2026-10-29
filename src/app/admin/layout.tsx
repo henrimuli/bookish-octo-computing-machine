@@ -24,7 +24,8 @@ const groups: NavGroup[] = [
   {
     label: "People",
     items: [
-      { href: "/admin/affiliates", label: "Affiliates", icon: "gift" },
+      // Affiliates are paused (see src/lib/affiliates/PAUSED.md).
+      // { href: "/admin/affiliates", label: "Affiliates", icon: "gift" },
       { href: "/admin/users", label: "Admin users", icon: "users" },
     ],
   },

@@ -89,6 +89,19 @@ export async function CheckoutResult({
       </>
     );
   }
+  if (order?.status === "paid" && order.kind === "featured") {
+    return (
+      <>
+        {broadcast}
+        <Message
+          title="Payment received. Your slot is booked"
+          body={`It goes live at the start of the week you picked, and you can follow its impressions and clicks under Sponsorships. We've emailed a confirmation to ${order.email}.`}
+          href="/dashboard/sponsorships"
+          cta="See your sponsorships"
+        />
+      </>
+    );
+  }
   if (order?.status === "paid") {
     return (
       <>

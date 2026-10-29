@@ -94,6 +94,8 @@ export type BookInput = {
   weekKey: string;
   provider: ProviderId;
   couponCode?: string | null;
+  /** "dashboard": the provider returns the buyer to the dashboard after checkout. */
+  returnTo?: "dashboard";
 };
 
 /** Reserves the slot (serialised per placement) and starts checkout. */
@@ -170,6 +172,7 @@ export async function bookSlot(input: BookInput, now = new Date()): Promise<{ bo
       userId: input.userId,
       couponCode: input.couponCode ?? null,
       metadata: { bookingId: booking.id },
+      returnTo: input.returnTo,
     });
     await db().update(adBookings).set({ orderId }).where(eq(adBookings.id, booking.id));
     return { bookingId: booking.id, url };
