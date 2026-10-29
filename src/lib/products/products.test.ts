@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isFollowed, listingRel, withRef } from "@/lib/board/links";
-import { rank, applauseWeight } from "@/lib/board/ranking";
+import { rank, applauseWeight, isFinal } from "@/lib/board/ranking";
 import { domainOf, slugify } from "@/lib/slug";
 import { productInput } from "./input";
 import { extractPrefill } from "./prefill";
@@ -87,13 +87,14 @@ describe("ranking", () => {
     });
   });
 
-  it("orders by score, then applause, then approval time", () => {
+  it("orders by score, then debut-week applause, then approval time", () => {
     const t = (h: number) => new Date(Date.UTC(2026, 9, 26, h));
     const ranked = rank([
-      { id: "a", score: 5, applause: 5, approvedAt: t(2) },
-      { id: "b", score: 7, applause: 3, approvedAt: t(3) },
-      { id: "c", score: 5, applause: 6, approvedAt: t(4) },
-      { id: "d", score: 5, applause: 5, approvedAt: t(1) },
+      // Later, all-time applause never breaks a tie.
+      { id: "a", score: 5, debutApplause: 5, applause: 40, approvedAt: t(2) },
+      { id: "b", score: 7, debutApplause: 3, applause: 3, approvedAt: t(3) },
+      { id: "c", score: 5, debutApplause: 6, applause: 6, approvedAt: t(4) },
+      { id: "d", score: 5, debutApplause: 5, applause: 5, approvedAt: t(1) },
     ]);
     expect(ranked.map((r) => [r.id, r.rank])).toEqual([
       ["b", 1],
@@ -101,6 +102,21 @@ describe("ranking", () => {
       ["d", 3],
       ["a", 4],
     ]);
+  });
+});
+
+describe("final applause", () => {
+  const week = "2026-W43"; // Mon 19 Oct – Sun 25 Oct 2026
+  const during = new Date("2026-10-21T12:00:00Z");
+  const after = new Date("2026-10-28T12:00:00Z");
+
+  it("locks claps from a debut week once it closes", () => {
+    expect(isFinal(during, week, new Date("2026-10-24T00:00:00Z"))).toBe(false);
+    expect(isFinal(during, week, new Date("2026-10-26T00:00:00Z"))).toBe(true);
+  });
+
+  it("never locks claps given after the debut week", () => {
+    expect(isFinal(after, week, new Date("2026-11-30T00:00:00Z"))).toBe(false);
   });
 });
 

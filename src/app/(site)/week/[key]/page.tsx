@@ -35,7 +35,7 @@ async function Week({ params }: { params: PageProps<"/week/[key]">["params"] }) 
       <Heading>{formatWeekLabel(key)}</Heading>
       <p className="mt-2 text-muted-foreground">
         {formatWeekRange(key)}
-        {key === current ? " · applause open" : " · final ranking"}
+        {key === current ? " · competition open" : " · final ranking"}
       </p>
       <div className="mt-8">
         <WeekBoard weekKey={key} emptyCta={key === current} />

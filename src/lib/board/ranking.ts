@@ -5,8 +5,12 @@
  *       + COMMENT_BONUS × distinct non-maker commenters during the week whose
  *         comment has at least MIN_COMMENT_LENGTH characters
  *
- * Paid tiers buy placement, never score.
+ * Ties go to more debut-week applause. Applause after the debut week only adds
+ * to all-time applause, and debut-week claps are final once the week closes,
+ * so a closed week's ranking never changes. Paid tiers buy placement, never score.
  */
+import { weekBounds } from "@/lib/weeks";
+
 export const COMMENT_BONUS = 0.5;
 export const MIN_COMMENT_LENGTH = 40;
 
@@ -36,15 +40,21 @@ export function applauseWeight(args: { accountAgeHours: number; sameIpApplauseOn
   return { weight, flagReason: reasons.length ? reasons.join(", ") : null };
 }
 
-export type Ranked = { id: string; score: number; applause: number; approvedAt: Date | null };
+/** A clap given during a debut week that has since closed can't be taken back. Pure. */
+export function isFinal(clappedAt: Date, weekKey: string, now = new Date()): boolean {
+  const { endsAt } = weekBounds(weekKey);
+  return now >= endsAt && clappedAt < endsAt;
+}
 
-/** Orders products by score, then raw applause, then who was approved first. */
+export type Ranked = { id: string; score: number; debutApplause: number; approvedAt: Date | null };
+
+/** Orders products by score, then raw debut-week applause, then who was approved first. */
 export function rank<T extends Ranked>(items: T[]): Array<T & { rank: number }> {
   return [...items]
     .sort(
       (a, b) =>
         b.score - a.score ||
-        b.applause - a.applause ||
+        b.debutApplause - a.debutApplause ||
         (a.approvedAt?.getTime() ?? 0) - (b.approvedAt?.getTime() ?? 0) ||
         a.id.localeCompare(b.id),
     )

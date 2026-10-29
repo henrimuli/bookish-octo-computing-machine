@@ -137,7 +137,7 @@ export async function recapMarkdown(weekKey: string) {
   const winners = awards.map((a) => ({ a, p: byId.get(a.productId) })).filter((x) => x.p);
   const winnerIds = new Set(winners.map((w) => w.p!.id));
   const others = board.filter((p) => !winnerIds.has(p.id));
-  const totalApplause = board.reduce((n, p) => n + p.applause, 0);
+  const totalApplause = board.reduce((n, p) => n + p.debutApplause, 0);
   const name = (p: { name: string }) => escapeMarkdown(p.name);
   const line = (p: (typeof board)[number]) => `[${name(p)}](/p/${p.slug}): ${escapeMarkdown(p.tagline)}`;
 
@@ -150,7 +150,7 @@ export async function recapMarkdown(weekKey: string) {
     parts.push(
       "## Debut of the Week",
       winners
-        .map(({ a, p }) => `${MEDALS[a.place - 1] ?? `#${a.place}`} **${line(p!)}** (${p!.applause} applause)`)
+        .map(({ a, p }) => `${MEDALS[a.place - 1] ?? `#${a.place}`} **${line(p!)}** (${p!.debutApplause} applause)`)
         .join("\n\n"),
     );
   }

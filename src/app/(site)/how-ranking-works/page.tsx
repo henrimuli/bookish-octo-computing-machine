@@ -30,7 +30,7 @@ export default function HowRankingWorksPage() {
           Each person other than the maker who leaves a substantive comment ({MIN_COMMENT_LENGTH}+ characters) during
           the week adds {COMMENT_BONUS}. Conversation counts, but it can&apos;t outweigh real applause.
         </li>
-        <li>Ties go to the product with more total applause, then to the one approved first.</li>
+        <li>Ties go to the product with more applause during its debut week, then to the one approved first.</li>
         <li>
           Free debuts start on Monday. Paid debuts go live as soon as they&apos;re approved and join the week in
           progress, so they get fewer days of applause, never extra ones.
@@ -41,11 +41,27 @@ export default function HowRankingWorksPage() {
         </li>
       </ul>
 
+      <h2>After the debut week</h2>
+      <ul>
+        <li>
+          Products can be applauded for as long as they&apos;re listed, so you can still applaud something that debuted
+          weeks ago.
+        </li>
+        <li>
+          Applause after the debut week counts toward the product&apos;s all-time applause only. It never changes a
+          week&apos;s ranking or its winners.
+        </li>
+        <li>
+          Applause given during the debut week is final once the week closes, so a closed week&apos;s board stays as it
+          was.
+        </li>
+      </ul>
+
       <h2>Keeping it fair</h2>
       <ul>
         <li>
           You need an account to applaud, and you get one clap per product. Changed your mind? Click again to take it
-          back.
+          back, until the debut week closes.
         </li>
         <li>
           Accounts younger than {NEW_ACCOUNT_HOURS} hours applaud at {NEW_ACCOUNT_WEIGHT * 100}% weight, so mass-created
@@ -64,8 +80,9 @@ export default function HowRankingWorksPage() {
 
       <h2>What&apos;s shown</h2>
       <p>
-        The number on each clap button is the plain count of applause. The ranking uses the weighted weekly score above,
-        which is why a product with slightly less applause can rank higher.
+        The number on each clap button is the product&apos;s all-time applause, a plain count. The ranking uses the
+        weighted debut-week score above, which is why a product with less applause on its button can rank higher. Once
+        the counts differ, boards also show the debut-week applause next to each product.
       </p>
     </LegalPage>
   );

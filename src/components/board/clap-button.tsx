@@ -11,13 +11,15 @@ const SPARKS = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
 /**
  * The clap button: one clap per signed-in account, a second click takes it
  * back. Clapping pops the hands, bursts a few sparks and rolls the count up;
- * taking it back rolls the count down. Signed-out viewers go to sign-in.
+ * taking it back rolls the count down. Signed-out viewers go to sign-in. The
+ * count is all-time applause; a clap from a closed debut week is `final`.
  */
 export function ClapButton({
   productId,
   applauded,
   applause,
   signedIn,
+  final = false,
   size = "md",
 }: {
   productId: string;
@@ -25,6 +27,8 @@ export function ClapButton({
   applause: number;
   /** Known on boards and product pages; when false, a click goes straight to sign-in. */
   signedIn?: boolean;
+  /** The viewer's clap counted toward a debut week that has closed, so it can't be taken back. */
+  final?: boolean;
   size?: "md" | "lg";
 }) {
   const router = useRouter();
@@ -42,6 +46,7 @@ export function ClapButton({
 
   function click() {
     if (signedIn === false) return signIn();
+    if (final && state.applauded) return;
     setError(null);
     const giving = !state.applauded;
     setClaps((n) => (giving ? Math.abs(n) + 1 : -(Math.abs(n) + 1)));
@@ -58,6 +63,7 @@ export function ClapButton({
   }
 
   const on = optimistic.applauded;
+  const locked = final && state.applauded;
   const lg = size === "lg";
   return (
     <div className="flex shrink-0 flex-col items-center gap-1">
@@ -65,10 +71,12 @@ export function ClapButton({
         type="button"
         onClick={click}
         aria-pressed={on}
-        aria-label={`${on ? "Take back your applause" : "Applaud"} (${optimistic.applause} applause)`}
+        aria-label={`${locked ? "You applauded" : on ? "Take back your applause" : "Applaud"} (${optimistic.applause} applause)`}
+        title={locked ? "You applauded during its debut week, so your clap is final." : undefined}
         className={cn(
           "relative grid place-items-center rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           lg ? "size-14" : "size-11",
+          locked && "cursor-default",
           on
             ? "border-primary/40 bg-primary/10 text-primary"
             : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
