@@ -37,11 +37,11 @@ const icon = {
   className: "size-5",
 } as const;
 
-/** Small promises under the hero, each one backed by the refund policy or the verification step. */
+/** Small promises under the hero, each one backed by the refund policy, the link checks or Link Monitor. */
 export function TrustChips() {
-  const chips = ["Every link verified by us", "Rejected directories replaced", "Full refund before we start"];
+  const chips = ["Every link verified by us", "Rejected directories replaced", "Automatic link monitoring"];
   return (
-    <ul className="mt-6 flex flex-wrap gap-2">
+    <ul className="mt-6 flex flex-wrap justify-center gap-2">
       {chips.map((c) => (
         <li
           key={c}

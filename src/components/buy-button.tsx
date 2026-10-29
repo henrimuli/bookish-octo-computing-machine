@@ -17,10 +17,12 @@ type Props = {
   productId?: string;
   /** "dashboard": after checkout the provider sends the buyer back into the dashboard. */
   returnTo?: "dashboard";
+  /** The signed-in buyer's email: the order goes on their account, so we don't ask for one. */
+  accountEmail?: string;
 };
 
-/** Expands into email + coupon + provider choice, then redirects to the provider's checkout. */
-export function BuyButton({ sku, recurring, providers, className, productId, returnTo }: Props) {
+/** Expands into email (skipped when signed in) + coupon + provider choice, then redirects to the provider's checkout. */
+export function BuyButton({ sku, recurring, providers, className, productId, returnTo, accountEmail }: Props) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [coupon, setCoupon] = useState("");
@@ -53,7 +55,7 @@ export function BuyButton({ sku, recurring, providers, className, productId, ret
         body: JSON.stringify({
           sku,
           provider,
-          email: email || undefined,
+          email: accountEmail ? undefined : email || undefined,
           coupon: coupon || undefined,
           productId,
           returnTo,
@@ -72,13 +74,19 @@ export function BuyButton({ sku, recurring, providers, className, productId, ret
     <div className={cn("space-y-2", className)}>
       {!recurring && (
         <>
-          <Input
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-label="Email for your receipt"
-          />
+          {accountEmail ? (
+            <p className="truncate text-sm text-muted-foreground">
+              Ordering as <span className="font-medium text-foreground">{accountEmail}</span>
+            </p>
+          ) : (
+            <Input
+              type="email"
+              placeholder="you@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-label="Email for your receipt"
+            />
+          )}
           <Input
             placeholder="Coupon (optional)"
             value={coupon}
