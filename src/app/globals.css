@@ -184,46 +184,57 @@ body {
 .clap-pop {
   animation: clap-pop 0.38s cubic-bezier(0.3, 0.7, 0.4, 1.4);
 }
+/* Sparks start at the ring's edge (--r) and fly well past it before fading. */
 .clap-burst {
+  --r: 22px;
   pointer-events: none;
   position: absolute;
   inset: 0;
+  z-index: 10;
 }
 .clap-burst > span {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 5px;
-  height: 5px;
-  margin: -2.5px 0 0 -2.5px;
+  width: 3px;
+  height: 9px;
+  margin: -4.5px 0 0 -1.5px;
   border-radius: 999px;
   background: var(--primary);
   opacity: 0;
-  animation: clap-spark 0.6s ease-out 0.08s;
+  animation: clap-spark 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) 0.06s;
 }
 .clap-burst > span:nth-child(even) {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
   background: var(--accent);
+  animation-delay: 0.1s;
 }
 @keyframes clap-spark {
   0% {
     opacity: 1;
-    transform: rotate(var(--a)) translateY(-14px) scale(1);
+    transform: rotate(var(--a)) translateY(calc(var(--r) * -0.8)) scale(0.6);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(calc(var(--r) * -1.6)) scale(1);
   }
   100% {
     opacity: 0;
-    transform: rotate(var(--a)) translateY(-30px) scale(0.3);
+    transform: rotate(var(--a)) translateY(calc(var(--r) * -2.1)) scale(0.4);
   }
 }
 @keyframes clap-count-up {
   from {
     opacity: 0;
-    transform: translateY(100%);
+    transform: translateY(60%);
   }
 }
 @keyframes clap-count-down {
   from {
     opacity: 0;
-    transform: translateY(-100%);
+    transform: translateY(-60%);
   }
 }
 .clap-count-up {

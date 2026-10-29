@@ -31,7 +31,7 @@ export function badgeSvg(v: BadgeVariant): string {
   const applause =
     typeof v.applause === "number"
       ? `<text x="198" y="33" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="${c.text}">${v.applause}</text>
-  <g transform="translate(192 8.5) scale(0.5)">${clapGlyph({ fill: c.bg, stroke: c.text, spark: c.primary })}</g>`
+  <g transform="translate(192 8.5) scale(0.5)">${clapGlyph({ color: c.text })}</g>`
       : "";
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" viewBox="0 0 ${BADGE_WIDTH} ${BADGE_HEIGHT}" role="img" aria-label="${esc(top.toLowerCase())} DebutYard">
