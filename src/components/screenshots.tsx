@@ -38,7 +38,7 @@ function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
 }
 
 /**
- * Up to three listing screenshots. The first usually comes from the fetch
+ * One to three listing screenshots (at least one is required). The first usually comes from the fetch
  * (`capturing` shows its placeholder); the rest are uploaded to R2. Each one
  * can be opened full size or removed.
  */
@@ -83,9 +83,11 @@ export function ScreenshotsField({
   const uploadSlot = value.length + (capturing ? 1 : 0);
 
   return (
-    <section className="space-y-2">
+    <section id="screenshots" className="scroll-mt-24 space-y-2">
       <div className="flex items-baseline justify-between">
-        <Label>Screenshots (up to {MAX_SCREENSHOTS})</Label>
+        <Label>
+          Screenshots <span className="font-normal text-muted-foreground">(at least 1, up to {MAX_SCREENSHOTS})</span>
+        </Label>
         <span className="text-xs text-muted-foreground">
           {value.length}/{MAX_SCREENSHOTS}
         </span>
@@ -172,7 +174,7 @@ export function ScreenshotsField({
       </div>
       <p className="text-xs text-muted-foreground">
         {uploadsEnabled
-          ? "PNG, JPG or WebP, under 5 MB. Shown in a row on your product page."
+          ? "PNG, JPG or WebP, under 5 MB. The first is your card on the homepage when you're featured."
           : "Uploads aren't set up yet."}
       </p>
       {(message || error) && <p className="text-xs text-danger">{message ?? error}</p>}

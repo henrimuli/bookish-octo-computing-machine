@@ -139,6 +139,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     description: "A".repeat(60),
     categories: ["productivity"],
     pricingModel: "freemium" as const,
+    screenshots: [`https://${domain}/shot.png`],
   });
 
   /** Marks a listing's badge as found, as a successful check would. */
@@ -176,6 +177,16 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect((await products.submitForReview(p.id, u)).status).toBe("pending");
     const other = await makeUser();
     await expect(products.saveProduct(other, input("www.acme.app", "Acme 2"))).rejects.toThrow(/already listed/);
+  });
+
+  it("needs a screenshot before a draft goes into review", async () => {
+    const u = await makeUser();
+    // API drafts leave screenshots out.
+    const p = await products.saveProduct(u, { ...input("noshot.io"), screenshots: undefined });
+    await badgeFound(p.id);
+    await expect(products.submitForReview(p.id, u)).rejects.toThrow(/at least one screenshot/);
+    await products.saveProduct(u, input("noshot.io"), p.id);
+    expect((await products.submitForReview(p.id, u)).status).toBe("pending");
   });
 
   it("limits makers to two waiting free debuts", async () => {
@@ -443,8 +454,12 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     const m = await makeUser();
     const pro = await liveProduct(m, "featured.io");
     await dbmod.db().update(dbmod.schema.products).set({ tier: "pro" }).where(eq(dbmod.schema.products.id, pro.id));
-    const { featuredNow } = await import("@/lib/board/featured");
+    const { cardMediaForSlugs, featuredNow } = await import("@/lib/board/featured");
     expect((await featuredNow()).map((f) => f.slug)).toEqual(["featured-io"]);
+    expect((await cardMediaForSlugs(["featured-io"])).get("featured-io")).toEqual({
+      imageUrl: "https://featured.io/shot.png",
+      websiteUrl: "https://featured.io/",
+    });
   });
 
   it("hides unlaunched products from the public but lets the maker preview", async () => {

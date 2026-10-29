@@ -76,6 +76,20 @@ async function setScreenshots(productId: string, urls: string[]) {
   }
 }
 
+/**
+ * A listing going into review needs a screenshot: the homepage's sponsored
+ * cards show the first. Listings already approved (from before this was
+ * required) can still be upgraded.
+ */
+export async function assertHasScreenshot(p: Pick<Product, "id" | "status">) {
+  if (p.status !== "draft" && p.status !== "rejected") return;
+  const shot = await db().query.productMedia.findFirst({
+    where: eq(schema.productMedia.productId, p.id),
+    columns: { id: true },
+  });
+  if (!shot) throw new ProductError("Add at least one screenshot to the listing before submitting it.");
+}
+
 /** Another live or upcoming listing for the same site blocks a new one (relaunches come later). */
 async function assertNotDuplicate(domain: string, exceptId?: string) {
   const existing = await db().query.products.findFirst({
@@ -161,6 +175,7 @@ export async function badgeRecord(productId: string) {
 export async function submitForReview(productId: string, userId: string): Promise<Product> {
   const p = await getOwned(productId, userId);
   if (p.status !== "draft" && p.status !== "rejected") return p;
+  await assertHasScreenshot(p);
   if (p.tier === "free" && (await activeFreeCount(userId, p.id)) >= MAX_ACTIVE_FREE) {
     throw new ProductError(
       `You can have ${MAX_ACTIVE_FREE} free debuts waiting at a time. Upgrade this one, or wait for one to launch.`,

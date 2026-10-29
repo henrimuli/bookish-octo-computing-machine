@@ -217,6 +217,15 @@ export function ProductForm({
     setMessage(null);
     const websiteUrl = checkWebsite(values.websiteUrl);
     if (!websiteUrl) return;
+    if (screenshots.length === 0) {
+      setErrors({
+        screenshots: capturing
+          ? "Hold on, we're still taking a screenshot of your homepage."
+          : "Add at least one screenshot",
+      });
+      document.getElementById("screenshots")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     setErrors({});
     startSave(async () => {
       const res = await saveProductAction({ ...values, websiteUrl }, productId);

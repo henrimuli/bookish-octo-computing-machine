@@ -293,7 +293,7 @@ export async function releaseFastTrackCredit(id: string) {
  * quarter's credit, no payment. Same effect as buying it.
  */
 export async function redeemFastTrack(userId: string, productId: string, now = new Date()) {
-  const { applyPaidTier } = await import("@/lib/products/service");
+  const { applyPaidTier, assertHasScreenshot } = await import("@/lib/products/service");
   const { tierRank, TIERS } = await import("@/lib/products/input");
   const notify = await import("@/lib/notifications");
   const p = await db().query.products.findFirst({
@@ -303,6 +303,7 @@ export async function redeemFastTrack(userId: string, productId: string, now = n
   if (p.status === "archived") throw new BillingError("This listing is archived.");
   if (tierRank(p.tier) >= tierRank("fast_track"))
     throw new BillingError(`This listing already has ${TIERS[p.tier].label}.`);
+  await assertHasScreenshot(p);
 
   const credit = await claimFastTrackCredit(userId, productId, now);
   try {
