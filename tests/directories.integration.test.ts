@@ -159,6 +159,23 @@ describe.skipIf(!TEST_DB)("directories and submissions (Postgres)", () => {
     expect(ph).toMatchObject({ guided: true, linkTypeClaimed: "nofollow" });
   });
 
+  it("summarises the catalog for the submission-service page", async () => {
+    const usable = (await directories.listDirectories()).filter((d) => !d.guided);
+    const stats = await directories.catalogStats();
+    expect(stats.active).toBe(usable.length);
+    expect(stats.dr50).toBe(usable.filter((d) => (d.dr ?? 0) >= 50).length);
+    const linkType = (d: (typeof usable)[number]) =>
+      d.linkTypeObserved === "unknown" ? d.linkTypeClaimed : d.linkTypeObserved;
+    expect(stats.dofollow).toBe(usable.filter((d) => linkType(d) === "dofollow").length);
+    // The seed may leave DR unmeasured; then there's no median to show.
+    const drs = usable.flatMap((d) => (d.dr === null ? [] : [d.dr]));
+    if (drs.length === 0) expect(stats.medianDr).toBeNull();
+    else {
+      expect(stats.medianDr).toBeGreaterThanOrEqual(Math.min(...drs));
+      expect(stats.medianDr).toBeLessThanOrEqual(Math.max(...drs));
+    }
+  });
+
   it("imports CSV: updates by slug or host, creates new rows, reports bad rows", async () => {
     const result = await directories.importDirectoriesCsv(
       [

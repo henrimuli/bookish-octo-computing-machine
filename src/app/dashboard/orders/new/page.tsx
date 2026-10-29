@@ -3,7 +3,8 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
-import { PackageCards, ServiceNotes, ServiceSteps } from "@/components/submissions/packages-view";
+import { PackageCards, ServiceSteps } from "@/components/submissions/packages-view";
+import { ServiceDetails } from "@/components/submissions/service-pitch";
 import { requireUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Submission packages", robots: { index: false } };
@@ -25,7 +26,7 @@ export default function NewOrderPage(props: PageProps<"/dashboard/orders/new">) 
       <Suspense fallback={<div className="mt-10 h-80 animate-pulse rounded-lg bg-muted/50" />}>
         <Packages searchParams={props.searchParams} />
       </Suspense>
-      <ServiceNotes />
+      <ServiceDetails compact />
     </div>
   );
 }

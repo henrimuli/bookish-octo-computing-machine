@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { db, schema } from "@/db";
+import { db, queryRows, schema } from "@/db";
 import { slugify } from "@/lib/slug";
 
 const { directories } = schema;
@@ -248,4 +248,24 @@ export async function refreshDirectoryStats() {
     ) s
     where s.directory_id = d.id and d.link_type_observed is distinct from s.observed
   `);
+}
+
+export type CatalogStats = { active: number; medianDr: number | null; dr50: number; dofollow: number };
+
+/** Headline numbers for the submission-service page, from active directories we can submit to for you. */
+export async function catalogStats(): Promise<CatalogStats> {
+  const [row] = await queryRows<{ active: number; median_dr: number | null; dr50: number; dofollow: number }>(sql`
+    select count(*)::int as active,
+      round(percentile_cont(0.5) within group (order by dr))::int as median_dr,
+      count(*) filter (where dr >= 50)::int as dr50,
+      count(*) filter (where coalesce(nullif(link_type_observed, 'unknown'), link_type_claimed) = 'dofollow')::int as dofollow
+    from directories
+    where is_active and not guided
+  `);
+  return {
+    active: Number(row?.active ?? 0),
+    medianDr: row?.median_dr == null ? null : Number(row.median_dr),
+    dr50: Number(row?.dr50 ?? 0),
+    dofollow: Number(row?.dofollow ?? 0),
+  };
 }
