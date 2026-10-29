@@ -1,9 +1,10 @@
 import { brand } from "@/config/brand";
 import { LOGO } from "@/config/logo";
+import { clapGlyph } from "@/lib/board/clap-glyph";
 
 /** Badge artwork as SVG. Pure, so it can be tested and served from a route. */
 
-export type BadgeVariant = { kind: "featured" | "winner"; theme: "light" | "dark"; place?: number; votes?: number };
+export type BadgeVariant = { kind: "featured" | "winner"; theme: "light" | "dark"; place?: number; applause?: number };
 
 const palette = {
   light: { ...brand.light, bg: brand.light.surface },
@@ -27,10 +28,10 @@ export function badgeSvg(v: BadgeVariant): string {
   const top = winner ? `#${v.place} DEBUT OF THE WEEK` : "FEATURED ON";
   const accent = winner ? brand.medals[v.place! - 1] : c.primary;
   const ink = winner ? "#ffffff" : c.primaryInk;
-  const votes =
-    typeof v.votes === "number"
-      ? `<text x="198" y="33" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="${c.text}">${v.votes}</text>
-  <path d="M193 20.5 198 14l5 6.5z" fill="${c.text}"/>`
+  const applause =
+    typeof v.applause === "number"
+      ? `<text x="198" y="33" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="13" font-weight="700" fill="${c.text}">${v.applause}</text>
+  <g transform="translate(192 8.5) scale(0.5)">${clapGlyph({ fill: c.bg, stroke: c.text, spark: c.primary })}</g>`
       : "";
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${BADGE_WIDTH}" height="${BADGE_HEIGHT}" viewBox="0 0 ${BADGE_WIDTH} ${BADGE_HEIGHT}" role="img" aria-label="${esc(top.toLowerCase())} DebutYard">
@@ -39,7 +40,7 @@ export function badgeSvg(v: BadgeVariant): string {
   <path d="${LOGO.mark}" transform="${MARK_TRANSFORM}" fill="${ink}" stroke="${ink}" stroke-width="${LOGO.strokeWidth}" stroke-linejoin="round"/>
   <text x="52" y="22" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="9" font-weight="600" letter-spacing="0.6" fill="${c.muted}">${esc(top)}</text>
   <text x="52" y="40" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="17" font-weight="800" fill="${c.text}">Debut<tspan fill="${c.primary}">Yard</tspan></text>
-  ${votes}
+  ${applause}
 </svg>`;
 }
 

@@ -166,6 +166,83 @@ body {
   padding: 0.4em 0.7em;
 }
 
+/* Clap button: the hands pop, sparks burst out, the count rolls. */
+@keyframes clap-pop {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(0.8) rotate(-6deg);
+  }
+  65% {
+    transform: scale(1.22) rotate(4deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.clap-pop {
+  animation: clap-pop 0.38s cubic-bezier(0.3, 0.7, 0.4, 1.4);
+}
+.clap-burst {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+.clap-burst > span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 999px;
+  background: var(--primary);
+  opacity: 0;
+  animation: clap-spark 0.6s ease-out 0.08s;
+}
+.clap-burst > span:nth-child(even) {
+  background: var(--accent);
+}
+@keyframes clap-spark {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(-14px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(-30px) scale(0.3);
+  }
+}
+@keyframes clap-count-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@keyframes clap-count-down {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+.clap-count-up {
+  animation: clap-count-up 0.3s ease-out;
+}
+.clap-count-down {
+  animation: clap-count-down 0.3s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .clap-pop,
+  .clap-count-up,
+  .clap-count-down {
+    animation: none;
+  }
+  .clap-burst {
+    display: none;
+  }
+}
+
 /* Authority Score ring: the band grows from empty to the score. */
 @keyframes score-grow {
   from {

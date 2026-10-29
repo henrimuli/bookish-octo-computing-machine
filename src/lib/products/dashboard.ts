@@ -17,7 +17,7 @@ export async function dashboardProducts(userId: string) {
 
   const stats = (await queryRows(sql`
     select p.id,
-      (select count(*)::int from votes v where v.product_id = p.id) as votes,
+      (select count(*)::int from applause v where v.product_id = p.id) as applause,
       (select count(*)::int from comments c where c.product_id = p.id and c.status = 'visible') as comments,
       (select count(*)::int from product_events e where e.product_id = p.id and e.kind = 'view'
          and e.created_at > now() - interval '30 days') as views_30d,
@@ -27,14 +27,14 @@ export async function dashboardProducts(userId: string) {
       ids.map((id) => sql`${id}`),
       sql`, `,
     )})
-  `)) as unknown as Array<{ id: string; votes: number; comments: number; views_30d: number; clicks_30d: number }>;
+  `)) as unknown as Array<{ id: string; applause: number; comments: number; views_30d: number; clicks_30d: number }>;
   const statsBy = new Map(stats.map((s) => [s.id, s]));
 
   return Promise.all(
     rows.map(async ({ product, badge }) => ({
       product,
       badge,
-      stats: statsBy.get(product.id) ?? { votes: 0, comments: 0, views_30d: 0, clicks_30d: 0 },
+      stats: statsBy.get(product.id) ?? { applause: 0, comments: 0, views_30d: 0, clicks_30d: 0 },
       queueAhead: await queueAhead(product),
     })),
   );

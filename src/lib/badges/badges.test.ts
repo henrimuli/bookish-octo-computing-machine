@@ -83,7 +83,7 @@ describe("nextBadgeState", () => {
 describe("badge artwork", () => {
   it("renders winner and featured variants", () => {
     expect(badgeSvg({ kind: "winner", place: 1, theme: "dark" })).toContain("#1 DEBUT OF THE WEEK");
-    expect(badgeSvg({ kind: "featured", theme: "light", votes: 42 })).toContain(">42<");
+    expect(badgeSvg({ kind: "featured", theme: "light", applause: 42 })).toContain(">42<");
   });
 
   it("produces a followed snippet (no rel attribute) pointing at the listing", () => {

@@ -2,7 +2,7 @@ import { brand } from "@/config/brand";
 
 /** Pure renderer for the weekly digest. Data in, subject/html/text out. */
 
-export type DigestProduct = { name: string; tagline: string; url: string; votes?: number; place?: number };
+export type DigestProduct = { name: string; tagline: string; url: string; applause?: number; place?: number };
 
 export type DigestData = {
   closedWeekLabel: string;
@@ -30,7 +30,7 @@ export function renderDigest(d: DigestData, unsubscribeUrl: string): { subject: 
   const item = (p: DigestProduct, prefix = "") =>
     `<tr><td style="padding:10px 0;border-bottom:1px solid ${c.border}">
       <a href="${esc(p.url)}" style="color:${c.text};font-weight:600;text-decoration:none">${prefix}${esc(p.name)}</a>
-      ${typeof p.votes === "number" ? `<span style="color:${c.muted};font-size:13px"> · ▲ ${p.votes}</span>` : ""}
+      ${typeof p.applause === "number" ? `<span style="color:${c.muted};font-size:13px"> · 👏 ${p.applause}</span>` : ""}
       <div style="color:${c.muted};font-size:14px">${esc(p.tagline)}</div></td></tr>`;
   const section = (title: string, rows: string) =>
     rows
@@ -52,12 +52,12 @@ export function renderDigest(d: DigestData, unsubscribeUrl: string): { subject: 
   ${sponsor}
   ${section(`Debuting now · ${esc(d.newWeekLabel)}`, d.debutingNow.map((p) => item(p, p.featured ? "★ " : "")).join(""))}
   ${section(`Also loved last week`, d.topOfWeek.map((p) => item(p)).join(""))}
-  <p style="margin:28px 0 0"><a href="${esc(d.siteUrl)}" style="display:inline-block;background:${c.primary};color:${c.primaryInk};padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Vote on this week's debuts</a></p>
+  <p style="margin:28px 0 0"><a href="${esc(d.siteUrl)}" style="display:inline-block;background:${c.primary};color:${c.primaryInk};padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Applaud this week's debuts</a></p>
   <p style="color:${c.muted};font-size:12px;margin-top:32px">You're getting this because you subscribed on DebutYard. <a href="${esc(unsubscribeUrl)}" style="color:${c.muted}">Unsubscribe</a>.</p>
 </div></body></html>`;
 
   const line = (p: DigestProduct, prefix = "") =>
-    `${prefix}${p.name}: ${p.tagline}${typeof p.votes === "number" ? ` (▲ ${p.votes})` : ""}\n  ${p.url}`;
+    `${prefix}${p.name}: ${p.tagline}${typeof p.applause === "number" ? ` (👏 ${p.applause})` : ""}\n  ${p.url}`;
   const text = [
     "DebutYard: your weekly look at what just launched.",
     d.winners.length
@@ -68,7 +68,7 @@ export function renderDigest(d: DigestData, unsubscribeUrl: string): { subject: 
       ? `\nDEBUTING NOW · ${d.newWeekLabel}\n${d.debutingNow.map((p) => line(p, p.featured ? "★ " : "")).join("\n")}`
       : "",
     d.topOfWeek.length ? `\nALSO LOVED LAST WEEK\n${d.topOfWeek.map((p) => line(p)).join("\n")}` : "",
-    `\nVote on this week's debuts: ${d.siteUrl}`,
+    `\nApplaud this week's debuts: ${d.siteUrl}`,
     `\nUnsubscribe: ${unsubscribeUrl}`,
   ]
     .filter(Boolean)

@@ -13,30 +13,30 @@ export type BoardItem = {
   tier: "free" | "fast_track" | "pro" | "premium" | "spotlight";
   weekKey: string;
   approvedAt: Date | null;
-  votes: number;
+  applause: number;
   comments: number;
   score: number;
   categories: Array<{ slug: string; name: string }>;
-  votedByMe: boolean;
+  applaudedByMe: boolean;
   rank: number;
 };
 
 type Row = Omit<
   BoardItem,
-  "rank" | "categories" | "score" | "votes" | "comments" | "votedByMe" | "approvedAt" | "weekKey"
+  "rank" | "categories" | "score" | "applause" | "comments" | "applaudedByMe" | "approvedAt" | "weekKey"
 > & {
   launch_week_key: string;
   approved_at: Date | string | null;
   logo_url: string | null;
-  votes: string | number;
+  applause: string | number;
   comments: string | number;
   score: string | number;
-  voted_by_me: boolean;
+  applauded_by_me: boolean;
   categories: Array<{ slug: string; name: string }> | null;
 };
 
 /**
- * Products approved for a week, ranked. Votes and comments only count toward
+ * Products approved for a week, ranked. Applause and comments only count toward
  * the score if cast during the week; displayed counts are all-time.
  */
 export async function weekBoard(weekKey: string, viewerId: string | null = null): Promise<BoardItem[]> {
@@ -56,16 +56,16 @@ export async function boardForWeeks(weekKeys: string[], viewerId: string | null 
   );
   const rows = (await queryRows(sql`
     select p.id, p.slug, p.name, p.tagline, p.logo_url, p.tier, p.approved_at, p.launch_week_key,
-      (select count(*) from votes v where v.product_id = p.id) as votes,
+      (select count(*) from applause v where v.product_id = p.id) as applause,
       (select count(*) from comments c where c.product_id = p.id and c.status = 'visible') as comments,
-      coalesce((select sum(v.weight) from votes v
+      coalesce((select sum(v.weight) from applause v
                 where v.product_id = p.id and not v.flagged
                   and v.created_at >= lw.starts_at and v.created_at < lw.ends_at), 0)
       + ${COMMENT_BONUS}::float8 * (select count(distinct c.user_id) from comments c
                 where c.product_id = p.id and c.status = 'visible' and c.user_id <> p.created_by
                   and char_length(c.body) >= ${MIN_COMMENT_LENGTH}
                   and c.created_at >= lw.starts_at and c.created_at < lw.ends_at) as score,
-      exists(select 1 from votes v where v.product_id = p.id and v.user_id = ${viewerId}) as voted_by_me,
+      exists(select 1 from applause v where v.product_id = p.id and v.user_id = ${viewerId}) as applauded_by_me,
       (select json_agg(json_build_object('slug', cat.slug, 'name', cat.name) order by cat.position)
          from product_categories pc join categories cat on cat.slug = pc.category_slug
         where pc.product_id = p.id) as categories
@@ -84,10 +84,10 @@ export async function boardForWeeks(weekKeys: string[], viewerId: string | null 
       tier: r.tier,
       weekKey: r.launch_week_key,
       approvedAt: r.approved_at ? new Date(r.approved_at) : null,
-      votes: Number(r.votes),
+      applause: Number(r.applause),
       comments: Number(r.comments),
       score: Number(r.score),
-      votedByMe: Boolean(r.voted_by_me),
+      applaudedByMe: Boolean(r.applauded_by_me),
       categories: r.categories ?? [],
     })),
   );
@@ -105,16 +105,16 @@ export async function weekArchive(limit = 52) {
     .limit(limit) as Promise<Array<{ key: string; count: number }>>;
 }
 
-/** Live products in a category, most voted first. */
+/** Live products in a category, most applauded first. */
 export async function categoryProducts(slug: string, limit = 60) {
   const current = weekKeyFor(new Date());
   return (await queryRows(sql`
     select p.id, p.slug, p.name, p.tagline, p.logo_url, p.launch_week_key,
-      (select count(*)::int from votes v where v.product_id = p.id) as votes
+      (select count(*)::int from applause v where v.product_id = p.id) as applause
     from products p
     join product_categories pc on pc.product_id = p.id and pc.category_slug = ${slug}
     where p.status = 'approved' and p.launch_week_key <= ${current}
-    order by votes desc, p.approved_at desc
+    order by applause desc, p.approved_at desc
     limit ${limit}
   `)) as unknown as Array<{
     id: string;
@@ -123,7 +123,7 @@ export async function categoryProducts(slug: string, limit = 60) {
     tagline: string;
     logo_url: string | null;
     launch_week_key: string;
-    votes: number;
+    applause: number;
   }>;
 }
 
@@ -187,8 +187,8 @@ export async function getProductPage(slug: string, viewer: { id: string; staff: 
     badgeStatus: badge?.status ?? "unverified",
     media,
     awards,
-    votes: me?.votes ?? 0,
-    votedByMe: me?.votedByMe ?? false,
+    applause: me?.applause ?? 0,
+    applaudedByMe: me?.applaudedByMe ?? false,
     weekRank: live ? (me?.rank ?? null) : null,
     sameWeek: board.filter((b) => b.id !== p.id).slice(0, 6),
   };
@@ -209,12 +209,12 @@ export async function similarProducts(productId: string, limit = 6) {
   `)) as unknown as Array<{ slug: string; name: string; tagline: string; logo_url: string | null }>;
 }
 
-/** Daily vote counts for the product's debut week (for the sparkline). */
-export async function votesByDay(productId: string, weekKey: string) {
+/** Daily applause for the product's debut week (for the sparkline). */
+export async function applauseByDay(productId: string, weekKey: string) {
   const startsAt = sql`${weekBounds(weekKey).startsAt.toISOString()}::timestamptz`;
   const rows = (await queryRows(sql`
     select floor(extract(epoch from (created_at - ${startsAt})) / 86400)::int as day, count(*)::int as n
-    from votes where product_id = ${productId}
+    from applause where product_id = ${productId}
       and created_at >= ${startsAt} and created_at < ${startsAt} + interval '7 days'
     group by 1
   `)) as unknown as Array<{ day: number; n: number }>;
@@ -259,7 +259,7 @@ export async function builderByHandle(handle: string) {
   const current = weekKeyFor(new Date());
   const products = (await queryRows(sql`
     select p.slug, p.name, p.tagline, p.logo_url, p.launch_week_key,
-      (select count(*)::int from votes v where v.product_id = p.id) as votes
+      (select count(*)::int from applause v where v.product_id = p.id) as applause
     from products p
     where p.created_by = ${u.id} and p.status = 'approved' and p.launch_week_key <= ${current}
     order by p.launch_week_key desc
@@ -269,7 +269,7 @@ export async function builderByHandle(handle: string) {
     tagline: string;
     logo_url: string | null;
     launch_week_key: string;
-    votes: number;
+    applause: number;
   }>;
   return { user: u, products };
 }

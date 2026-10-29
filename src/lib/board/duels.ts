@@ -15,7 +15,7 @@ export type DuelProduct = {
 
 /**
  * Two random live products from this week (or last week, if this week is thin)
- * that the viewer hasn't voted for yet. Null when there aren't two left.
+ * that the viewer hasn't applauded yet. Null when there aren't two left.
  */
 export async function duelPair(
   viewerId: string | null,
@@ -35,7 +35,7 @@ export async function duelPair(
                 join categories c on c.slug = pc.category_slug where pc.product_id = p.id), '{}') as categories
     from products p
     where p.status = 'approved' and p.launch_week_key in (${weeks[0]}, ${weeks[1]})
-      and not exists (select 1 from votes v where v.product_id = p.id and v.user_id = ${viewerId})
+      and not exists (select 1 from applause v where v.product_id = p.id and v.user_id = ${viewerId})
       ${exclude}
     order by (p.launch_week_key = ${current}) desc, random()
     limit 2

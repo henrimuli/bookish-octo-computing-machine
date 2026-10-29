@@ -1,7 +1,7 @@
 /**
  * Ranking rules (published on /how-ranking-works).
  *
- * score = Σ vote weights cast during the debut week (flagged votes excluded)
+ * score = Σ applause weights given during the debut week (flagged applause excluded)
  *       + COMMENT_BONUS × distinct non-maker commenters during the week whose
  *         comment has at least MIN_COMMENT_LENGTH characters
  *
@@ -10,16 +10,16 @@
 export const COMMENT_BONUS = 0.5;
 export const MIN_COMMENT_LENGTH = 40;
 
-/** Accounts younger than this vote at reduced weight. */
+/** Accounts younger than this applaud at reduced weight. */
 export const NEW_ACCOUNT_HOURS = 72;
 export const NEW_ACCOUNT_WEIGHT = 0.25;
-/** Votes from an IP that has already voted this many times for the product count at reduced weight. */
+/** Applause from an IP that has already applauded this many times for the product count at reduced weight. */
 export const SAME_IP_LIMIT = 2;
 export const SAME_IP_WEIGHT = 0.1;
-/** Hard cap on votes per account per hour. */
-export const VOTES_PER_HOUR = 60;
+/** Hard cap on applause per account per hour. */
+export const APPLAUSE_PER_HOUR = 60;
 
-export function voteWeight(args: { accountAgeHours: number; sameIpVotesOnProduct: number }): {
+export function applauseWeight(args: { accountAgeHours: number; sameIpApplauseOnProduct: number }): {
   weight: number;
   flagReason: string | null;
 } {
@@ -29,22 +29,22 @@ export function voteWeight(args: { accountAgeHours: number; sameIpVotesOnProduct
     weight = Math.min(weight, NEW_ACCOUNT_WEIGHT);
     reasons.push("new account");
   }
-  if (args.sameIpVotesOnProduct >= SAME_IP_LIMIT) {
+  if (args.sameIpApplauseOnProduct >= SAME_IP_LIMIT) {
     weight = Math.min(weight, SAME_IP_WEIGHT);
     reasons.push("shared IP");
   }
   return { weight, flagReason: reasons.length ? reasons.join(", ") : null };
 }
 
-export type Ranked = { id: string; score: number; votes: number; approvedAt: Date | null };
+export type Ranked = { id: string; score: number; applause: number; approvedAt: Date | null };
 
-/** Orders products by score, then raw votes, then who was approved first. */
+/** Orders products by score, then raw applause, then who was approved first. */
 export function rank<T extends Ranked>(items: T[]): Array<T & { rank: number }> {
   return [...items]
     .sort(
       (a, b) =>
         b.score - a.score ||
-        b.votes - a.votes ||
+        b.applause - a.applause ||
         (a.approvedAt?.getTime() ?? 0) - (b.approvedAt?.getTime() ?? 0) ||
         a.id.localeCompare(b.id),
     )

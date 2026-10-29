@@ -54,8 +54,8 @@ export async function notifyProductApproved(p: Product) {
   const liveNow = week <= weekKeyFor(new Date());
   await toMaker(p, liveNow ? `${p.name} is approved and live` : `${p.name} is approved for ${formatWeekLabel(week)}`, [
     liveNow
-      ? `Good news: ${p.name} is approved and live now on this week's board (${formatWeekRange(week)}). Voting runs until Sunday at 23:59 UTC.`
-      : `Good news: ${p.name} is approved and debuts in ${formatWeekLabel(week)} (${formatWeekRange(week)}). Voting opens Monday at 00:00 UTC and runs all week.`,
+      ? `Good news: ${p.name} is approved and live now on this week's board (${formatWeekRange(week)}). Applause runs until Sunday at 23:59 UTC.`
+      : `Good news: ${p.name} is approved and debuts in ${formatWeekLabel(week)} (${formatWeekRange(week)}). Applause opens Monday at 00:00 UTC and runs all week.`,
     p.tier === "free"
       ? `To keep a followed (dofollow) link from your listing, add the DebutYard badge to your homepage. Your snippet and a one-click check are in your [dashboard](${url("/dashboard")}).`
       : `Your paid debut includes a followed link, no badge needed.`,

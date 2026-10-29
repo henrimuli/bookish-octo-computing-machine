@@ -7,7 +7,7 @@ import { boardForWeeks, weekBoard } from "./queries";
 
 const { launchWeeks, awards, products, closedPeriods } = schema;
 
-/** Places awarded each week. A product needs at least one vote to place. */
+/** Places awarded each week. A product needs at least one clap to place. */
 export const WINNER_PLACES = 3;
 
 /**

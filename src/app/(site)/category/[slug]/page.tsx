@@ -15,7 +15,7 @@ export async function generateMetadata(props: PageProps<"/category/[slug]">): Pr
   if (!c) return {};
   return {
     title: `Best new ${c.name} products`,
-    description: `${c.name} products that debuted on DebutYard, ranked by community votes.`,
+    description: `${c.name} products that debuted on DebutYard, ranked by community applause.`,
     alternates: { canonical: `/category/${c.slug}` },
   };
 }

@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { ViewBeacon, VisitLink } from "@/components/board/client-bits";
 import { Comments, type CommentView } from "@/components/board/comments";
 import { ProductLogo } from "@/components/board/product-logo";
-import { VoteButton } from "@/components/board/vote-button";
+import { ClapButton } from "@/components/board/clap-button";
 import { ScreenshotGallery } from "@/components/screenshots";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { site } from "@/config/site";
 import { getCurrentUser, isStaff } from "@/lib/auth";
 import { proUserIds } from "@/lib/billing/service";
 import { listingRel, withRef } from "@/lib/board/links";
-import { commentsFor, getProductPage, similarProducts, votesByDay } from "@/lib/board/queries";
+import { commentsFor, getProductPage, similarProducts, applauseByDay } from "@/lib/board/queries";
 import { formatPeriodLabel } from "@/lib/periods";
 import { formatWeekLabel, formatWeekRange } from "@/lib/weeks";
 
@@ -63,7 +63,7 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
   const [comments, similar, days, pro] = await Promise.all([
     commentsFor(p.id),
     similarProducts(p.id),
-    p.launchWeekKey && data.live ? votesByDay(p.id, p.launchWeekKey) : Promise.resolve(null),
+    p.launchWeekKey && data.live ? applauseByDay(p.id, p.launchWeekKey) : Promise.resolve(null),
     proUserIds([p.createdBy]),
   ]);
   const rel = listingRel({ tier: p.tier, isWinner: p.isWinner, badgeStatus: data.badgeStatus });
@@ -140,7 +140,15 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
                 </VisitLink>
               </div>
             </div>
-            {data.live && <VoteButton productId={p.id} voted={data.votedByMe} votes={data.votes} size="lg" />}
+            {data.live && (
+              <ClapButton
+                productId={p.id}
+                applauded={data.applaudedByMe}
+                applause={data.applause}
+                signedIn={Boolean(viewer)}
+                size="lg"
+              />
+            )}
           </header>
 
           <section>
@@ -201,8 +209,8 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
 
           {days && (
             <Card className="p-5">
-              <h2 className="text-sm font-medium">Votes during debut week</h2>
-              <VotesChart days={days} />
+              <h2 className="text-sm font-medium">Applause during debut week</h2>
+              <ApplauseChart days={days} />
             </Card>
           )}
 
@@ -233,11 +241,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function VotesChart({ days }: { days: number[] }) {
+function ApplauseChart({ days }: { days: number[] }) {
   const max = Math.max(1, ...days);
   const labels = ["M", "T", "W", "T", "F", "S", "S"];
   return (
-    <div className="mt-3 flex h-24 items-end gap-1.5" role="img" aria-label={`Votes per day: ${days.join(", ")}`}>
+    <div className="mt-3 flex h-24 items-end gap-1.5" role="img" aria-label={`Applause per day: ${days.join(", ")}`}>
       {days.map((n, i) => (
         <div key={i} className="flex flex-1 flex-col items-center gap-1">
           <div

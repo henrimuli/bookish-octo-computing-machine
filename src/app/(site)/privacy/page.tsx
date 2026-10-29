@@ -21,15 +21,15 @@ export default function PrivacyPage() {
           Order data: what you bought, amounts and the payment reference. Card details stay with Paystack or PayPal.
         </li>
         <li>
-          Usage data: pages viewed, votes, clicks on outbound links, and technical data such as IP address and browser,
-          used for analytics and to detect vote fraud.
+          Usage data: pages viewed, applause, clicks on outbound links, and technical data such as IP address and
+          browser, used for analytics and to detect applause fraud.
         </li>
       </ul>
 
       <h2>How we use it</h2>
       <ul>
         <li>To run your account, publish your listings and deliver what you buy.</li>
-        <li>To keep rankings fair by detecting fake accounts and vote manipulation.</li>
+        <li>To keep rankings fair by detecting fake accounts and applause manipulation.</li>
         <li>To send service emails (sign-in links, receipts, launch updates) and, if you opt in, our newsletter.</li>
         <li>To meet legal, tax and accounting obligations.</li>
       </ul>
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
       <h2>Retention</h2>
       <p>
         We keep account and listing data while your account is open. Order records are kept as long as tax law requires.
-        Vote and usage logs are kept for up to 24 months.
+        Applause and usage logs are kept for up to 24 months.
       </p>
 
       <h2>Your rights</h2>

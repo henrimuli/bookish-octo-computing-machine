@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ApplauseCount } from "@/components/board/clap-icon";
 import { SimpleList } from "@/components/board/simple-list";
 import { WallLinks } from "@/components/links/wall-links";
 import { Avatar } from "@/components/ui/avatar";
@@ -34,7 +35,7 @@ async function Builder({ params }: { params: PageProps<"/builders/[handle]">["pa
   const [pros, wall] = await Promise.all([proUserIds([b.user.id]), onLaunchWall(b.user.id)]);
   const pro = pros.has(b.user.id);
   const links = wall ? await wallLinks(b.user.id) : [];
-  const totalVotes = b.products.reduce((sum, p) => sum + p.votes, 0);
+  const totalApplause = b.products.reduce((sum, p) => sum + p.applause, 0);
   return (
     <>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -49,7 +50,8 @@ async function Builder({ params }: { params: PageProps<"/builders/[handle]">["pa
             )}
           </div>
           <p className="text-muted-foreground">
-            @{b.user.handle} · {b.products.length} debut{b.products.length === 1 ? "" : "s"} · ▲ {totalVotes}
+            @{b.user.handle} · {b.products.length} debut{b.products.length === 1 ? "" : "s"} ·{" "}
+            <ApplauseCount count={totalApplause} className="align-[-2px]" />
           </p>
           {b.user.bio && <p className="mt-3 max-w-2xl text-pretty">{b.user.bio}</p>}
           {(b.user.xUrl || b.user.githubUrl) && (

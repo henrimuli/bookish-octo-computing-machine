@@ -1,5 +1,5 @@
 /**
- * Fills a local/dev database with sample makers, products, votes and comments
+ * Fills a local/dev database with sample makers, products, applause and comments
  * across last week, this week and next week. Refuses to run in production.
  *
  *   pnpm db:seed
@@ -77,12 +77,12 @@ async function main() {
     await db.insert(schema.productCategories).values(cats.map((c) => ({ productId: p.id, categorySlug: c })));
     await db.insert(schema.badgeVerifications).values({ productId: p.id, dnsToken: randomBytes(12).toString("hex") });
 
-    if (week === weeks[2]) continue; // next week's products can't have votes yet
-    const voteCount = (i * 7) % 11;
+    if (week === weeks[2]) continue; // next week's products can't have applause yet
+    const applauseCount = (i * 7) % 11;
     const { startsAt } = weekBounds(week);
-    for (let v = 0; v < voteCount; v++) {
+    for (let v = 0; v < applauseCount; v++) {
       await db
-        .insert(schema.votes)
+        .insert(schema.applause)
         .values({
           productId: p.id,
           userId: users[v].id,

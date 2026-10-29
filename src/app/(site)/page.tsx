@@ -24,7 +24,7 @@ export default function Home() {
               Where great products <span className="text-primary">debut</span>.
             </h1>
             <p className="mt-4 max-w-xl text-muted-foreground">
-              A new class debuts every Monday, and paid debuts join as soon as they&apos;re approved. Vote for your
+              A new class debuts every Monday, and paid debuts join as soon as they&apos;re approved. Applaud your
               favourites all week; the top three become Debut of the Week.
             </p>
           </div>
@@ -76,7 +76,7 @@ async function ThisWeek() {
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-2xl font-bold">This week&apos;s debuts</h2>
         <p className="text-sm text-muted-foreground">
-          {formatWeekLabel(key)} · {formatWeekRange(key)} · voting closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
+          {formatWeekLabel(key)} · {formatWeekRange(key)} · applause closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
         </p>
       </div>
       {top && <SponsorBanner ad={top} />}
@@ -147,7 +147,7 @@ async function Sidebar() {
       <Card className="p-5">
         <h2 className="font-display font-semibold">Fair by design</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Paid debuts buy placement, never votes. No multipliers, no head starts.{" "}
+          Paid debuts buy placement, never applause. No multipliers, no head starts.{" "}
           <Link href="/how-ranking-works" className="text-primary hover:underline">
             How ranking works
           </Link>
