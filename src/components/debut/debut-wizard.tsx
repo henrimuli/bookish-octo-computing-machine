@@ -29,6 +29,19 @@ const STEPS: Array<{ id: Step; label: string }> = [
 
 /** The submission flow as a wide modal: details, plan, payment (in a new tab), then done. */
 export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null; onClose: () => void }) {
+  return <DebutFlow initialUrl={initialUrl} onClose={onClose} />;
+}
+
+/**
+ * The same flow inline on a dashboard page, so makers never leave the
+ * dashboard. Paid checkout still opens in a new tab.
+ */
+export function DebutPageFlow() {
+  return <DebutFlow initialUrl={null} />;
+}
+
+/** Without `onClose` it renders inline instead of as a modal. */
+function DebutFlow({ initialUrl, onClose }: { initialUrl: string | null; onClose?: () => void }) {
   const router = useRouter();
   const [setup, setSetup] = useState<Setup | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -39,6 +52,8 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
   const [planError, setPlanError] = useState<string | null>(null);
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [paid, setPaid] = useState(false);
+  // Bumped by "Debut another" so the details form starts empty.
+  const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -71,19 +86,20 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
 
   const wide = step === "details" || step === "plan";
   const visibleSteps = STEPS.filter((s) => s.id !== "payment" || checkout);
+  const inline = !onClose;
 
-  return (
-    <Dialog
-      onClose={onClose}
-      size={wide ? "xl" : "md"}
-      label="Debut your product"
-      // Wide steps keep one height and scroll inside, so a long form doesn't stretch the modal.
-      className={cn(
-        "flex flex-col overflow-hidden",
-        wide && "h-[calc(100dvh-1.5rem)] sm:h-[min(46rem,calc(100dvh-3rem))]",
-      )}
-    >
-      <div className="shrink-0 border-b border-border px-6 pb-4 pr-12 pt-6 sm:px-8">
+  const startOver = () => {
+    setStep("details");
+    setProductId(undefined);
+    setChoices(null);
+    setCheckout(null);
+    setPaid(false);
+    setFormKey((k) => k + 1);
+  };
+
+  const content = (
+    <>
+      <div className={cn("shrink-0 border-b border-border px-6 pb-4 pt-6 sm:px-8", !inline && "pr-12")}>
         <h2 className="font-display text-2xl font-bold tracking-tight">Debut your product</h2>
         {step === "details" && (
           <p className="mt-1 text-sm text-muted-foreground">Paste your URL and we&apos;ll fill in what we can.</p>
@@ -125,7 +141,7 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
         </ol>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+      <div className={cn("px-6 py-6 sm:px-8", !inline && "min-h-0 flex-1 overflow-y-auto")}>
         {setupError ? (
           <p className="text-sm text-danger">{setupError}</p>
         ) : !setup ? (
@@ -137,6 +153,7 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
             {/* Kept mounted so going back to details keeps what the maker typed. */}
             <div className={step === "details" ? "" : "hidden"}>
               <ProductForm
+                key={formKey}
                 layout="modal"
                 categories={setup.categories}
                 uploadsEnabled={setup.uploadsEnabled}
@@ -184,16 +201,45 @@ export function DebutWizard({ initialUrl, onClose }: { initialUrl: string | null
                   your dashboard.
                 </p>
                 <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-                  <Button onClick={() => router.push(`/dashboard?submitted=${productId}`)}>Go to dashboard</Button>
-                  <Button variant="outline" onClick={onClose}>
-                    Close
-                  </Button>
+                  {inline ? (
+                    <>
+                      <Button onClick={() => router.push("/dashboard/products")}>See your products</Button>
+                      <Button variant="outline" onClick={startOver}>
+                        Debut another
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button onClick={() => router.push(`/dashboard?submitted=${productId}`)}>Go to dashboard</Button>
+                      <Button variant="outline" onClick={onClose}>
+                        Close
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
           </>
         )}
       </div>
+    </>
+  );
+
+  if (inline) {
+    return <div className="overflow-hidden rounded-lg border border-border bg-card">{content}</div>;
+  }
+  return (
+    <Dialog
+      onClose={onClose}
+      size={wide ? "xl" : "md"}
+      label="Debut your product"
+      // Wide steps keep one height and scroll inside, so a long form doesn't stretch the modal.
+      className={cn(
+        "flex flex-col overflow-hidden",
+        wide && "h-[calc(100dvh-1.5rem)] sm:h-[min(46rem,calc(100dvh-3rem))]",
+      )}
+    >
+      {content}
     </Dialog>
   );
 }

@@ -15,10 +15,12 @@ type Props = {
   className?: string;
   /** Attach a submission package to one of the buyer's listings (a "boost"). */
   productId?: string;
+  /** "dashboard": after checkout the provider sends the buyer back into the dashboard. */
+  returnTo?: "dashboard";
 };
 
 /** Expands into email + coupon + provider choice, then redirects to the provider's checkout. */
-export function BuyButton({ sku, recurring, providers, className, productId }: Props) {
+export function BuyButton({ sku, recurring, providers, className, productId, returnTo }: Props) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [coupon, setCoupon] = useState("");
@@ -48,7 +50,14 @@ export function BuyButton({ sku, recurring, providers, className, productId }: P
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sku, provider, email: email || undefined, coupon: coupon || undefined, productId }),
+        body: JSON.stringify({
+          sku,
+          provider,
+          email: email || undefined,
+          coupon: coupon || undefined,
+          productId,
+          returnTo,
+        }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error ?? "Checkout failed");

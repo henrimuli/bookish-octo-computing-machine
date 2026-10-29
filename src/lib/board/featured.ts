@@ -28,9 +28,12 @@ export function isFeaturedNow(tier: string, weekKey: string, approvedAt: Date | 
   return now.getTime() >= start && now.getTime() < start + days * 86_400_000;
 }
 
-/** Spotlight is the homepage hero only during its own debut week. */
-export function isHeroNow(tier: string, weekKey: string, now = new Date()): boolean {
-  return tier === "spotlight" && weekKeyFor(now) === weekKey;
+/**
+ * Spotlight sits in the homepage Spotlight for its 30 days instead of the
+ * featured cards, so a listing is only ever in one of the two.
+ */
+export function isHeroNow(tier: string, weekKey: string, approvedAt: Date | null, now = new Date()): boolean {
+  return tier === "spotlight" && isFeaturedNow(tier, weekKey, approvedAt, now);
 }
 
 /**
@@ -71,7 +74,7 @@ export async function featuredNow(now = new Date()): Promise<FeaturedItem[]> {
       tagline: r.tagline,
       logoUrl: r.logo_url,
       tier: r.tier,
-      hero: isHeroNow(r.tier, r.launch_week_key, now),
+      hero: isHeroNow(r.tier, r.launch_week_key, r.approved_at ? new Date(r.approved_at) : null, now),
     }));
   const seen = new Set(paid.filter((p) => p.hero).map((p) => p.slug));
   return [

@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { user } from "./auth";
 import { orders } from "./payments";
 
@@ -281,4 +282,27 @@ export const newsletterEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("newsletter_events_week_idx").on(t.weekKey, t.type)],
+);
+
+/**
+ * Makers waiting for a Spotlight spot (3 at any time). When one opens, everyone
+ * waiting is emailed once and `notified_at` is set; they can join again after.
+ */
+export const spotlightWaitlist = pgTable(
+  "spotlight_waitlist",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** The listing they wanted to Spotlight, so the email links straight to its plan page. */
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("spotlight_waitlist_waiting_idx")
+      .on(t.userId)
+      .where(sql`${t.notifiedAt} is null`),
+  ],
 );

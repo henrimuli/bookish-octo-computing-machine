@@ -12,8 +12,10 @@ import { ProductCard } from "./product-card";
 const CARD_WIDTH = "w-full sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]";
 
 /**
- * Spotlight (max 3) and the featured cards: booked rail slots first, then paid
- * debut tiers, six at most. Listings carry a clap button (all-time applause),
+ * The Spotlight (3 spots at any time, enforced at checkout) and the featured
+ * cards: booked rail slots first, then every paid debut inside its featured
+ * window, however many there are. A listing is in one or the other, never both
+ * (and a booked ad takes the place of its own listing). Listings carry a clap button (all-time applause),
  * so they keep collecting applause for as long as they're featured; booked ads
  * don't. The rest of the board stays as rows.
  */
@@ -33,11 +35,10 @@ export function FeaturedRail({
   signedIn?: boolean;
 }) {
   if (items.length === 0 && ads.length === 0) return null;
-  const heroes = items.filter((i) => i.hero).slice(0, 3);
-  const listings = items.filter((i) => !heroes.includes(i));
-  const shownAds = ads.slice(0, 6);
-  const shownListings = listings.slice(0, 6 - shownAds.length);
-  const adIds = shownAds.flatMap((a) => (a.bookingId ? [a.bookingId] : []));
+  const heroes = items.filter((i) => i.hero);
+  const adSlugs = new Set(ads.map((a) => a.slug));
+  const listings = items.filter((i) => !i.hero && !adSlugs.has(i.slug));
+  const adIds = ads.flatMap((a) => (a.bookingId ? [a.bookingId] : []));
 
   const listingCard = (f: FeaturedItem, spotlight: boolean) => {
     const m = media.get(f.slug);
@@ -84,7 +85,7 @@ export function FeaturedRail({
           <ul className="flex flex-wrap justify-center gap-6">{heroes.map((h) => listingCard(h, true))}</ul>
         </section>
       )}
-      {(shownAds.length > 0 || shownListings.length > 0) && (
+      {(ads.length > 0 || listings.length > 0) && (
         <section aria-labelledby="featured-heading">
           <h3
             id="featured-heading"
@@ -93,7 +94,7 @@ export function FeaturedRail({
             Featured
           </h3>
           <ul className="flex flex-wrap justify-center gap-6">
-            {shownAds.map((a) => {
+            {ads.map((a) => {
               const m = media.get(a.slug);
               return (
                 <ProductCard
@@ -110,7 +111,7 @@ export function FeaturedRail({
                 />
               );
             })}
-            {shownListings.map((f) => listingCard(f, false))}
+            {listings.map((f) => listingCard(f, false))}
           </ul>
           {adIds.length > 0 && <AdImpressions ids={adIds} />}
         </section>

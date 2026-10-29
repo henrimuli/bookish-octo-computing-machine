@@ -116,8 +116,8 @@ export async function notifyBadgeMissing(p: Product, graceUntil: Date) {
 const MANUAL_PERKS: Record<string, string[]> = {
   fast_track: [],
   pro: ["Include in this week's newsletter"],
-  premium: ["Include in this week's newsletter", "Post on X, LinkedIn and Bluesky", "Write the launch post (blog)"],
-  spotlight: ["Top newsletter slot", "Post on X, LinkedIn and Bluesky", "Write the launch post (blog)"],
+  premium: ["Include in this week's newsletter", "Write the launch post (blog)"],
+  spotlight: ["Top newsletter slot", "Write the launch post (blog)"],
 };
 
 export async function notifyAdminPaidTier(p: Product, tier: string) {
@@ -141,6 +141,21 @@ export async function notifyRecapDrafted(post: { id: string; title: string }) {
     ...compose([
       "The weekly recap is drafted from last week's board. Add a line about each winner, then publish.",
       `[Edit the draft](${url(`/admin/blog/${post.id}`)})`,
+    ]),
+  });
+}
+
+/** A Spotlight spot opened for someone on the waitlist. Spots go to whoever books first. */
+export async function notifySpotlightOpen(to: string, productId: string | null) {
+  const book = url(productId ? `/dashboard/products/${productId}/plan` : "/dashboard/products");
+  await sendEmail({
+    to,
+    subject: "A Spotlight spot just opened",
+    ...compose([
+      "You asked us to tell you when a Spotlight spot opened on the DebutYard homepage. One just did.",
+      "There are only 3 at any time, and the spot goes to whoever books it first, so it may not stay open long. Spotlight keeps your product at the top of the homepage for 30 days.",
+      `[Book the Spotlight](${book})`,
+      "If it's gone by the time you get there, you can join the waitlist again from the same page.",
     ]),
   });
 }

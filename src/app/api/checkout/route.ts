@@ -15,6 +15,8 @@ const body = z.object({
   coupon: z.string().max(64).optional(),
   /** Submission packages only: boost one of the buyer's own listings. */
   productId: z.string().uuid().optional(),
+  /** Bought from the dashboard: come back to it after checkout. */
+  returnTo: z.literal("dashboard").optional(),
 });
 
 /** Starts a checkout and returns the provider URL to redirect to. */
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
       userId: user?.id,
       couponCode: input.coupon || null,
       metadata,
+      returnTo: input.returnTo,
     });
     return Response.json({ url });
   } catch (err) {

@@ -17,7 +17,7 @@ export default function OrdersPage() {
         title="Submission orders"
         description="Done-for-you directory submissions. We submit by hand, then verify every listing is live, dofollow and indexed."
         actions={
-          <ButtonLink href="/submission-service" variant="outline">
+          <ButtonLink href="/dashboard/orders/new" variant="outline">
             See packages
           </ButtonLink>
         }
@@ -39,7 +39,7 @@ async function Orders() {
         <p className="mt-1 text-sm text-muted-foreground">
           Get listed on 40 to 180 niche-matched directories, with every link tracked here.
         </p>
-        <ButtonLink href="/submission-service" className="mt-4">
+        <ButtonLink href="/dashboard/orders/new" className="mt-4">
           Get listed on 40+ directories
         </ButtonLink>
       </Card>
@@ -50,7 +50,7 @@ async function Orders() {
       {orders.map(({ o, live, total }) => (
         <li key={o.id}>
           <Link
-            href={`/orders/${o.intakeToken}`}
+            href={`/dashboard/orders/${o.intakeToken}`}
             className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card p-4 hover:border-primary/50"
           >
             <div className="min-w-0 flex-1">

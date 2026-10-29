@@ -46,7 +46,7 @@ async function Tracker({ searchParams }: Pick<PageProps<"/dashboard/tracker">, "
         <p className="mt-1 text-sm text-muted-foreground">
           The tracker works per product, so we know which site to check links for.
         </p>
-        <ButtonLink href="/?debut=1" scroll={false} className="mt-4">
+        <ButtonLink href="/dashboard/products/new" className="mt-4">
           Add your product
         </ButtonLink>
       </Card>
@@ -94,7 +94,7 @@ async function Tracker({ searchParams }: Pick<PageProps<"/dashboard/tracker">, "
           <span className="font-medium">No time for {s.todo} forms?</span>{" "}
           <span className="text-muted-foreground">We submit by hand and verify every link, from $99.</span>
         </p>
-        <ButtonLink href={`/submission-service?product=${current.id}`} size="sm">
+        <ButtonLink href={`/dashboard/orders/new?product=${current.id}`} size="sm">
           Have us do it
         </ButtonLink>
       </Card>

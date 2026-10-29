@@ -8,6 +8,7 @@ import type { ProviderId } from "@/lib/payments/types";
 import { TIERS, tierRank, type Tier } from "@/lib/products/input";
 import { getEditableProduct } from "@/lib/products/queries";
 import { activeFreeCount, badgeRecord, bookableWeeks, MAX_ACTIVE_FREE, nextFreeWeek } from "@/lib/products/service";
+import { onSpotlightWaitlist, SPOTLIGHT_DAYS, SPOTLIGHT_SPOTS, spotlightAvailable } from "@/lib/products/spotlight";
 import { formatWeekLabel, formatWeekRange, weekKeyFor } from "@/lib/weeks";
 
 export type PlanOption = {
@@ -18,6 +19,8 @@ export type PlanOption = {
   picksWeek: boolean;
   available: boolean;
   note?: string;
+  /** Spotlight only: every spot is taken, so it can't be bought until one opens. */
+  soldOut?: boolean;
 };
 
 /** Everything the plan step needs, for the plan page and the debut modal. */
@@ -30,6 +33,8 @@ export type PlanChoices = {
   providers: ProviderId[];
   /** Maker Pro: true when this quarter's free Fast Track is unused, false when used, null without Pro. */
   freeFastTrack: boolean | null;
+  /** The maker is on the Spotlight waitlist (and hasn't been emailed about an opening yet). */
+  spotlightWaitlisted: boolean;
   /** The badge a free debut needs before it can be submitted. */
   badge: {
     verified: boolean;
@@ -60,16 +65,20 @@ const perks: Record<Tier, string[]> = {
   ],
   premium: [
     INSTANT,
-    "Everything in Pro",
+    "Or pick a later debut week",
     "30 days featured on the homepage",
-    "Social posts on X, LinkedIn and Bluesky",
+    "Weekly newsletter inclusion",
+    "Guaranteed dofollow link",
     "Written launch post on our blog",
   ],
+  // Spotlight replaces the featured cards rather than adding to them, so a listing is only ever in one.
   spotlight: [
     INSTANT,
-    "Everything in Premium",
-    "Homepage hero for your debut week (3 spots a week)",
+    `${SPOTLIGHT_DAYS} days in the homepage Spotlight, above the featured cards`,
+    `Only ${SPOTLIGHT_SPOTS} Spotlight spots at any time`,
     "Top newsletter slot",
+    "Guaranteed dofollow link",
+    "Written launch post on our blog",
     "Bundled: submission to 40 directories",
   ],
 };
@@ -80,11 +89,13 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
   if (!editable) return null;
   const p = editable.product;
 
-  const [freeWeek, activeFree, credit, badge] = await Promise.all([
+  const [freeWeek, activeFree, credit, badge, spotlightOpen, waitlisted] = await Promise.all([
     nextFreeWeek(),
     activeFreeCount(userId, p.id),
     fastTrackCredit(userId),
     badgeRecord(p.id),
+    spotlightAvailable(p.id),
+    onSpotlightWaitlist(userId),
   ]);
   const siteUrl = env().NEXT_PUBLIC_SITE_URL;
   const freeAvailable =
@@ -93,7 +104,9 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
 
   const options: PlanOption[] = (Object.keys(TIERS) as Tier[]).map((tier) => {
     const sku = TIERS[tier].sku ? getSku(TIERS[tier].sku!) : undefined;
-    const available = tier === "free" ? freeAvailable : tierRank(tier) > tierRank(p.tier);
+    const upgrade = tierRank(tier) > tierRank(p.tier);
+    const soldOut = tier === "spotlight" && upgrade && !spotlightOpen;
+    const available = tier === "free" ? freeAvailable : upgrade && !soldOut;
     return {
       tier,
       label: TIERS[tier].label,
@@ -101,6 +114,7 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
       perks: perks[tier],
       picksWeek: TIERS[tier].picksWeek,
       available,
+      soldOut,
       note:
         tier === "free"
           ? freeAvailable
@@ -110,7 +124,9 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
               : activeFree >= MAX_ACTIVE_FREE
                 ? `You have ${MAX_ACTIVE_FREE} free debuts waiting already`
                 : "Already submitted"
-          : "Goes live the moment it's approved (usually within 24 hours) and joins this week's board",
+          : soldOut
+            ? `All ${SPOTLIGHT_SPOTS} Spotlight spots are taken. Join the waitlist and we'll email you when one opens.`
+            : "Goes live the moment it's approved (usually within 24 hours) and joins this week's board",
     };
   });
 
@@ -128,6 +144,7 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
     })),
     providers: enabledProviders(),
     freeFastTrack: credit.eligible ? credit.available : null,
+    spotlightWaitlisted: waitlisted,
     badge: {
       verified: badge?.status === "verified",
       snippets: {

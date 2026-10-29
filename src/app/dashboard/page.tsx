@@ -80,7 +80,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
     if (o.status === "awaiting_intake")
       tasks.push({
         text: "A directory submission order is waiting for your product details.",
-        href: `/orders/${o.intakeToken}`,
+        href: `/dashboard/orders/${o.intakeToken}`,
         cta: "Add details",
       });
   }
@@ -101,7 +101,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
         title={firstName ? `Welcome back, ${firstName}` : "Overview"}
         description="How your debuts are doing, and what needs you next."
         actions={
-          <ButtonLink href="/?debut=1" scroll={false}>
+          <ButtonLink href="/dashboard/products/new">
             <Icon name="plus" />
             Debut a product
           </ButtonLink>
@@ -141,7 +141,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
               <div className="px-5 py-10 text-center">
                 <p className="font-medium">You haven&apos;t submitted anything yet.</p>
                 <p className="mt-1 text-sm text-muted-foreground">Paste your URL and we&apos;ll fill in what we can.</p>
-                <ButtonLink href="/?debut=1" scroll={false} className="mt-4">
+                <ButtonLink href="/dashboard/products/new" className="mt-4">
                   Debut your product
                 </ButtonLink>
               </div>
