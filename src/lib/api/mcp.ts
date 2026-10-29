@@ -74,7 +74,7 @@ export const TOOLS: Tool[] = [
     name: "list_launch_directories",
     title: "List launch directories",
     description:
-      "Directories and launch boards to submit a product to after launch, with DR, pricing, link type (marked when verified by our own checks) and whether a badge or the maker personally is needed.",
+      "Directories and launch boards to submit a product to after launch, with Authority Score, pricing, link type (marked when verified by our own checks) and whether a badge or the maker personally is needed.",
     input: directoriesInput,
     readOnly: true,
     run: (args) => launchDirectories(args as z.input<typeof directoriesInput>),
@@ -103,9 +103,9 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "check_dr",
-    title: "Check Domain Rating",
+    title: "Check Authority Score",
     description:
-      "A domain's authority score (0-100) from our DR provider, with referring domains when available. Cached for 7 days.",
+      "A domain's Authority Score (0-100, returned as dr), with referring domains when available. Cached for 7 days.",
     input: drInput,
     readOnly: true,
     openWorld: true,

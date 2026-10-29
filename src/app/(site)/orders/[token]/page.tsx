@@ -174,7 +174,7 @@ async function Order({ params }: Pick<PageProps<"/orders/[token]">, "params">) {
       )}
       {dr.length > 0 && (
         <Card className="p-5">
-          <p className="mb-3 font-medium">Domain Rating for {domain}</p>
+          <p className="mb-3 font-medium">Authority Score for {domain}</p>
           <DrChart points={dr} />
         </Card>
       )}

@@ -13,7 +13,7 @@ const links: Array<{ href: string; label: string; dr?: boolean }> = [
   { href: "/launch-wall", label: "Launch wall" },
   { href: "/tools/launch-readiness", label: "Readiness check" },
   { href: "/tools/dofollow-checker", label: "Dofollow checker" },
-  { href: "/tools/dr-checker", label: "DR checker", dr: true },
+  { href: "/tools/dr-checker", label: "Authority Score checker", dr: true },
   { href: "/docs", label: "API & MCP" },
   { href: "/refund-policy", label: "Refund policy" },
   { href: "/terms", label: "Terms" },

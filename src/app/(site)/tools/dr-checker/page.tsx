@@ -5,19 +5,19 @@ import { Card, Container, Heading } from "@/components/ui/primitives";
 import { drEnabled } from "@/lib/metrics/service";
 
 export const metadata: Metadata = {
-  title: "Domain Rating checker",
-  description: "Free Domain Rating checker: see any site's authority score from 0 to 100, and its referring domains.",
+  title: "Authority Score checker",
+  description: "Free Authority Score checker: see any site's authority from 0 to 100, and its referring domains.",
   alternates: { canonical: "/tools/dr-checker" },
 };
 
 export default function DrCheckerPage() {
-  // Without a DR provider configured, the tool doesn't exist.
+  // Without a score provider configured, the tool doesn't exist.
   if (!drEnabled()) notFound();
   return (
     <Container className="max-w-3xl py-12">
-      <Heading>What&apos;s my Domain Rating?</Heading>
+      <Heading>What&apos;s my Authority Score?</Heading>
       <p className="mt-3 text-muted-foreground">
-        Enter a domain to see its authority score from 0 to 100. Higher means more, and stronger, sites link to it.
+        Enter a domain to see its Authority Score from 0 to 100. Higher means more, and stronger, sites link to it.
         Free, no account needed.
       </p>
       <div className="mt-8">

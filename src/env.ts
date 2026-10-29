@@ -46,7 +46,7 @@ const schema = z.object({
   R2_BUCKET: optional,
   R2_PUBLIC_URL: optional,
 
-  // Domain Rating provider for DR snapshots and the DR checker. Unset hides the features.
+  // Authority Score provider for snapshots and the checker (DataForSEO by default). No key hides the features.
   DR_PROVIDER: z.enum(["dataforseo", "ahrefs", "openpagerank"]).optional().catch(undefined),
   /** DataForSEO: "login:password". Ahrefs: an API v3 key. Open PageRank: its API key. */
   DR_API_KEY: optional,

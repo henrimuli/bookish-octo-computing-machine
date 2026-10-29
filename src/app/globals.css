@@ -166,6 +166,21 @@ body {
   padding: 0.4em 0.7em;
 }
 
+/* Authority Score ring: the band grows from empty to the score. */
+@keyframes score-grow {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+.score-band {
+  animation: score-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .score-band {
+    animation: none;
+  }
+}
+
 @media print {
   body {
     background: #fff;

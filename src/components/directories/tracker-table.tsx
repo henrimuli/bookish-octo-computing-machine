@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { recheckAction, updateTrackerAction } from "@/app/dashboard/tracker/actions";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { Button } from "@/components/ui/button";
 import { Badge, Input } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
@@ -76,7 +77,8 @@ function Row({ productId, initial }: { productId: string; initial: TrackerRow })
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AuthorityScore score={d.dr} />
           <a
             href={d.submitUrl ?? d.url}
             target="_blank"
@@ -86,7 +88,7 @@ function Row({ productId, initial }: { productId: string; initial: TrackerRow })
             {d.name} ↗
           </a>
           <span className="text-xs text-muted-foreground">
-            {d.dr !== null ? `DR ${d.dr}` : "DR –"} · {d.pricing} · {d.link}
+            {d.pricing} · {d.link}
           </span>
           {d.badgeRequired && <Badge tone="accent">badge</Badge>}
           {d.guided && <Badge tone="accent">needs you</Badge>}

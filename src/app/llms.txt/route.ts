@@ -26,7 +26,9 @@ export async function GET() {
     `- [Submission service](${base}/submission-service): we submit a product to 40–180 directories and verify every link`,
     `- [Launch readiness check](${base}/tools/launch-readiness): free pre-launch audit of any product URL`,
     `- [Dofollow checker](${base}/tools/dofollow-checker): does a page link to a site, and is the link followed`,
-    ...(drEnabled() ? [`- [DR checker](${base}/tools/dr-checker): any domain's authority score, 0�100`] : []),
+    ...(drEnabled()
+      ? [`- [Authority Score checker](${base}/tools/dr-checker): any domain's Authority Score, 0-100`]
+      : []),
     "",
     "## For agents",
     `- [API & MCP docs](${base}/docs): MCP server at ${base}/mcp (OAuth connect; ${base}/api/mcp with a pasted token or anonymous) (search_products, get_product, list_categories, list_launch_directories, check_launch_readiness, check_dofollow${drEnabled() ? ", check_dr" : ""}, submit_product drafts, get_my_launches, get_my_links)`,
