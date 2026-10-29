@@ -78,7 +78,6 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
   let queries: typeof import("@/lib/board/queries");
   let rollover: typeof import("@/lib/board/rollover");
   let dashboard: typeof import("@/lib/products/dashboard");
-  let duels: typeof import("@/lib/board/duels");
   let newsletter: typeof import("@/lib/newsletter/service");
   let blog: typeof import("@/lib/blog/service");
   let ads: typeof import("@/lib/ads/service");
@@ -101,7 +100,6 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     queries = await import("@/lib/board/queries");
     rollover = await import("@/lib/board/rollover");
     dashboard = await import("@/lib/products/dashboard");
-    duels = await import("@/lib/board/duels");
     newsletter = await import("@/lib/newsletter/service");
     blog = await import("@/lib/blog/service");
     ads = await import("@/lib/ads/service");
@@ -555,19 +553,6 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     // The year isn't over, so no yearly awards yet; a re-run changes nothing.
     await rollover.closeEndedPeriods(now);
     expect(await dbmod.db().select().from(dbmod.schema.awards)).toHaveLength(2);
-  });
-
-  it("serves duel pairs the viewer hasn't applauded and runs out cleanly", async () => {
-    const viewer = await makeUser();
-    const ps = [];
-    for (const d of ["d1.io", "d2.io", "d3.io"]) ps.push(await liveProduct(await makeUser(), d));
-    await applaudAt(ps[0].id, viewer, new Date());
-
-    const pair = await duels.duelPair(viewer);
-    expect(pair?.map((p) => p.id).sort()).toEqual([ps[1].id, ps[2].id].sort());
-    expect(await duels.duelPair(viewer, [ps[1].id])).toBeNull();
-    // Signed-out visitors can see every live product.
-    expect(await duels.duelPair(null, [ps[0].id])).not.toBeNull();
   });
 
   it("runs newsletter double opt-in, sends the digest once per week, and unsubscribes", async () => {

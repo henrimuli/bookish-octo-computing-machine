@@ -9,7 +9,7 @@ import { ClapButton } from "./clap-button";
 import { ProductCard } from "./product-card";
 
 /** One card wide on phones, two on tablets, three on desktop; a short row centres itself. */
-const CARD_WIDTH = "w-full sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]";
+const CARD_WIDTH = "w-full sm:w-[calc((100%-2rem)/2)] lg:w-[calc((100%-4rem)/3)]";
 
 /**
  * The Spotlight (3 spots at any time, enforced at checkout) and the featured
@@ -63,6 +63,7 @@ export function FeaturedRail({
               applause={clap.applause}
               final={clap.applauseFinal}
               signedIn={signedIn}
+              size="sm"
             />
           )
         }
@@ -71,7 +72,7 @@ export function FeaturedRail({
   };
 
   return (
-    <div className="mb-10 space-y-10">
+    <div className="space-y-12">
       {heroes.length > 0 && (
         <section aria-labelledby="spotlight-heading">
           <h3
@@ -82,7 +83,7 @@ export function FeaturedRail({
             Spotlight
             <Laurel flip />
           </h3>
-          <ul className="flex flex-wrap justify-center gap-6">{heroes.map((h) => listingCard(h, true))}</ul>
+          <ul className="flex flex-wrap justify-center gap-8">{heroes.map((h) => listingCard(h, true))}</ul>
         </section>
       )}
       {(ads.length > 0 || listings.length > 0) && (
@@ -93,7 +94,7 @@ export function FeaturedRail({
           >
             Featured
           </h3>
-          <ul className="flex flex-wrap justify-center gap-6">
+          <ul className="flex flex-wrap justify-center gap-8">
             {ads.map((a) => {
               const m = media.get(a.slug);
               return (

@@ -8,6 +8,13 @@ import { ClapIcon } from "./clap-icon";
 
 const SPARKS = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
 
+/** Ring, icon and count per size; `ring` is the sparks' start radius (default 22px, in globals.css). */
+const SIZES = {
+  sm: { button: "size-9", icon: "size-5", count: "text-[11px] leading-4", ring: "18px" },
+  md: { button: "size-11", icon: "size-6", count: "text-xs leading-4", ring: null },
+  lg: { button: "size-14", icon: "size-7", count: "text-sm leading-5", ring: "28px" },
+} as const;
+
 /**
  * The clap button: one clap per signed-in account, a second click takes it
  * back. Clapping pops the hands, bursts a few sparks and rolls the count up;
@@ -29,7 +36,8 @@ export function ClapButton({
   signedIn?: boolean;
   /** The viewer's clap counted toward a debut week that has closed, so it can't be taken back. */
   final?: boolean;
-  size?: "md" | "lg";
+  /** sm: homepage cards; md: board rows; lg: product page. */
+  size?: "sm" | "md" | "lg";
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -64,9 +72,9 @@ export function ClapButton({
 
   const on = optimistic.applauded;
   const locked = final && state.applauded;
-  const lg = size === "lg";
+  const s = SIZES[size];
   return (
-    <div className="flex shrink-0 flex-col items-center gap-1">
+    <div className={cn("flex shrink-0 flex-col items-center", size === "sm" ? "gap-0.5" : "gap-1")}>
       <button
         type="button"
         onClick={click}
@@ -75,7 +83,7 @@ export function ClapButton({
         title={locked ? "You applauded during its debut week, so your clap is final." : undefined}
         className={cn(
           "relative grid place-items-center rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-          lg ? "size-14" : "size-11",
+          s.button,
           locked && "cursor-default",
           on
             ? "border-primary/40 bg-primary/10 text-primary"
@@ -83,14 +91,14 @@ export function ClapButton({
         )}
       >
         <span key={claps} className={cn("grid place-items-center", claps > 0 && "clap-pop")}>
-          <ClapIcon on={on} className={lg ? "size-7" : "size-6"} />
+          <ClapIcon on={on} className={s.icon} />
         </span>
         {claps > 0 && (
           <span
             key={`burst-${claps}`}
             aria-hidden
             className="clap-burst"
-            style={lg ? ({ "--r": "28px" } as React.CSSProperties) : undefined}
+            style={s.ring ? ({ "--r": s.ring } as React.CSSProperties) : undefined}
           >
             {SPARKS.map((deg) => (
               <span key={deg} style={{ "--a": `${deg}deg` } as React.CSSProperties} />
@@ -102,7 +110,7 @@ export function ClapButton({
         className={cn(
           // Nothing clips the count: the roll fades in, so it needs no mask.
           "font-semibold tabular-nums",
-          lg ? "text-sm leading-5" : "text-xs leading-4",
+          s.count,
           on ? "text-primary" : "text-muted-foreground",
         )}
         aria-hidden

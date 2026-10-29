@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { SponsorBanner } from "@/components/ads/sponsored";
 import { ProductLogo } from "@/components/board/product-logo";
 import { FeaturedRail } from "@/components/board/featured-rail";
@@ -37,7 +37,12 @@ export default function Home() {
         </Container>
       </section>
 
-      <Container className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      {/* Spotlight and featured span the page; renders nothing when there are none. */}
+      <Suspense fallback={null}>
+        <Sponsored />
+      </Suspense>
+
+      <Container className="grid items-start gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_300px]">
         <section className="min-w-0">
           <Suspense
             fallback={
@@ -50,7 +55,8 @@ export default function Home() {
             <ThisWeek />
           </Suspense>
         </section>
-        <aside className="space-y-6">
+        {/* Stays in view while the rows scroll; scrolls itself if it's taller than the screen. */}
+        <aside className="space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
           <Suspense fallback={<Card className="h-48 animate-pulse" />}>
             <Sidebar />
           </Suspense>
@@ -60,18 +66,20 @@ export default function Home() {
   );
 }
 
-async function ThisWeek() {
+/** One read of the featured listings per request, shared by the sponsored section and the board. */
+const featuredToday = cache(() => featuredNow(new Date()));
+
+/** The homepage sponsor banner, Spotlight and featured cards, full width above the board. */
+async function Sponsored() {
   await connection();
   const now = new Date();
-  const key = weekKeyFor(now);
-  const daysLeft = Math.max(0, Math.ceil((weekBounds(key).endsAt.getTime() - now.getTime()) / 86_400_000));
-  const [featured, leaderboard, rail, [top], user] = await Promise.all([
-    featuredNow(now),
-    liveAds("leaderboard", { now }),
+  const [featured, rail, [top], user] = await Promise.all([
+    featuredToday(),
     liveAds("home_rail", { now }),
     liveAds("home_top", { now }),
     getCurrentUser().catch(() => null),
   ]);
+  if (featured.length === 0 && rail.length === 0 && !top) return null;
   const [applause, media] = await Promise.all([
     applauseForSlugs(
       featured.map((f) => f.slug),
@@ -80,6 +88,22 @@ async function ThisWeek() {
     cardMediaForSlugs([...featured.map((f) => f.slug), ...rail.map((a) => a.slug)]),
   ]);
   return (
+    <section aria-label="Sponsored" className="border-b border-border">
+      <Container className="py-12">
+        {top && <SponsorBanner ad={top} />}
+        <FeaturedRail items={featured} ads={rail} applause={applause} media={media} signedIn={Boolean(user)} />
+      </Container>
+    </section>
+  );
+}
+
+async function ThisWeek() {
+  await connection();
+  const now = new Date();
+  const key = weekKeyFor(now);
+  const daysLeft = Math.max(0, Math.ceil((weekBounds(key).endsAt.getTime() - now.getTime()) / 86_400_000));
+  const [featured, leaderboard] = await Promise.all([featuredToday(), liveAds("leaderboard", { now })]);
+  return (
     <>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-2xl font-bold">This week&apos;s debuts</h2>
@@ -87,8 +111,6 @@ async function ThisWeek() {
           {formatWeekLabel(key)} · {formatWeekRange(key)} · the week closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
         </p>
       </div>
-      {top && <SponsorBanner ad={top} />}
-      <FeaturedRail items={featured} ads={rail} applause={applause} media={media} signedIn={Boolean(user)} />
       <WeekBoard weekKey={key} sponsor={pickLeaderboardSponsor(leaderboard, featured)} />
       <p className="mt-6 text-sm">
         <Link href={`/week/${addWeeks(key, -1)}`} className="text-muted-foreground hover:text-foreground">
