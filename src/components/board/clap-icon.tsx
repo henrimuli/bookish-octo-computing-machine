@@ -1,9 +1,9 @@
 import { clapGlyph } from "@/lib/board/clap-glyph";
 import { cn } from "@/lib/utils";
 
-// The glyph is a constant built from fixed colours, so injecting it is safe.
-const outline = clapGlyph({ fill: "var(--card)", stroke: "currentColor", spark: "currentColor" });
-const filled = clapGlyph({ fill: "currentColor", stroke: "var(--card)", spark: "currentColor" });
+// The glyph is a constant path, so injecting it is safe.
+const outline = clapGlyph({ color: "currentColor" });
+const filled = clapGlyph({ color: "currentColor", filled: true });
 
 /** Clapping hands: outlined, or filled once the viewer has applauded. */
 export function ClapIcon({ on = false, className }: { on?: boolean; className?: string }) {

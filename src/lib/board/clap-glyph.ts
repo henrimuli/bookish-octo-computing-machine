@@ -1,23 +1,23 @@
 /**
- * The clap mark: two palms meeting at the top, with three spark ticks above.
- * One source for the React icon and the SVG badge, drawn on a 24×24 grid. Pure.
+ * The clap mark: two hands clapping with three motion ticks, drawn on a 24×24
+ * grid. One source for the React icon and the SVG badge. Pure.
+ *
+ * Paths are Phosphor's "hands-clapping" (regular and fill), MIT License,
+ * Copyright (c) 2023 Phosphor Icons (https://github.com/phosphor-icons/core/blob/main/LICENSE).
+ * They're drawn on a 256 grid and mirrored
+ * so the ticks sit top left.
  */
 
-/** One palm with its thumb, drawn upright with its base at the origin, then placed. */
-const palm = (transform: string, fingers = false) =>
-  `<g transform="${transform}"><rect x="-3.2" y="-15" width="6.4" height="15" rx="3.2"/>` +
-  `<rect x="-6.3" y="-9.2" width="2.8" height="6.2" rx="1.4" transform="rotate(-30 -4.9 -6.1)"/>` +
-  (fingers ? `<path d="M-1.05 -13.2v4.4M1.05 -13.2v4.4" fill="none" stroke-linecap="round"/>` : "") +
-  `</g>`;
+const OUTLINE =
+  "M160.22,24V8a8,8,0,0,1,16,0V24a8,8,0,0,1-16,0ZM196.1,41a7.91,7.91,0,0,0,4.17,1.17,8,8,0,0,0,6.84-3.83l8-13.11a8,8,0,0,0-13.68-8.33l-8,13.1A8,8,0,0,0,196.1,41Zm47.51,12.59a8,8,0,0,0-10.08-5.16l-15.06,4.85a8,8,0,0,0,2.46,15.62,8.15,8.15,0,0,0,2.46-.39l15.05-4.85A8,8,0,0,0,243.61,53.55ZM217,97.58a80.22,80.22,0,0,1-10.22,94c-.34,1.73-.72,3.46-1.19,5.18A80.17,80.17,0,0,1,58.77,216L23.5,155a26,26,0,0,1,19.24-38.79l-3-5.2a26,26,0,0,1,19.2-38.78L58.24,71A26,26,0,0,1,95.47,36.53,26.06,26.06,0,0,1,140.3,37l12.26,21.2A26.07,26.07,0,0,1,195.81,61ZM109.07,55l0,0h0l25,43.17a26,26,0,0,1,17.33-10L126.42,45a10,10,0,1,0-17.35,10ZM72.12,63l6.46,11.17a26.05,26.05,0,0,1,17.32-10L89.45,53A10,10,0,1,0,72.12,63Zm111.54,81-20.22-35a10,10,0,0,0-17.74,9.25L158.3,140a8,8,0,0,1-13.87,8l-36.5-63A10,10,0,1,0,90.58,95l26.05,45a8,8,0,0,1-13.87,8L71,93h0l0,0a10,10,0,0,0-17.33,10l35.22,61A8,8,0,0,1,75,172L54.72,137a10,10,0,0,0-17.34,10l35.27,61a64.12,64.12,0,0,0,117.42-15.44A63.52,63.52,0,0,0,183.66,144Zm19.41-38.42L181.93,69A10,10,0,0,0,164.55,79l33,57.05A80.2,80.2,0,0,1,207,161.51,64.23,64.23,0,0,0,203.07,105.58Z";
 
-export function clapGlyph({ fill, stroke, spark }: { fill: string; stroke: string; spark: string }): string {
+const FILLED =
+  "M188.87,65A18,18,0,0,0,157.62,83L133.36,41a18,18,0,0,0-31.22,18L96.4,49A18,18,0,0,0,65.18,67l3.34,5.77A26,26,0,0,0,39.74,111l3,5.2A26,26,0,0,0,23.5,155l35.27,61a80.14,80.14,0,0,0,149.52-39.57A71.92,71.92,0,0,0,210,101.58Zm1.2,127.56A64.12,64.12,0,0,1,72.65,208L37.38,147a10,10,0,0,1,17.34-10L75,172a8,8,0,0,0,13.87-8L53.62,103A10,10,0,0,1,71,93l31.81,55a8,8,0,0,0,13.87-8l-26-45a10,10,0,0,1,17.35-10l36.5,63a8,8,0,0,0,13.87-8l-12.6-21.75A10,10,0,0,1,163.44,109l20.22,35A63.52,63.52,0,0,1,190.07,192.57ZM160.22,24V8a8,8,0,0,1,16,0V24a8,8,0,0,1-16,0Zm33.22,6,8-13.1a8,8,0,0,1,13.68,8.33l-8,13.11a8,8,0,0,1-6.84,3.83A8,8,0,0,1,193.44,30Zm45,33.66-15.05,4.85a8.15,8.15,0,0,1-2.46.39,8,8,0,0,1-2.46-15.62l15.06-4.85a8,8,0,1,1,4.91,15.23Z";
+
+/** The mark in `color`: outlined, or solid hands once applauded. */
+export function clapGlyph({ color, filled = false }: { color: string; filled?: boolean }): string {
   return (
-    `<g fill="${fill}" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round">` +
-    // The back hand sits a little higher and to the right; the front one shows its fingers.
-    palm("translate(15.6 21.6) rotate(-19) scale(-1 1)") +
-    palm("translate(8.6 22.8) rotate(13)", true) +
-    `</g>` +
-    `<g class="clap-sparks" stroke="${spark}" stroke-width="1.5" stroke-linecap="round" fill="none">` +
-    `<path d="M12 1.2v2.3M7.4 2.4l1 1.9M16.6 2.4l-1 1.9"/></g>`
+    `<g class="clap-mark" fill="${color}" transform="scale(0.09375) translate(256 0) scale(-1 1)">` +
+    `<path d="${filled ? FILLED : OUTLINE}"/></g>`
   );
 }

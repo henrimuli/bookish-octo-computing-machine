@@ -8,8 +8,9 @@ describe("clap icon", () => {
   it("is outlined until the viewer applauds, then filled", () => {
     const off = renderToStaticMarkup(createElement(ClapIcon));
     const on = renderToStaticMarkup(createElement(ClapIcon, { on: true }));
-    expect(off).toContain('fill="var(--card)" stroke="currentColor"');
-    expect(on).toContain('fill="currentColor" stroke="var(--card)"');
+    expect(off).toContain("M160.22,24V8");
+    expect(on).toContain("M188.87,65");
+    expect(on).not.toContain("M217,97.58");
     expect(off).toContain('aria-hidden="true"');
   });
 
@@ -22,7 +23,7 @@ describe("clap icon", () => {
   it("draws the clap mark next to the badge's applause count", () => {
     const svg = badgeSvg({ kind: "featured", theme: "light", applause: 7 });
     expect(svg).toContain(">7<");
-    expect(svg).toContain("clap-sparks");
+    expect(svg).toContain("clap-mark");
     expect(svg).not.toContain("M193 20.5");
   });
 });

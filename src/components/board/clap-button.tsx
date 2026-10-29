@@ -6,7 +6,7 @@ import { toggleApplauseAction } from "@/app/(site)/p/actions";
 import { cn } from "@/lib/utils";
 import { ClapIcon } from "./clap-icon";
 
-const SPARKS = [0, 60, 120, 180, 240, 300];
+const SPARKS = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
 
 /**
  * The clap button: one clap per signed-in account, a second click takes it
@@ -78,7 +78,12 @@ export function ClapButton({
           <ClapIcon on={on} className={lg ? "size-7" : "size-6"} />
         </span>
         {claps > 0 && (
-          <span key={`burst-${claps}`} aria-hidden className="clap-burst">
+          <span
+            key={`burst-${claps}`}
+            aria-hidden
+            className="clap-burst"
+            style={lg ? ({ "--r": "28px" } as React.CSSProperties) : undefined}
+          >
             {SPARKS.map((deg) => (
               <span key={deg} style={{ "--a": `${deg}deg` } as React.CSSProperties} />
             ))}
@@ -87,8 +92,9 @@ export function ClapButton({
       </button>
       <span
         className={cn(
-          "relative overflow-hidden font-semibold tabular-nums leading-none",
-          lg ? "h-4 text-sm" : "h-3.5 text-xs",
+          // Nothing clips the count: the roll fades in, so it needs no mask.
+          "font-semibold tabular-nums",
+          lg ? "text-sm leading-5" : "text-xs leading-4",
           on ? "text-primary" : "text-muted-foreground",
         )}
         aria-hidden
