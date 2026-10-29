@@ -25,8 +25,7 @@ export default function Home() {
               Where great products <span className="text-primary">debut</span>.
             </h1>
             <p className="mt-4 max-w-xl text-muted-foreground">
-              A new class debuts every Monday, and paid debuts join as soon as they&apos;re approved. Applaud your
-              favourites: the top three of each week become Debut of the Week, and applause keeps counting after.
+              A new class debuts every Monday. Applaud your favorites all week. The top three become Debut of the Week.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
