@@ -338,7 +338,7 @@ All packages replace rejected directories. Rationale: Nick charges $99/$149/$199
   - "🥇 Debut of the Week — DebutYard"
   - "Featured on DebutYard"
   - "Verified by DebutYard" (for monitored links)
-- **Tagline:** *"Launch, get listed, see proof."* The tagline carries the verified-links positioning the name itself doesn't.
+- **Tagline:** *"Launch. Network. Grow."*
 
 **Domain & handle status (checked Oct 25, 2026):**
 - `debutyard.com`: **available**, register it as the primary.
