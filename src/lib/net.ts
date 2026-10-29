@@ -5,7 +5,7 @@ import { isIP } from "node:net";
 /**
  * Fetches a user-supplied URL safely: http(s) only, standard ports, public IPs
  * only (re-checked on every redirect), with a timeout and a size cap.
- * Used for URL prefill and badge verification.
+ * Used for URL prefill, badge verification and importing a site's OG image.
  */
 
 export const BOT_USER_AGENT = "Mozilla/5.0 (compatible; DebutYardBot/1.0; +https://debutyard.com/bot)";
@@ -76,13 +76,13 @@ export async function assertPublicUrl(raw: string, resolve: Resolver = defaultRe
 }
 
 export type SafeResponse = { url: string; status: number; contentType: string; body: string };
+export type SafeBytes = { url: string; status: number; contentType: string; body: Uint8Array; truncated: boolean };
 
-/** GETs a public URL and returns the (truncated) text body. Follows up to 5 redirects. */
-export async function safeFetchText(
-  raw: string,
-  opts: { timeoutMs?: number; maxBytes?: number; resolve?: Resolver; fetchImpl?: typeof fetch } = {},
-): Promise<SafeResponse> {
-  const { timeoutMs = 10_000, maxBytes = 1_500_000, resolve = defaultResolver, fetchImpl = fetch } = opts;
+type FetchOpts = { timeoutMs?: number; maxBytes?: number; resolve?: Resolver; fetchImpl?: typeof fetch };
+
+/** GETs a public URL and returns up to maxBytes of the body. Follows up to 5 redirects, re-checking each hop. */
+async function safeFetch(raw: string, accept: string, opts: FetchOpts, defaultMax: number): Promise<SafeBytes> {
+  const { timeoutMs = 10_000, maxBytes = defaultMax, resolve = defaultResolver, fetchImpl = fetch } = opts;
   const deadline = AbortSignal.timeout(timeoutMs);
   let current = raw;
 
@@ -91,7 +91,7 @@ export async function safeFetchText(
     const res = await fetchImpl(url, {
       redirect: "manual",
       signal: deadline,
-      headers: { "User-Agent": BOT_USER_AGENT, Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5" },
+      headers: { "User-Agent": BOT_USER_AGENT, Accept: accept },
     });
 
     if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
@@ -99,21 +99,49 @@ export async function safeFetchText(
       continue;
     }
 
-    let body = "";
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    let truncated = false;
     if (res.body) {
       const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let received = 0;
-      while (received < maxBytes) {
+      while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = value.byteLength > maxBytes - received ? value.subarray(0, maxBytes - received) : value;
-        received += chunk.byteLength;
-        body += decoder.decode(chunk, { stream: true });
+        if (value.byteLength > maxBytes - received) {
+          chunks.push(value.subarray(0, maxBytes - received));
+          received = maxBytes;
+          truncated = true;
+          break;
+        }
+        chunks.push(value);
+        received += value.byteLength;
       }
       await reader.cancel().catch(() => {});
     }
-    return { url: url.toString(), status: res.status, contentType: res.headers.get("content-type") ?? "", body };
+    const body = new Uint8Array(received);
+    let offset = 0;
+    for (const c of chunks) {
+      body.set(c, offset);
+      offset += c.byteLength;
+    }
+    return {
+      url: url.toString(),
+      status: res.status,
+      contentType: res.headers.get("content-type") ?? "",
+      body,
+      truncated,
+    };
   }
   throw new UnsafeUrlError("Too many redirects.");
+}
+
+/** GETs a public URL and returns the (truncated) text body. Follows up to 5 redirects. */
+export async function safeFetchText(raw: string, opts: FetchOpts = {}): Promise<SafeResponse> {
+  const res = await safeFetch(raw, "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5", opts, 1_500_000);
+  return { url: res.url, status: res.status, contentType: res.contentType, body: new TextDecoder().decode(res.body) };
+}
+
+/** GETs a public URL as bytes (e.g. an image), flagging bodies cut off at maxBytes. */
+export function safeFetchBytes(raw: string, accept: string, opts: FetchOpts = {}): Promise<SafeBytes> {
+  return safeFetch(raw, accept, opts, 5 * 1024 * 1024);
 }
