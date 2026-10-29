@@ -8,7 +8,7 @@ import { formatUsd, getSku } from "@/lib/payments/skus";
 import { PACKAGES } from "@/lib/submissions/packages";
 
 /*
- * The submission service's how-it-works, packages and notes. Shared by the
+ * The submission service's how-it-works and packages. Shared by the
  * public page (/submission-service) and the dashboard (/dashboard/orders/new).
  */
 
@@ -38,28 +38,6 @@ export function ServiceSteps() {
   );
 }
 
-export function ServiceNotes() {
-  return (
-    <div className="mt-12 grid gap-4 text-sm sm:grid-cols-2">
-      <Card className="p-5">
-        <p className="font-medium">Badges: your call</p>
-        <p className="mt-1 text-muted-foreground">
-          By default we skip directories that ask for a badge. If you allow them, you paste one HTML block into your
-          footer once and we check it&apos;s there before submitting.
-        </p>
-      </Card>
-      <Card className="p-5">
-        <p className="font-medium">Accounts and logins</p>
-        <p className="mt-1 text-muted-foreground">
-          Most directories need an account. We create them in your product&apos;s name and hand over the logins when we
-          deliver. Product Hunt, Hacker News and review sites need you personally, so you get a checklist for those
-          instead.
-        </p>
-      </Card>
-    </div>
-  );
-}
-
 /**
  * The three packages with their buy buttons. `product` (a listing id from the
  * query string) starts the order from one of the buyer's listings; `returnTo`
@@ -76,7 +54,7 @@ export async function PackageCards({ product, returnTo }: { product?: string; re
       : null;
   const providers = enabledProviders();
   return (
-    <section className="mt-12">
+    <section id="packages" className="mt-12 scroll-mt-24">
       {boost && (
         <p className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-primary">
           Boosting <strong>{boost.name}</strong>: we&apos;ll start your order with its details filled in.
