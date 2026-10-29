@@ -77,6 +77,7 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
     userId: c.userId,
     name: c.name,
     handle: c.handle,
+    image: c.image,
     isMaker: c.userId === p.createdBy,
     canDelete: viewer ? viewer.id === c.userId || staff : false,
   }));
