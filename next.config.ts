@@ -15,7 +15,9 @@ const nextConfig: NextConfig = {
       // Prices now sit next to what they're for (submit flow, directory service, dashboard).
       { source: "/pricing", destination: "/", permanent: false },
       // Voting is now Applause.
-      { source: "/vote", destination: "/applause", permanent: true },
+      // "Pick a winner" is gone; old links land on this week's board.
+      { source: "/vote", destination: "/", permanent: true },
+      { source: "/applause", destination: "/", permanent: true },
     ];
   },
 };

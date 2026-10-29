@@ -68,20 +68,23 @@ export function ProductCard({
           </span>
         )}
       </div>
-      <div className="mt-3 flex items-start gap-3 px-0.5">
-        <ProductLogo name={name} src={logoUrl} className="size-9" />
+      <div className="mt-4 flex items-center gap-3 px-0.5">
+        <ProductLogo name={name} src={logoUrl} className="size-10" />
         <div className="min-w-0 flex-1">
           {link.external ? (
             <a
               href={link.href}
               rel="sponsored noopener"
               target="_blank"
-              className={cn("block truncate font-semibold group-hover:text-primary", stretched)}
+              className={cn("block truncate text-[17px] font-semibold group-hover:text-primary", stretched)}
             >
               {name}
             </a>
           ) : (
-            <Link href={link.href} className={cn("block truncate font-semibold group-hover:text-primary", stretched)}>
+            <Link
+              href={link.href}
+              className={cn("block truncate text-[17px] font-semibold group-hover:text-primary", stretched)}
+            >
               {name}
             </Link>
           )}
