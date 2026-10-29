@@ -19,11 +19,11 @@ const url = (path: string) => new URL(path, env().NEXT_PUBLIC_SITE_URL).toString
 
 let override: DrProvider | null | undefined;
 
-/** The configured DR provider, or null (the features hide themselves). */
+/** The configured Authority Score provider (DataForSEO unless DR_PROVIDER says otherwise), or null without a key. */
 export function drProvider(): DrProvider | null {
   if (override !== undefined) return override;
   const { DR_PROVIDER, DR_API_KEY } = env();
-  return DR_PROVIDER && DR_API_KEY ? createDrProvider(DR_PROVIDER, DR_API_KEY) : null;
+  return DR_API_KEY ? createDrProvider(DR_PROVIDER ?? "dataforseo", DR_API_KEY) : null;
 }
 
 export const drEnabled = () => drProvider() !== null;
@@ -166,12 +166,12 @@ export async function snapshotDomains(now = new Date(), { batch = 100, backfill 
       if (drop >= DR_DROP_ALERT) {
         for (const w of watched.get(domain) ?? []) {
           const lines = [
-            `The Domain Rating of ${domain} fell from ${res.previous!.dr} to ${res.row.dr} since our last check.`,
+            `The Authority Score of ${domain} fell from ${res.previous!.dr} to ${res.row.dr} since our last check.`,
             "A drop like this usually means some sites that linked to you removed the link or lost authority themselves. Your Link Monitor shows which listings changed.",
           ];
           await sendEmail({
             to: w.email,
-            subject: `DR alert: ${domain} dropped ${Math.round(drop)} points`,
+            subject: `Authority Score alert: ${domain} dropped ${Math.round(drop)} points`,
             text: [...lines, `Details: ${w.href}`, `— ${site.name}`].join("\n\n"),
             html: `${lines.map((l) => `<p>${l}</p>`).join("")}<p><a href="${w.href}">See the details</a></p><p>— ${site.name}</p>`,
           });

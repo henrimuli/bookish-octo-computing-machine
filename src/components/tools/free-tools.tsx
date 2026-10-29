@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { dofollowAction } from "@/app/(site)/tools/dofollow-checker/actions";
 import { drAction } from "@/app/(site)/tools/dr-checker/actions";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { Button } from "@/components/ui/button";
 import { Card, Input, Label } from "@/components/ui/primitives";
+import { providerLabels, type DrProviderId } from "@/lib/metrics/providers";
 import { cn } from "@/lib/utils";
 
 const VERDICT = {
@@ -80,16 +82,15 @@ export function DrChecker() {
       <form action={action} className="flex flex-col gap-2 sm:flex-row">
         <Input name="domain" required placeholder="yourproduct.com" className="min-w-0 flex-1" aria-label="Domain" />
         <Button type="submit" disabled={pending}>
-          {pending ? "Checking…" : "Check DR"}
+          {pending ? "Checking…" : "Check score"}
         </Button>
       </form>
       {state && !state.ok && <p className="text-sm text-danger">{state.error}</p>}
       {r && (
         <Card className="flex flex-wrap items-center gap-5 p-6">
-          <div className="flex size-20 items-center justify-center rounded-full bg-primary/10 font-display text-3xl font-bold text-primary">
-            {Math.round(r.dr)}
-          </div>
+          <AuthorityScore key={`${r.domain}-${r.measuredAt}`} score={r.dr} size="lg" />
           <div className="min-w-0 space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Authority Score</p>
             <p className="font-display text-xl font-semibold break-all">{r.domain}</p>
             {r.referringDomains !== null && (
               <p className="text-sm text-muted-foreground">
@@ -97,8 +98,8 @@ export function DrChecker() {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Measured {new Date(r.measuredAt).toLocaleDateString("en-GB", { timeZone: "UTC" })}. Scores are refreshed
-              at most weekly.
+              Measured {new Date(r.measuredAt).toLocaleDateString("en-GB", { timeZone: "UTC" })} · Source:{" "}
+              {providerLabels[r.provider as DrProviderId] ?? r.provider}. Scores are refreshed at most weekly.
             </p>
           </div>
         </Card>

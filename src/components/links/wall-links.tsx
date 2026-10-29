@@ -1,3 +1,4 @@
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { Badge } from "@/components/ui/primitives";
 
 type WallLink = {
@@ -28,9 +29,7 @@ export function WallLinks({ links }: { links: WallLink[] }) {
             <span className="ml-2 text-muted-foreground">→ {l.target}</span>
           </a>
           <span className="flex items-center gap-2">
-            {l.directoryDr !== null && (
-              <span className="text-xs text-muted-foreground">DR {Math.round(l.directoryDr)}</span>
-            )}
+            {l.directoryDr !== null && <AuthorityScore score={l.directoryDr} />}
             <Badge tone={l.verdict === "dofollow" ? "success" : "default"}>{l.verdict}</Badge>
           </span>
         </li>

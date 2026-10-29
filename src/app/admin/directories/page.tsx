@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CsvImport } from "@/components/directories/csv-import";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { requireStaff } from "@/lib/auth";
@@ -19,8 +20,8 @@ export default function DirectoriesAdminPage() {
       <Card className="mt-6 p-5">
         <h2 className="font-display font-semibold">Import CSV</h2>
         <p className="mt-1 mb-3 text-sm text-muted-foreground">
-          Rows match existing directories by slug or website host; empty cells leave values alone. Use it to load DR
-          from your own Ahrefs or Moz export.
+          Rows match existing directories by slug or website host; empty cells leave values alone. Use it to load
+          Authority Scores in bulk; directories without one get filled in by the daily job.
         </p>
         <CsvImport />
       </Card>
@@ -40,7 +41,7 @@ async function List() {
         <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
           <tr>
             <th className="px-3 py-2 font-medium">Directory</th>
-            <th className="px-3 py-2 font-medium">DR</th>
+            <th className="px-3 py-2 font-medium">Authority</th>
             <th className="px-3 py-2 font-medium">Niche</th>
             <th className="px-3 py-2 font-medium">Link</th>
             <th className="px-3 py-2 font-medium">Flags</th>
@@ -56,7 +57,9 @@ async function List() {
                   {d.name}
                 </Link>
               </td>
-              <td className="px-3 py-2 tabular-nums">{d.dr ?? "–"}</td>
+              <td className="px-3 py-2">
+                <AuthorityScore score={d.dr} />
+              </td>
               <td className="px-3 py-2">{d.niche}</td>
               <td className="px-3 py-2">{effectiveLinkType(d)}</td>
               <td className="space-x-1 px-3 py-2">

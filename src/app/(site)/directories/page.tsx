@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { DirectoryBadges } from "@/components/directories/directory-badges";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container, Heading } from "@/components/ui/primitives";
 import { listDirectories, NICHE_LABELS, NICHES, PRICINGS, type DirectoryFilters } from "@/lib/directories/service";
@@ -120,11 +121,9 @@ async function List({ searchParams }: Pick<PageProps<"/directories">, "searchPar
                 href={`/directories/${d.slug}`}
                 className="flex h-full flex-col gap-2 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/20"
               >
-                <div className="flex items-baseline justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-semibold">{d.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {d.dr !== null ? `DR ${d.dr}` : "DR –"}
-                  </span>
+                  <AuthorityScore score={d.dr} />
                 </div>
                 <span className="truncate text-xs text-muted-foreground">
                   {new URL(d.url).hostname.replace(/^www\./, "")}

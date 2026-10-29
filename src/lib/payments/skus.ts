@@ -149,7 +149,7 @@ export const SKUS = [
     "Maker Pro (monthly)",
     1200,
     "monthly",
-    "A free Fast Track each quarter, DR tracking, 100 monitored links, a Pro badge, early slot booking.",
+    "A free Fast Track each quarter, Authority Score tracking, 100 monitored links, a Pro badge, early slot booking.",
   ),
   recurring("sub_maker_pro_yearly", "Maker Pro (yearly)", 9900, "annually", "Maker Pro for a year: two months free."),
   recurring(

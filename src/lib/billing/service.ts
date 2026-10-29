@@ -47,7 +47,7 @@ const WELCOME: Record<string, string> = {
   link_monitor_100: "Add the pages that link to you on your Link Monitor page and we'll check them every week.",
   link_monitor_500: "Add the pages that link to you on your Link Monitor page and we'll check them every week.",
   maker_pro:
-    "Your perks: a free Fast Track each quarter (pick it when you submit), DR tracking, 100 monitored links, the Pro badge on your profile and listings, and featured slots bookable 4 extra weeks ahead.",
+    "Your perks: a free Fast Track each quarter (pick it when you submit), Authority Score tracking, 100 monitored links, the Pro badge on your profile and listings, and featured slots bookable 4 extra weeks ahead.",
   always_featured:
     "Pick the listing to feature on your billing page. It shows in the homepage featured rail and rotates as a category sponsor while your plan is active.",
 };

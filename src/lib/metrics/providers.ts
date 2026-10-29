@@ -1,10 +1,18 @@
 /**
- * Domain Rating providers behind one interface. Each parses its own API's
+ * Authority Score providers behind one interface (DataForSEO rank, Ahrefs
+ * Domain Rating or Open PageRank, all on 0–100). Each parses its own API's
  * response with a pure function so the mapping is unit-tested.
  */
 
 export type DrReading = { dr: number; referringDomains: number | null };
 export type DrProviderId = "dataforseo" | "ahrefs" | "openpagerank";
+
+/** Where a score came from, for the "Source:" line under it. */
+export const providerLabels: Record<DrProviderId, string> = {
+  dataforseo: "DataForSEO",
+  ahrefs: "Ahrefs",
+  openpagerank: "Open PageRank",
+};
 
 export interface DrProvider {
   readonly id: DrProviderId;
@@ -99,7 +107,7 @@ export const DR_DROP_ALERT = 5;
 
 export type DrPoint = { at: Date; dr: number };
 
-/** "DR 7 → 19 since intake": first and latest reading, and the change. */
+/** "Authority Score 7 → 19 since intake": first and latest reading, and the change. */
 export function drChange(points: DrPoint[]): { from: number; to: number; delta: number } | null {
   if (points.length === 0) return null;
   const sorted = [...points].sort((a, b) => a.at.getTime() - b.at.getTime());

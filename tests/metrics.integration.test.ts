@@ -170,7 +170,7 @@ describe.skipIf(!TEST_DB)("DR snapshots (Postgres)", () => {
     sent.length = 0;
     expect(await metrics.snapshotDomains(week, { backfill: 0 })).toMatchObject({ measured: 2, alerts: 1 });
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: "pro@x.test", subject: "DR alert: pro.io dropped 6 points" });
+    expect(sent[0]).toMatchObject({ to: "pro@x.test", subject: "Authority Score alert: pro.io dropped 6 points" });
     expect((await metrics.drHistory("acme.io")).map((p) => p.dr)).toEqual([7, 19]);
 
     // A 4-point drop is not news.

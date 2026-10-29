@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { bulkAction, updateRowAction } from "@/app/admin/submissions/actions";
 import { LinkVerdict } from "@/components/directories/link-verdict";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { Button } from "@/components/ui/button";
 import { Badge, Input } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
@@ -81,9 +82,7 @@ function RowEditor({ row, onMessage }: { row: OpsRow; onMessage: (m: { ok: boole
         >
           {row.directory.name} ↗
         </a>
-        <span className="text-xs text-muted-foreground">
-          {row.directory.dr !== null ? `DR ${row.directory.dr}` : ""}
-        </span>
+        {row.directory.dr !== null && <AuthorityScore score={row.directory.dr} />}
         {row.directory.badgeRequired && <Badge tone="accent">badge</Badge>}
         {row.directory.needsAccount && <Badge>account</Badge>}
         {row.replaces && <Badge>replacement</Badge>}

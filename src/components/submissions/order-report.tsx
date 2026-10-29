@@ -1,4 +1,5 @@
 import { LinkVerdict } from "@/components/directories/link-verdict";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { Badge, Card } from "@/components/ui/primitives";
 import { PACKAGES } from "@/lib/submissions/packages";
 import type { orderRows, SubmissionOrder, summarizeOrder } from "@/lib/submissions/service";
@@ -85,8 +86,10 @@ export function OrderReport({
             {visible.map(({ s, d }) => (
               <tr key={s.id} className="align-top">
                 <td className="px-3 py-2">
-                  <span className="font-medium">{d.name}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{d.dr !== null ? `DR ${d.dr}` : ""}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="font-medium">{d.name}</span>
+                    {d.dr !== null && <AuthorityScore score={d.dr} />}
+                  </span>
                   {s.liveUrl && (
                     <a
                       href={s.liveUrl}

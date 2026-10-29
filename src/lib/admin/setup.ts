@@ -45,7 +45,12 @@ export function setupChecklist(e: Env): SetupItem[] {
       hint: "INBOUND_EMAIL_DOMAIN",
     },
     { label: "Directory logins", ok: has("CREDENTIALS_KEY"), required: false, hint: "CREDENTIALS_KEY" },
-    { label: "DR provider", ok: has("DR_PROVIDER", "DR_API_KEY"), required: false, hint: "DR_PROVIDER, DR_API_KEY" },
+    {
+      label: "Authority Score provider",
+      ok: has("DR_API_KEY"),
+      required: false,
+      hint: "DR_API_KEY (DataForSEO login:password); DR_PROVIDER to switch",
+    },
     {
       label: "Index check",
       ok: has("SERP_PROVIDER", "SERP_API_KEY"),

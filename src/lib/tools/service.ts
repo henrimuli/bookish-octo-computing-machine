@@ -79,16 +79,16 @@ export async function checkDofollow(pageUrl: string, target: string, caller: Too
   };
 }
 
-/** A domain's DR from the configured provider, cached for 7 days. */
+/** A domain's Authority Score from the configured provider, cached for 7 days. */
 export async function checkDr(rawDomain: string, caller: ToolCaller) {
-  if (!drEnabled()) throw new ToolError("The DR checker isn't available right now.");
+  if (!drEnabled()) throw new ToolError("The Authority Score checker isn't available right now.");
   const domain = domainOrThrow(rawDomain, "a domain");
   await spend("dr", domain, caller);
   const row = await drFor(domain).catch((err) => {
     console.error("DR check failed", err);
     return null;
   });
-  if (!row) throw new ToolError(`We couldn't get a rating for ${domain}. Try again later.`);
+  if (!row) throw new ToolError(`We couldn't get an Authority Score for ${domain}. Try again later.`);
   return {
     domain,
     dr: row.dr,

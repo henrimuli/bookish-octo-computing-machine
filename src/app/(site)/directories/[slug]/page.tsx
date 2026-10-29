@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { DirectoryBadges } from "@/components/directories/directory-badges";
+import { AuthorityScore } from "@/components/metrics/authority-score";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container } from "@/components/ui/primitives";
 import { getDirectory } from "@/lib/directories/service";
@@ -37,7 +38,6 @@ async function Detail({ params }: Pick<PageProps<"/directories/[slug]">, "params
   if (!d) notFound();
   const host = new URL(d.url).hostname.replace(/^www\./, "");
   const facts: Array<[string, string]> = [
-    ["Domain Rating", d.dr !== null ? String(d.dr) : "Not measured yet"],
     ["Pricing", d.pricing],
     [
       "Link type",
@@ -56,10 +56,18 @@ async function Detail({ params }: Pick<PageProps<"/directories/[slug]">, "params
   return (
     <div className="mt-6 space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight">{d.name}</h1>
-        <a href={d.url} target="_blank" rel="noopener nofollow" className="text-sm text-primary hover:underline">
-          {host} ↗
-        </a>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl font-bold tracking-tight">{d.name}</h1>
+            <a href={d.url} target="_blank" rel="noopener nofollow" className="text-sm text-primary hover:underline">
+              {host} ↗
+            </a>
+          </div>
+          <div className="flex shrink-0 flex-col items-center gap-1">
+            <AuthorityScore score={d.dr} size="md" />
+            <span className="text-[11px] text-muted-foreground">Authority Score</span>
+          </div>
+        </div>
         {d.description && <p className="mt-3 text-muted-foreground">{d.description}</p>}
         <div className="mt-3">
           <DirectoryBadges directory={d} />

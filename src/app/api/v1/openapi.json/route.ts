@@ -82,9 +82,9 @@ export function GET() {
         ? {
             "/tools/dr": {
               post: {
-                summary: "Domain Rating for a domain (cached 7 days)",
+                summary: "Authority Score for a domain (cached 7 days)",
                 requestBody: { required: true, content: { "application/json": { schema: schema(drInput) } } },
-                responses: ok("DR 0-100, referring domains, provider and when it was measured"),
+                responses: ok("Authority Score 0-100 (as dr), referring domains, provider and when it was measured"),
               },
             },
           }
