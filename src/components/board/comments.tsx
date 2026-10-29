@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { addCommentAction, removeCommentAction } from "@/app/(site)/p/actions";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/primitives";
 
@@ -14,6 +15,7 @@ export type CommentView = {
   userId: string;
   name: string;
   handle: string | null;
+  image: string | null;
   isMaker: boolean;
   canDelete: boolean;
 };
@@ -74,48 +76,51 @@ function Comment({ c, productId, replies }: { c: CommentView; productId: string;
   const [replying, setReplying] = useState(false);
   const [, start] = useTransition();
   return (
-    <li className="space-y-2">
-      <div className="text-sm">
-        <span className="font-medium">{c.name}</span>
-        {c.isMaker && (
-          <Badge tone="primary" className="ml-2">
-            Maker
-          </Badge>
+    <li className="flex gap-3">
+      <Avatar name={c.name} src={c.image} className={c.parentId ? "size-6 text-xs" : "size-8"} />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className={`flex flex-wrap items-center text-sm ${c.parentId ? "min-h-6" : "min-h-8"}`}>
+          <span className="font-medium">{c.name}</span>
+          {c.isMaker && (
+            <Badge tone="primary" className="ml-2">
+              Maker
+            </Badge>
+          )}
+          <span className="ml-2 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+        </div>
+        <p className="whitespace-pre-line text-sm">{c.body}</p>
+        <div className="flex gap-3 text-xs text-muted-foreground">
+          {!c.parentId && (
+            <button type="button" onClick={() => setReplying((r) => !r)} className="hover:text-foreground">
+              Reply
+            </button>
+          )}
+          {c.canDelete && (
+            <button
+              type="button"
+              onClick={() => start(async () => void (await removeCommentAction(c.id)))}
+              className="hover:text-danger"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+        {replying && (
+          <CommentBox
+            productId={productId}
+            parentId={c.id}
+            placeholder="Write a reply"
+            onDone={() => setReplying(false)}
+          />
         )}
-        <span className="ml-2 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+        {replies.length > 0 && (
+          <ul className="space-y-4 border-l border-border pl-4">
+            {replies.map((r) => (
+              <Comment key={r.id} c={r} productId={productId} replies={[]} />
+            ))}
+          </ul>
+        )}
       </div>
-      <p className="whitespace-pre-line text-sm">{c.body}</p>
-      <div className="flex gap-3 text-xs text-muted-foreground">
-        {!c.parentId && (
-          <button type="button" onClick={() => setReplying((r) => !r)} className="hover:text-foreground">
-            Reply
-          </button>
-        )}
-        {c.canDelete && (
-          <button
-            type="button"
-            onClick={() => start(async () => void (await removeCommentAction(c.id)))}
-            className="hover:text-danger"
-          >
-            Delete
-          </button>
-        )}
-      </div>
-      {replying && (
-        <CommentBox
-          productId={productId}
-          parentId={c.id}
-          placeholder="Write a reply"
-          onDone={() => setReplying(false)}
-        />
-      )}
-      {replies.length > 0 && (
-        <ul className="ml-4 space-y-4 border-l border-border pl-4">
-          {replies.map((r) => (
-            <Comment key={r.id} c={r} productId={productId} replies={[]} />
-          ))}
-        </ul>
-      )}
     </li>
   );
 }
