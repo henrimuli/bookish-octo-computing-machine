@@ -1,6 +1,6 @@
 # DebutYard
 
-> Launch, get listed, see proof.
+> Launch. Network. Grow.
 
 DebutYard is a launch directory for SaaS and startup products. It has:
 
