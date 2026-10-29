@@ -3,7 +3,7 @@
  * baseline, weekly snapshots, drop alerts, the checker's cache and the
  * directory backfill. Runs when TEST_DATABASE_URL is set; the database is wiped.
  */
-import { eq, isNull, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DrProvider } from "@/lib/metrics/providers";
 import type { PaymentProvider, VerifiedPayment, WebhookEvent } from "@/lib/payments/types";
@@ -49,11 +49,20 @@ class FakePayments implements PaymentProvider {
 
 const dr = new Map<string, number>();
 const calls: string[] = [];
+const bulkCalls: string[][] = [];
 const fakeDr: DrProvider = {
   id: "openpagerank",
   async fetchDr(domain) {
     calls.push(domain);
     return { dr: dr.get(domain) ?? 10, referringDomains: null };
+  },
+};
+const fakeBulkDr: DrProvider = {
+  ...fakeDr,
+  id: "dataforseo",
+  async fetchBulk(domains) {
+    bulkCalls.push(domains);
+    return new Map(domains.map((d) => [d, { dr: dr.get(d) ?? 20, referringDomains: null }]));
   },
 };
 
@@ -86,6 +95,7 @@ describe.skipIf(!TEST_DB)("DR snapshots (Postgres)", () => {
   beforeEach(async () => {
     sent.length = 0;
     calls.length = 0;
+    bulkCalls.length = 0;
     dr.clear();
     metrics.setDrProviderForTests(fakeDr);
     await dbmod
@@ -158,9 +168,8 @@ describe.skipIf(!TEST_DB)("DR snapshots (Postgres)", () => {
     dr.set("pro.io", 40);
 
     // acme.io was measured at intake, so only pro.io is due today.
-    const first = await metrics.snapshotDomains(new Date(), { backfill: 3 });
+    const first = await metrics.snapshotDomains(new Date());
     expect(first).toMatchObject({ measured: 1, alerts: 0 });
-    expect(calls.filter((d) => d !== "pro.io" && d !== "acme.io").length).toBeGreaterThan(0); // backfill
     calls.length = 0;
 
     // A week later: acme.io grows, pro.io drops 6 points.
@@ -168,7 +177,7 @@ describe.skipIf(!TEST_DB)("DR snapshots (Postgres)", () => {
     dr.set("pro.io", 34);
     const week = new Date(Date.now() + 7 * DAY);
     sent.length = 0;
-    expect(await metrics.snapshotDomains(week, { backfill: 0 })).toMatchObject({ measured: 2, alerts: 1 });
+    expect(await metrics.snapshotDomains(week)).toMatchObject({ measured: 2, alerts: 1 });
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ to: "pro@x.test", subject: "Authority Score alert: pro.io dropped 6 points" });
     expect((await metrics.drHistory("acme.io")).map((p) => p.dr)).toEqual([7, 19]);
@@ -176,30 +185,65 @@ describe.skipIf(!TEST_DB)("DR snapshots (Postgres)", () => {
     // A 4-point drop is not news.
     dr.set("acme.io", 15);
     sent.length = 0;
-    await metrics.snapshotDomains(new Date(Date.now() + 14 * DAY), { backfill: 0 });
+    await metrics.snapshotDomains(new Date(Date.now() + 14 * DAY));
     expect(sent.filter((e) => e.subject.includes("acme.io"))).toHaveLength(0);
     dr.set("acme.io", 9);
-    await metrics.snapshotDomains(new Date(Date.now() + 21 * DAY), { backfill: 0 });
+    await metrics.snapshotDomains(new Date(Date.now() + 21 * DAY));
     expect(sent.find((e) => e.subject.includes("acme.io"))).toMatchObject({ to: "ada@acme.io" });
     expect(sent.find((e) => e.subject.includes("acme.io"))?.text).toContain(`/orders/${order.intakeToken}`);
   });
 
-  it("caches the checker for 7 days and backfills empty directory DR without overwriting", async () => {
+  it("caches the checker for 7 days with single lookups", async () => {
+    metrics.setDrProviderForTests(fakeBulkDr);
     dr.set("foo.io", 33);
     expect((await metrics.drFor("foo.io"))?.dr).toBe(33);
     expect((await metrics.drFor("foo.io"))?.dr).toBe(33);
     expect(calls).toEqual(["foo.io"]);
     expect((await metrics.drFor("foo.io", new Date(Date.now() + 8 * DAY)))?.dr).toBe(33);
     expect(calls).toHaveLength(2);
+    expect(bulkCalls).toHaveLength(0);
+  });
 
-    await dbmod.db().update(dbmod.schema.directories).set({ dr: null });
-    const before = await dbmod.db().select().from(dbmod.schema.directories).where(isNull(dbmod.schema.directories.dr));
-    const [keep] = before;
-    await dbmod.db().update(dbmod.schema.directories).set({ dr: 88 }).where(eq(dbmod.schema.directories.id, keep.id));
-    expect(await metrics.backfillDirectoryDr(5)).toBe(5);
+  it("scores all directories in one bulk request, then again only after a month", async () => {
+    metrics.setDrProviderForTests(fakeBulkDr);
+    const active = await dbmod
+      .db()
+      .select()
+      .from(dbmod.schema.directories)
+      .where(eq(dbmod.schema.directories.isActive, true));
+    expect(active.length).toBeGreaterThan(10);
+    const [first] = active;
+    dr.set(new URL(first.url).hostname.replace(/^www\./, ""), 61);
+
+    const now = new Date();
+    expect(await metrics.refreshDirectoryScores(now)).toBe(active.length);
+    expect(bulkCalls).toHaveLength(1);
+    expect(bulkCalls[0]).toHaveLength(new Set(active.map((d) => new URL(d.url).hostname.replace(/^www\./, ""))).size);
+    expect(calls).toHaveLength(0);
     expect(
-      (await dbmod.db().query.directories.findFirst({ where: eq(dbmod.schema.directories.id, keep.id) }))?.dr,
-    ).toBe(88);
+      (await dbmod.db().query.directories.findFirst({ where: eq(dbmod.schema.directories.id, first.id) }))?.dr,
+    ).toBe(61);
+
+    // Nothing is due for the rest of the month, so the daily job makes no request.
+    expect(await metrics.refreshDirectoryScores(new Date(now.getTime() + 29 * DAY))).toBe(0);
+    expect(bulkCalls).toHaveLength(1);
+
+    // A new directory is scored the next day, on its own small bulk request.
+    await dbmod
+      .db()
+      .update(dbmod.schema.directories)
+      .set({ dr: null })
+      .where(eq(dbmod.schema.directories.id, first.id));
+    expect(await metrics.refreshDirectoryScores(new Date(now.getTime() + DAY))).toBe(1);
+    expect(bulkCalls[1]).toHaveLength(1);
+
+    // After 30 days, the whole list is re-measured in one request again.
+    dr.set(new URL(first.url).hostname.replace(/^www\./, ""), 64);
+    expect(await metrics.refreshDirectoryScores(new Date(now.getTime() + 31 * DAY))).toBe(active.length);
+    expect(bulkCalls).toHaveLength(3);
+    expect(
+      (await dbmod.db().query.directories.findFirst({ where: eq(dbmod.schema.directories.id, first.id) }))?.dr,
+    ).toBe(64);
   });
 
   it("hides itself without a provider", async () => {
