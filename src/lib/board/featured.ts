@@ -106,3 +106,22 @@ export async function alwaysFeaturedSponsor(categorySlug: string, now = new Date
     href: `/p/${pick.slug}`,
   };
 }
+
+export type CardMedia = { imageUrl: string | null; websiteUrl: string };
+
+/** First screenshot and site URL by slug, for the homepage's sponsored cards. */
+export async function cardMediaForSlugs(slugs: string[]) {
+  const out = new Map<string, CardMedia>();
+  if (slugs.length === 0) return out;
+  const rows = (await queryRows(sql`
+    select p.slug, p.website_url,
+      (select m.url from product_media m where m.product_id = p.id order by m.position limit 1) as image_url
+    from products p
+    where p.slug in (${sql.join(
+      slugs.map((s) => sql`${s}`),
+      sql`, `,
+    )})
+  `)) as unknown as Array<{ slug: string; website_url: string; image_url: string | null }>;
+  for (const r of rows) out.set(r.slug, { imageUrl: r.image_url, websiteUrl: r.website_url });
+  return out;
+}

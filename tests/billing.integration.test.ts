@@ -188,6 +188,7 @@ describe.skipIf(!TEST_DB)("subscriptions and entitlements (Postgres)", () => {
       description: "A".repeat(60),
       categories: ["ai"],
       pricingModel: "freemium",
+      screenshots: ["https://pro.io/shot.png"],
     });
     expect(await billing.fastTrackCredit(u)).toEqual({ eligible: true, available: true });
     const upgraded = await billing.redeemFastTrack(u, p.id);
@@ -200,6 +201,7 @@ describe.skipIf(!TEST_DB)("subscriptions and entitlements (Postgres)", () => {
       description: "A".repeat(60),
       categories: ["ai"],
       pricingModel: "freemium",
+      screenshots: ["https://pro2.io/shot.png"],
     });
     await expect(billing.redeemFastTrack(u, q.id)).rejects.toThrow("used this quarter");
     // Next quarter it's back.

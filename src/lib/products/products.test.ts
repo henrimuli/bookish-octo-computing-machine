@@ -67,6 +67,7 @@ describe("productInput", () => {
     [{ categories: [] }, "categories"],
     [{ categories: ["a", "b", "c", "d"] }, "categories"],
     [{ logoUrl: "data:image/png;base64,xx" }, "logoUrl"],
+    [{ screenshots: [] }, "screenshots"],
   ])("rejects %o", (override, field) => {
     const res = productInput.safeParse({ ...valid, ...override });
     expect(res.success).toBe(false);

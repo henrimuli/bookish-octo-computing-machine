@@ -11,7 +11,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Card, Container } from "@/components/ui/primitives";
 import { liveAds, type AdItem } from "@/lib/ads/service";
 import { getCurrentUser } from "@/lib/auth";
-import { featuredNow } from "@/lib/board/featured";
+import { cardMediaForSlugs, featuredNow } from "@/lib/board/featured";
 import { applauseForSlugs, categoriesWithCounts, recentWinners } from "@/lib/board/queries";
 import { addWeeks, formatWeekLabel, formatWeekRange, weekBounds, weekKeyFor } from "@/lib/weeks";
 
@@ -72,10 +72,13 @@ async function ThisWeek() {
     liveAds("home_top", { now }),
     getCurrentUser().catch(() => null),
   ]);
-  const applause = await applauseForSlugs(
-    featured.map((f) => f.slug),
-    user?.id ?? null,
-  );
+  const [applause, media] = await Promise.all([
+    applauseForSlugs(
+      featured.map((f) => f.slug),
+      user?.id ?? null,
+    ),
+    cardMediaForSlugs([...featured.map((f) => f.slug), ...rail.map((a) => a.slug)]),
+  ]);
   return (
     <>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -85,7 +88,7 @@ async function ThisWeek() {
         </p>
       </div>
       {top && <SponsorBanner ad={top} />}
-      <FeaturedRail items={featured} ads={rail} applause={applause} signedIn={Boolean(user)} />
+      <FeaturedRail items={featured} ads={rail} applause={applause} media={media} signedIn={Boolean(user)} />
       <WeekBoard weekKey={key} sponsor={pickLeaderboardSponsor(leaderboard, featured)} />
       <p className="mt-6 text-sm">
         <Link href={`/week/${addWeeks(key, -1)}`} className="text-muted-foreground hover:text-foreground">

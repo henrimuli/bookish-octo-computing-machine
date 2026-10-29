@@ -16,6 +16,7 @@ import { prefillFromSite } from "@/lib/products/prefill-service";
 import { listCategories, screenshotsEnabled, uploadsEnabled } from "@/lib/products/queries";
 import { captureHomepage, importOgImage, SCREENSHOTS_PER_HOUR } from "@/lib/products/screenshots";
 import {
+  assertHasScreenshot,
   bookableWeeks,
   ProductError,
   saveProduct,
@@ -197,6 +198,12 @@ export async function startTierCheckoutAction(args: {
   if (product.status === "archived") return { ok: false, error: "This listing is archived." };
   if (tierRank(args.tier) <= tierRank(product.tier))
     return { ok: false, error: `This listing already has ${TIERS[product.tier].label}.` };
+  try {
+    await assertHasScreenshot(product);
+  } catch (err) {
+    if (err instanceof ProductError) return { ok: false, error: err.message };
+    throw err;
+  }
 
   let weekKey: string | undefined;
   if (tier.picksWeek) {

@@ -31,8 +31,16 @@ export const productInput = z.object({
   pricingModel: z.enum(["free", "freemium", "paid", "open_source", "trial"]),
   twitterUrl: optionalUrl,
   githubUrl: optionalUrl,
-  /** In display order. Left out (API drafts), the listing's screenshots stay as they are. */
-  screenshots: z.array(httpUrl).max(MAX_SCREENSHOTS, `Add up to ${MAX_SCREENSHOTS} screenshots`).optional(),
+  /**
+   * In display order, at least one (the homepage cards show the first). Left
+   * out (API drafts), the listing's screenshots stay as they are, and it can't
+   * be submitted until it has one.
+   */
+  screenshots: z
+    .array(httpUrl)
+    .min(1, "Add at least one screenshot")
+    .max(MAX_SCREENSHOTS, `Add up to ${MAX_SCREENSHOTS} screenshots`)
+    .optional(),
 });
 
 export type ProductInput = z.infer<typeof productInput>;

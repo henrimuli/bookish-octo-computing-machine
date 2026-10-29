@@ -1,135 +1,155 @@
-import Link from "next/link";
 import { AdImpressions } from "@/components/ads/ad-impressions";
-import { Badge } from "@/components/ui/primitives";
 import type { AdItem } from "@/lib/ads/service";
-import type { FeaturedItem } from "@/lib/board/featured";
+import type { CardMedia, FeaturedItem } from "@/lib/board/featured";
+import { withRef } from "@/lib/board/links";
 import type { ApplauseState } from "@/lib/board/queries";
+import { domainOf } from "@/lib/slug";
+import { cn } from "@/lib/utils";
 import { ClapButton } from "./clap-button";
-import { ProductLogo } from "./product-logo";
+import { ProductCard } from "./product-card";
 
-type RailCard = {
-  key: string;
-  href: string;
-  external: boolean;
-  name: string;
-  tagline: string;
-  logoUrl: string | null;
-  clap?: ApplauseState;
-};
+/** One card wide on phones, two on tablets, three on desktop; a short row centres itself. */
+const CARD_WIDTH = "w-full sm:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]";
 
 /**
- * Spotlight hero (max 3) plus the featured rail: booked rail slots first, then
- * paid debut tiers, six cards at most. Clearly labelled as featured. Listings
- * carry a clap button (all-time applause), so they keep collecting applause for
- * as long as they're featured; booked ads don't.
+ * Spotlight (max 3) and the featured cards: booked rail slots first, then paid
+ * debut tiers, six at most. Listings carry a clap button (all-time applause),
+ * so they keep collecting applause for as long as they're featured; booked ads
+ * don't. The rest of the board stays as rows.
  */
 export function FeaturedRail({
   items,
   ads = [],
   applause = new Map(),
+  media = new Map(),
   signedIn,
 }: {
   items: FeaturedItem[];
   ads?: AdItem[];
   /** Clap state by slug, from applauseForSlugs. */
   applause?: Map<string, ApplauseState>;
+  /** Screenshot and site by slug, from cardMediaForSlugs. */
+  media?: Map<string, CardMedia>;
   signedIn?: boolean;
 }) {
   if (items.length === 0 && ads.length === 0) return null;
   const heroes = items.filter((i) => i.hero).slice(0, 3);
-  const rail: RailCard[] = [
-    ...ads.map((a) => ({
-      key: `ad-${a.bookingId}`,
-      href: a.href,
-      external: true,
-      name: a.name,
-      tagline: a.tagline,
-      logoUrl: a.logoUrl,
-    })),
-    ...items
-      .filter((i) => !heroes.includes(i))
-      .map((f) => ({
-        key: f.slug,
-        href: `/p/${f.slug}`,
-        external: false,
-        name: f.name,
-        tagline: f.tagline,
-        logoUrl: f.logoUrl,
-        clap: applause.get(f.slug),
-      })),
-  ].slice(0, 6);
-  const shownAds = ads.filter((a) => rail.some((r) => r.key === `ad-${a.bookingId}`) && a.bookingId);
+  const listings = items.filter((i) => !heroes.includes(i));
+  const shownAds = ads.slice(0, 6);
+  const shownListings = listings.slice(0, 6 - shownAds.length);
+  const adIds = shownAds.flatMap((a) => (a.bookingId ? [a.bookingId] : []));
+
+  const listingCard = (f: FeaturedItem, spotlight: boolean) => {
+    const m = media.get(f.slug);
+    const clap = applause.get(f.slug);
+    return (
+      <ProductCard
+        key={f.slug}
+        className={CARD_WIDTH}
+        spotlight={spotlight}
+        name={f.name}
+        tagline={f.tagline}
+        logoUrl={f.logoUrl}
+        imageUrl={m?.imageUrl ?? null}
+        link={{ href: `/p/${f.slug}`, external: false }}
+        // Paid listings, so the link is followed (see listingRel).
+        site={m ? { href: withRef(m.websiteUrl), domain: domainOf(m.websiteUrl), rel: "noopener" } : null}
+        action={
+          clap && (
+            <ClapButton
+              productId={clap.id}
+              applauded={clap.applaudedByMe}
+              applause={clap.applause}
+              final={clap.applauseFinal}
+              signedIn={signedIn}
+            />
+          )
+        }
+      />
+    );
+  };
 
   return (
-    <section aria-label="Featured" className="mb-8 space-y-3">
-      {heroes.map((h) => {
-        const clap = applause.get(h.slug);
-        return (
-          <div
-            key={h.slug}
-            className="flex items-center gap-4 rounded-lg border border-accent bg-accent/10 p-5 transition-colors hover:bg-accent/20"
+    <div className="mb-10 space-y-10">
+      {heroes.length > 0 && (
+        <section aria-labelledby="spotlight-heading">
+          <h3
+            id="spotlight-heading"
+            className="mb-5 flex items-center justify-center gap-2 font-display text-2xl font-semibold italic"
           >
-            <Link href={`/p/${h.slug}`} className="flex min-w-0 flex-1 items-center gap-4">
-              <ProductLogo name={h.name} src={h.logoUrl} className="size-14" />
-              <div className="min-w-0 flex-1">
-                <Badge tone="accent">Spotlight</Badge>
-                <p className="mt-1 font-display text-lg font-semibold">{h.name}</p>
-                <p className="truncate text-sm text-muted-foreground">{h.tagline}</p>
-              </div>
-            </Link>
-            {clap && <Clap state={clap} signedIn={signedIn} />}
-          </div>
-        );
-      })}
-      {rail.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Featured</p>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {rail.map((f) => {
-              const body = (
-                <>
-                  <ProductLogo name={f.name} src={f.logoUrl} className="size-10" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{f.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{f.tagline}</p>
-                  </div>
-                </>
-              );
-              const link = "flex min-w-0 flex-1 items-center gap-3";
+            <Laurel />
+            Spotlight
+            <Laurel flip />
+          </h3>
+          <ul className="flex flex-wrap justify-center gap-6">{heroes.map((h) => listingCard(h, true))}</ul>
+        </section>
+      )}
+      {(shownAds.length > 0 || shownListings.length > 0) && (
+        <section aria-labelledby="featured-heading">
+          <h3
+            id="featured-heading"
+            className="mb-4 text-center text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground"
+          >
+            Featured
+          </h3>
+          <ul className="flex flex-wrap justify-center gap-6">
+            {shownAds.map((a) => {
+              const m = media.get(a.slug);
               return (
-                <li
-                  key={f.key}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-foreground/20"
-                >
-                  {f.external ? (
-                    <a href={f.href} rel="sponsored noopener" target="_blank" className={link}>
-                      {body}
-                    </a>
-                  ) : (
-                    <Link href={f.href} className={link}>
-                      {body}
-                    </Link>
-                  )}
-                  {f.clap && <Clap state={f.clap} signedIn={signedIn} />}
-                </li>
+                <ProductCard
+                  key={`ad-${a.bookingId ?? a.slug}`}
+                  className={CARD_WIDTH}
+                  name={a.name}
+                  tagline={a.tagline}
+                  logoUrl={a.logoUrl}
+                  imageUrl={m?.imageUrl ?? null}
+                  link={{ href: a.href, external: Boolean(a.bookingId) }}
+                  label="Ad"
+                  // The chip goes through the tracked click too.
+                  site={m ? { href: a.href, domain: domainOf(m.websiteUrl), rel: "sponsored noopener" } : null}
+                />
               );
             })}
+            {shownListings.map((f) => listingCard(f, false))}
           </ul>
-          {shownAds.length > 0 && <AdImpressions ids={shownAds.map((a) => a.bookingId!)} />}
-        </div>
+          {adIds.length > 0 && <AdImpressions ids={adIds} />}
+        </section>
       )}
-    </section>
+    </div>
   );
 }
 
-function Clap({ state, signedIn }: { state: ApplauseState; signedIn?: boolean }) {
+/** A laurel sprig either side of the Spotlight heading. */
+function Laurel({ flip = false }: { flip?: boolean }) {
+  const leaves = [
+    [9, 31, -55],
+    [7, 24, -35],
+    [7, 17, -15],
+    [9, 10, 5],
+  ];
   return (
-    <ClapButton
-      productId={state.id}
-      applauded={state.applaudedByMe}
-      applause={state.applause}
-      final={state.applauseFinal}
-      signedIn={signedIn}
-    />
+    <svg
+      viewBox="0 0 24 40"
+      aria-hidden
+      className={cn("h-9 w-6 shrink-0 text-accent", flip && "-scale-x-100")}
+      fill="currentColor"
+      stroke="currentColor"
+    >
+      <path d="M17 38C9 31 7 19 13 4" fill="none" strokeWidth="1.4" strokeLinecap="round" />
+      {leaves.map(([x, y, r]) => (
+        <ellipse key={y} cx={x} cy={y} rx="2" ry="4.2" transform={`rotate(${r} ${x} ${y})`} stroke="none" />
+      ))}
+      {leaves.slice(0, 3).map(([x, y, r]) => (
+        <ellipse
+          key={`r${y}`}
+          cx={x + 8}
+          cy={y - 1}
+          rx="1.8"
+          ry="3.8"
+          transform={`rotate(${-r + 10} ${x + 8} ${y - 1})`}
+          stroke="none"
+        />
+      ))}
+    </svg>
   );
 }
