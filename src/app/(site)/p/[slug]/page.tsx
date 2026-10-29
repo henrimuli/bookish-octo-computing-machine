@@ -145,6 +145,7 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
                 productId={p.id}
                 applauded={data.applaudedByMe}
                 applause={data.applause}
+                final={data.applauseFinal}
                 signedIn={Boolean(viewer)}
                 size="lg"
               />
@@ -209,8 +210,19 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
 
           {days && (
             <Card className="p-5">
-              <h2 className="text-sm font-medium">Applause during debut week</h2>
+              <h2 className="text-sm font-medium">Applause</h2>
+              <p className="text-xs text-muted-foreground">Per day during its debut week</p>
               <ApplauseChart days={days} />
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Debut week</dt>
+                  <dd className="font-semibold tabular-nums">{data.debutApplause}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">All time</dt>
+                  <dd className="font-semibold tabular-nums">{data.applause}</dd>
+                </div>
+              </dl>
             </Card>
           )}
 

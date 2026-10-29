@@ -19,8 +19,8 @@ export function ProductRow({
     <li className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/20">
       {showRank && (
         <span className="w-6 shrink-0 text-center font-display text-lg font-bold text-muted-foreground">
-          {/* Medals only for placings that can win: awards need at least one clap. */}
-          {item.rank <= 3 && item.applause > 0 ? medals[item.rank - 1] : item.rank}
+          {/* Medals only for placings that can win: awards need at least one debut-week clap. */}
+          {item.rank <= 3 && item.debutApplause > 0 ? medals[item.rank - 1] : item.rank}
         </span>
       )}
       <ProductLogo name={item.name} src={item.logoUrl} />
@@ -35,6 +35,8 @@ export function ProductRow({
               <Badge className="hover:text-foreground">{c.name}</Badge>
             </Link>
           ))}
+          {/* After the week, later claps raise the button's count but not the ranking. */}
+          {item.debutApplause !== item.applause && <span>· {item.debutApplause} applause in debut week</span>}
           {item.comments > 0 && (
             <span>
               · {item.comments} comment{item.comments === 1 ? "" : "s"}
@@ -43,7 +45,13 @@ export function ProductRow({
           {item.tier !== "free" && <Badge tone="accent">Featured</Badge>}
         </div>
       </div>
-      <ClapButton productId={item.id} applauded={item.applaudedByMe} applause={item.applause} signedIn={signedIn} />
+      <ClapButton
+        productId={item.id}
+        applauded={item.applaudedByMe}
+        applause={item.applause}
+        final={item.applauseFinal}
+        signedIn={signedIn}
+      />
     </li>
   );
 }

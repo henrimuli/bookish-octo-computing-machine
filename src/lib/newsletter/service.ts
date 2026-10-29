@@ -97,7 +97,7 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
       name: p!.name,
       tagline: p!.tagline,
       url: url(`/p/${p!.slug}`),
-      applause: p!.applause,
+      applause: p!.debutApplause,
       place: a.place,
     }));
   const winnerIds = new Set(awards.map((a) => a.productId));

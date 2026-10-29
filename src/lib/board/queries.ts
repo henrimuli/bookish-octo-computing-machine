@@ -13,31 +13,48 @@ export type BoardItem = {
   tier: "free" | "fast_track" | "pro" | "premium" | "spotlight";
   weekKey: string;
   approvedAt: Date | null;
+  /** All-time applause: every clap, including ones after the debut week. */
   applause: number;
+  /** Claps given during the debut week: the competition count. */
+  debutApplause: number;
   comments: number;
   score: number;
   categories: Array<{ slug: string; name: string }>;
   applaudedByMe: boolean;
+  /** The viewer's clap came during a debut week that has closed, so it can't be taken back. */
+  applauseFinal: boolean;
   rank: number;
 };
 
 type Row = Omit<
   BoardItem,
-  "rank" | "categories" | "score" | "applause" | "comments" | "applaudedByMe" | "approvedAt" | "weekKey"
+  | "rank"
+  | "categories"
+  | "score"
+  | "applause"
+  | "debutApplause"
+  | "comments"
+  | "applaudedByMe"
+  | "applauseFinal"
+  | "approvedAt"
+  | "weekKey"
 > & {
   launch_week_key: string;
   approved_at: Date | string | null;
   logo_url: string | null;
   applause: string | number;
+  debut_applause: string | number;
   comments: string | number;
   score: string | number;
   applauded_by_me: boolean;
+  applause_final: boolean;
   categories: Array<{ slug: string; name: string }> | null;
 };
 
 /**
- * Products approved for a week, ranked. Applause and comments only count toward
- * the score if cast during the week; displayed counts are all-time.
+ * Products approved for a week, ranked. Only applause and comments from the
+ * debut week count toward the score and tie-breaks, so a closed week's board
+ * never changes; the clap button shows all-time applause.
  */
 export async function weekBoard(weekKey: string, viewerId: string | null = null): Promise<BoardItem[]> {
   return boardForWeeks([weekKey], viewerId);
@@ -57,6 +74,8 @@ export async function boardForWeeks(weekKeys: string[], viewerId: string | null 
   const rows = (await queryRows(sql`
     select p.id, p.slug, p.name, p.tagline, p.logo_url, p.tier, p.approved_at, p.launch_week_key,
       (select count(*) from applause v where v.product_id = p.id) as applause,
+      (select count(*) from applause v where v.product_id = p.id
+                and v.created_at >= lw.starts_at and v.created_at < lw.ends_at) as debut_applause,
       (select count(*) from comments c where c.product_id = p.id and c.status = 'visible') as comments,
       coalesce((select sum(v.weight) from applause v
                 where v.product_id = p.id and not v.flagged
@@ -66,6 +85,8 @@ export async function boardForWeeks(weekKeys: string[], viewerId: string | null 
                   and char_length(c.body) >= ${MIN_COMMENT_LENGTH}
                   and c.created_at >= lw.starts_at and c.created_at < lw.ends_at) as score,
       exists(select 1 from applause v where v.product_id = p.id and v.user_id = ${viewerId}) as applauded_by_me,
+      lw.ends_at <= now() and exists(select 1 from applause v where v.product_id = p.id
+                and v.user_id = ${viewerId} and v.created_at < lw.ends_at) as applause_final,
       (select json_agg(json_build_object('slug', cat.slug, 'name', cat.name) order by cat.position)
          from product_categories pc join categories cat on cat.slug = pc.category_slug
         where pc.product_id = p.id) as categories
@@ -85,12 +106,50 @@ export async function boardForWeeks(weekKeys: string[], viewerId: string | null 
       weekKey: r.launch_week_key,
       approvedAt: r.approved_at ? new Date(r.approved_at) : null,
       applause: Number(r.applause),
+      debutApplause: Number(r.debut_applause),
       comments: Number(r.comments),
       score: Number(r.score),
       applaudedByMe: Boolean(r.applauded_by_me),
+      applauseFinal: Boolean(r.applause_final),
       categories: r.categories ?? [],
     })),
   );
+}
+
+export type ApplauseState = Pick<BoardItem, "id" | "applause" | "applaudedByMe" | "applauseFinal">;
+
+/** Clap-button state for live products by slug (homepage featured cards), all-time counts. */
+export async function applauseForSlugs(slugs: string[], viewerId: string | null = null) {
+  const out = new Map<string, ApplauseState>();
+  if (slugs.length === 0) return out;
+  const rows = (await queryRows(sql`
+    select p.id, p.slug,
+      (select count(*)::int from applause v where v.product_id = p.id) as applause,
+      exists(select 1 from applause v where v.product_id = p.id and v.user_id = ${viewerId}) as applauded_by_me,
+      lw.ends_at <= now() and exists(select 1 from applause v where v.product_id = p.id
+                and v.user_id = ${viewerId} and v.created_at < lw.ends_at) as applause_final
+    from products p
+    join launch_weeks lw on lw.key = p.launch_week_key
+    where p.status = 'approved' and lw.starts_at <= now() and p.slug in (${sql.join(
+      slugs.map((s) => sql`${s}`),
+      sql`, `,
+    )})
+  `)) as unknown as Array<{
+    id: string;
+    slug: string;
+    applause: number;
+    applauded_by_me: boolean;
+    applause_final: boolean;
+  }>;
+  for (const r of rows) {
+    out.set(r.slug, {
+      id: r.id,
+      applause: Number(r.applause),
+      applaudedByMe: Boolean(r.applauded_by_me),
+      applauseFinal: Boolean(r.applause_final),
+    });
+  }
+  return out;
 }
 
 /** Weeks that have started and have at least one debut, newest first. */
@@ -188,7 +247,9 @@ export async function getProductPage(slug: string, viewer: { id: string; staff: 
     media,
     awards,
     applause: me?.applause ?? 0,
+    debutApplause: me?.debutApplause ?? 0,
     applaudedByMe: me?.applaudedByMe ?? false,
+    applauseFinal: me?.applauseFinal ?? false,
     weekRank: live ? (me?.rank ?? null) : null,
     sameWeek: board.filter((b) => b.id !== p.id).slice(0, 6),
   };

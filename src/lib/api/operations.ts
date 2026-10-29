@@ -91,6 +91,7 @@ export async function getProduct(raw: z.input<typeof getInput>) {
     maker: data.maker ? { name: data.maker.name, handle: data.maker.handle } : null,
     debutWeek: p.launchWeekKey ? { key: p.launchWeekKey, label: formatWeekLabel(p.launchWeekKey) } : null,
     applause: data.applause,
+    debutApplause: data.debutApplause,
     weekRank: data.weekRank,
     awards: data.awards.map((a) => ({ scope: a.scope, period: a.periodKey, place: a.place })),
   };

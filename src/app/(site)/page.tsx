@@ -10,8 +10,9 @@ import { DebutLink } from "@/components/debut/debut-link";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, Container } from "@/components/ui/primitives";
 import { liveAds, type AdItem } from "@/lib/ads/service";
+import { getCurrentUser } from "@/lib/auth";
 import { featuredNow } from "@/lib/board/featured";
-import { categoriesWithCounts, recentWinners } from "@/lib/board/queries";
+import { applauseForSlugs, categoriesWithCounts, recentWinners } from "@/lib/board/queries";
 import { addWeeks, formatWeekLabel, formatWeekRange, weekBounds, weekKeyFor } from "@/lib/weeks";
 
 export default function Home() {
@@ -25,7 +26,7 @@ export default function Home() {
             </h1>
             <p className="mt-4 max-w-xl text-muted-foreground">
               A new class debuts every Monday, and paid debuts join as soon as they&apos;re approved. Applaud your
-              favourites all week; the top three become Debut of the Week.
+              favourites: the top three of each week become Debut of the Week, and applause keeps counting after.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -65,22 +66,27 @@ async function ThisWeek() {
   const now = new Date();
   const key = weekKeyFor(now);
   const daysLeft = Math.max(0, Math.ceil((weekBounds(key).endsAt.getTime() - now.getTime()) / 86_400_000));
-  const [featured, leaderboard, rail, [top]] = await Promise.all([
+  const [featured, leaderboard, rail, [top], user] = await Promise.all([
     featuredNow(now),
     liveAds("leaderboard", { now }),
     liveAds("home_rail", { now }),
     liveAds("home_top", { now }),
+    getCurrentUser().catch(() => null),
   ]);
+  const applause = await applauseForSlugs(
+    featured.map((f) => f.slug),
+    user?.id ?? null,
+  );
   return (
     <>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-2xl font-bold">This week&apos;s debuts</h2>
         <p className="text-sm text-muted-foreground">
-          {formatWeekLabel(key)} · {formatWeekRange(key)} · applause closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
+          {formatWeekLabel(key)} · {formatWeekRange(key)} · the week closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
         </p>
       </div>
       {top && <SponsorBanner ad={top} />}
-      <FeaturedRail items={featured} ads={rail} />
+      <FeaturedRail items={featured} ads={rail} applause={applause} signedIn={Boolean(user)} />
       <WeekBoard weekKey={key} sponsor={pickLeaderboardSponsor(leaderboard, featured)} />
       <p className="mt-6 text-sm">
         <Link href={`/week/${addWeeks(key, -1)}`} className="text-muted-foreground hover:text-foreground">

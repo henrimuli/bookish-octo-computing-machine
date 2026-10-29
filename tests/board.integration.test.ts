@@ -346,6 +346,50 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(board[0]).toMatchObject({ slug: "beta-io", score: 1.5, comments: 3 });
   });
 
+  it("keeps applauding after the debut week without changing that week's ranking", async () => {
+    const lastWeek = addWeeks(thisWeek, -1);
+    const inLastWeek = new Date(weekBounds(lastWeek).startsAt.getTime() + 3600_000);
+    // Tied on debut-week applause; first goes first because it was approved earlier.
+    const first = await liveProduct(await makeUser(), "first.io", lastWeek);
+    const second = await liveProduct(await makeUser(), "second.io", lastWeek);
+    const early = await makeUser();
+    const early2 = await makeUser();
+    await dbmod
+      .db()
+      .insert(dbmod.schema.applause)
+      .values([
+        { productId: first.id, userId: early, weight: 1, createdAt: inLastWeek },
+        { productId: second.id, userId: early2, weight: 1, createdAt: inLastWeek },
+      ]);
+
+    // New users find second.io weeks later and applaud it: all-time only.
+    const late = [await makeUser(), await makeUser()];
+    for (const [i, u] of late.entries()) {
+      expect(
+        await engagement.toggleApplause({ userId: u, productId: second.id, ip: `8.8.8.${i}`, userAgent: null }),
+      ).toMatchObject({ applauded: true });
+    }
+    const board = await queries.weekBoard(lastWeek, early2);
+    expect(board.map((x) => [x.slug, x.rank, x.score, x.debutApplause, x.applause])).toEqual([
+      ["first-io", 1, 1, 1, 1],
+      ["second-io", 2, 1, 1, 3],
+    ]);
+    expect(board.find((x) => x.slug === "second-io")?.applauseFinal).toBe(true);
+
+    // A debut-week clap is final; a later one can still be taken back.
+    await expect(
+      engagement.toggleApplause({ userId: early2, productId: second.id, ip: null, userAgent: null }),
+    ).rejects.toThrow(/final/);
+    expect(
+      await engagement.toggleApplause({ userId: late[0], productId: second.id, ip: null, userAgent: null }),
+    ).toEqual({ applauded: false, applause: 2 });
+
+    const featured = await queries.applauseForSlugs(["second-io", "first-io", "missing"], late[1]);
+    expect(featured.get("second-io")).toMatchObject({ applause: 2, applaudedByMe: true, applauseFinal: false });
+    expect(featured.get("first-io")).toMatchObject({ applause: 1, applaudedByMe: false });
+    expect(featured.has("missing")).toBe(false);
+  });
+
   it("closes ended weeks once: awards the top 3 with applause and makes them winners", async () => {
     const lastWeek = addWeeks(thisWeek, -1);
     const applauders = [await makeUser(), await makeUser(), await makeUser()];
