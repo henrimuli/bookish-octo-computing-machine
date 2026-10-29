@@ -8,5 +8,5 @@ export const site = {
   /** Legal entity shown in the policies. Update once the business is registered. */
   legalName: "DebutYard",
   country: "Kenya",
-  social: { x: "https://x.com/debutyard" },
+  social: { x: "https://x.com/hmhenree" },
 } as const;
