@@ -149,13 +149,26 @@ export async function activeFreeCount(userId: string, exceptId?: string): Promis
   return row?.n ?? 0;
 }
 
-/** Moves a draft into the review queue. Paid tiers arrive here via checkout instead. */
+/** The listing's badge record: its status from our last check, and its DNS token. */
+export async function badgeRecord(productId: string) {
+  return db().query.badgeVerifications.findFirst({
+    where: eq(badgeVerifications.productId, productId),
+    columns: { status: true, dnsToken: true },
+  });
+}
+
+/** Moves a draft into the review queue. Free debuts need a verified badge; paid tiers arrive via checkout. */
 export async function submitForReview(productId: string, userId: string): Promise<Product> {
   const p = await getOwned(productId, userId);
   if (p.status !== "draft" && p.status !== "rejected") return p;
   if (p.tier === "free" && (await activeFreeCount(userId, p.id)) >= MAX_ACTIVE_FREE) {
     throw new ProductError(
       `You can have ${MAX_ACTIVE_FREE} free debuts waiting at a time. Upgrade this one, or wait for one to launch.`,
+    );
+  }
+  if (p.tier === "free" && (await badgeRecord(p.id))?.status !== "verified") {
+    throw new ProductError(
+      "Free debuts need the DebutYard badge on your site. Add it, run the check, and submit once we've found it.",
     );
   }
   const [updated] = await db()

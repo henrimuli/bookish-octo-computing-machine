@@ -54,14 +54,14 @@ export const SKUS = [
     "launch_fast_track",
     "Fast Track",
     1500,
-    "Instant debut on approval, no queue, no badge required, guaranteed dofollow link.",
+    "Instant debut on approval, 7 days featured, no badge required, guaranteed dofollow link.",
   ),
   oneTime(
     "launch",
     "launch_pro",
     "Pro Debut",
     3900,
-    "Instant debut on approval (or pick a week), 7 days featured, newsletter inclusion.",
+    "Instant debut on approval (or pick a week), 14 days featured, newsletter inclusion.",
   ),
   oneTime(
     "launch",

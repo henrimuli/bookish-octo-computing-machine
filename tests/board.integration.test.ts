@@ -141,6 +141,15 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     pricingModel: "freemium" as const,
   });
 
+  /** Marks a listing's badge as found, as a successful check would. */
+  async function badgeFound(productId: string) {
+    await dbmod
+      .db()
+      .update(dbmod.schema.badgeVerifications)
+      .set({ status: "verified", method: "html", lastCheckedAt: new Date(), lastSeenAt: new Date() })
+      .where(eq(dbmod.schema.badgeVerifications.productId, productId));
+  }
+
   /** Creates an approved listing in a given week, bypassing review. */
   async function liveProduct(userId: string, domain: string, week = thisWeek) {
     const p = await products.saveProduct(userId, input(domain));
@@ -162,7 +171,9 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     });
     expect(badge?.dnsToken).toMatch(/^[0-9a-f]{24}$/);
 
-    await products.submitForReview(p.id, u);
+    await expect(products.submitForReview(p.id, u)).rejects.toThrow(/need the DebutYard badge/);
+    await badgeFound(p.id);
+    expect((await products.submitForReview(p.id, u)).status).toBe("pending");
     const other = await makeUser();
     await expect(products.saveProduct(other, input("www.acme.app", "Acme 2"))).rejects.toThrow(/already listed/);
   });
@@ -171,9 +182,11 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     const u = await makeUser();
     for (const d of ["a.io", "b.io"]) {
       const p = await products.saveProduct(u, input(d));
+      await badgeFound(p.id);
       await products.submitForReview(p.id, u);
     }
     const third = await products.saveProduct(u, input("c.io"));
+    await badgeFound(third.id);
     await expect(products.submitForReview(third.id, u)).rejects.toThrow(/2 free debuts/);
   });
 
@@ -187,11 +200,13 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
       .where(eq(dbmod.schema.launchWeeks.key, nextWeek));
 
     const first = await products.saveProduct(u, input("one.io"));
+    await badgeFound(first.id);
     await products.submitForReview(first.id, u);
     expect((await moderation.approve(first.id)).launchWeekKey).toBe(nextWeek);
 
     const u2 = await makeUser();
     const second = await products.saveProduct(u2, input("two.io"));
+    await badgeFound(second.id);
     await products.submitForReview(second.id, u2);
     expect((await moderation.approve(second.id)).launchWeekKey).toBe(addWeeks(nextWeek, 1));
     expect(sent.some((e) => e.subject.includes("is approved"))).toBe(true);
@@ -688,7 +703,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(report).toMatchObject({ url: "https://acme.io/", domain: "acme.io", ready: true });
     expect(report.checks.find((c) => c.id === "badge")?.status).toBe("warn");
     expect(report.suggested?.name).toBe("Acme");
-    expect(report.nextWeeks.paid[0].key).toBe(addWeeks(thisWeek, 1));
+    expect(report.nextWeeks.paid[0].key).toBe(thisWeek);
 
     await liveProduct(await makeUser(), "listed.io");
     const dup = await checkReadiness("https://listed.io", { clientKey: "1.2.3.4", source: "web" });
