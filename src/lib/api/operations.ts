@@ -46,7 +46,7 @@ export async function searchProducts(raw: z.input<typeof searchInput>) {
       tagline: products.tagline,
       websiteUrl: products.websiteUrl,
       launchWeekKey: products.launchWeekKey,
-      votes: sql<number>`(select count(*)::int from votes v where v.product_id = ${products.id})`,
+      applause: sql<number>`(select count(*)::int from applause v where v.product_id = ${products.id})`,
     })
     .from(products)
     .where(
@@ -67,7 +67,7 @@ export async function searchProducts(raw: z.input<typeof searchInput>) {
     website: r.websiteUrl,
     url: site(`/p/${r.slug}`),
     debutWeek: r.launchWeekKey,
-    votes: r.votes,
+    applause: r.applause,
   }));
 }
 
@@ -90,7 +90,7 @@ export async function getProduct(raw: z.input<typeof getInput>) {
     categories: data.categories,
     maker: data.maker ? { name: data.maker.name, handle: data.maker.handle } : null,
     debutWeek: p.launchWeekKey ? { key: p.launchWeekKey, label: formatWeekLabel(p.launchWeekKey) } : null,
-    votes: data.votes,
+    applause: data.applause,
     weekRank: data.weekRank,
     awards: data.awards.map((a) => ({ scope: a.scope, period: a.periodKey, place: a.place })),
   };
@@ -200,7 +200,7 @@ export async function myLaunches(user: ApiUser | null) {
     tier: p.tier,
     debutWeek: p.launchWeekKey,
     badge: badge?.status ?? "unverified",
-    votes: stats.votes,
+    applause: stats.applause,
     comments: stats.comments,
     views30d: stats.views_30d,
     clicks30d: stats.clicks_30d,

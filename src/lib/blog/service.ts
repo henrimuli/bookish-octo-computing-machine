@@ -137,20 +137,20 @@ export async function recapMarkdown(weekKey: string) {
   const winners = awards.map((a) => ({ a, p: byId.get(a.productId) })).filter((x) => x.p);
   const winnerIds = new Set(winners.map((w) => w.p!.id));
   const others = board.filter((p) => !winnerIds.has(p.id));
-  const totalVotes = board.reduce((n, p) => n + p.votes, 0);
+  const totalApplause = board.reduce((n, p) => n + p.applause, 0);
   const name = (p: { name: string }) => escapeMarkdown(p.name);
   const line = (p: (typeof board)[number]) => `[${name(p)}](/p/${p.slug}): ${escapeMarkdown(p.tagline)}`;
 
   const top = winners[0]?.p;
   const title = top ? `${label} recap: ${top.name} takes Debut of the Week` : `${label} recap`;
   const parts = [
-    `${board.length} product${board.length === 1 ? "" : "s"} debuted on DebutYard in ${label} (${formatWeekRange(weekKey)}), and the community cast ${totalVotes} vote${totalVotes === 1 ? "" : "s"}.`,
+    `${board.length} product${board.length === 1 ? "" : "s"} debuted on DebutYard in ${label} (${formatWeekRange(weekKey)}), and the community gave ${totalApplause} clap${totalApplause === 1 ? "" : "s"}.`,
   ];
   if (winners.length) {
     parts.push(
       "## Debut of the Week",
       winners
-        .map(({ a, p }) => `${MEDALS[a.place - 1] ?? `#${a.place}`} **${line(p!)}** (${p!.votes} votes)`)
+        .map(({ a, p }) => `${MEDALS[a.place - 1] ?? `#${a.place}`} **${line(p!)}** (${p!.applause} applause)`)
         .join("\n\n"),
     );
   }
@@ -166,7 +166,7 @@ export async function recapMarkdown(weekKey: string) {
   }
   parts.push(
     "## Debut next",
-    "A new class debuts every Monday. [Submit your product](/submit) or [vote on this week's debuts](/).",
+    "A new class debuts every Monday. [Submit your product](/submit) or [applaud this week's debuts](/).",
   );
   return { title, body: parts.join("\n\n") };
 }

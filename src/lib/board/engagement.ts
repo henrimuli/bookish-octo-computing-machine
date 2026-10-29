@@ -4,9 +4,9 @@ import { createHash } from "node:crypto";
 import { db, schema } from "@/db";
 import { env } from "@/env";
 import { weekKeyFor } from "@/lib/weeks";
-import { VOTES_PER_HOUR, voteWeight } from "./ranking";
+import { APPLAUSE_PER_HOUR, applauseWeight } from "./ranking";
 
-const { votes, comments, products, user } = schema;
+const { applause, comments, products, user } = schema;
 
 export class EngagementError extends Error {}
 
@@ -28,44 +28,48 @@ async function assertLive(productId: string) {
   return p;
 }
 
-/** Toggles the user's vote. Returns whether they now have a vote on it. */
-export async function toggleVote(args: {
+/** Gives or takes back the user's clap. Returns whether they now applaud it, and the product's applause. */
+export async function toggleApplause(args: {
   userId: string;
   productId: string;
   ip: string | null;
   userAgent: string | null;
-}): Promise<{ voted: boolean; votes: number }> {
+}): Promise<{ applauded: boolean; applause: number }> {
   await assertLive(args.productId);
 
-  const existing = await db().query.votes.findFirst({
-    where: and(eq(votes.productId, args.productId), eq(votes.userId, args.userId)),
+  const existing = await db().query.applause.findFirst({
+    where: and(eq(applause.productId, args.productId), eq(applause.userId, args.userId)),
   });
   if (existing) {
     await db()
-      .delete(votes)
-      .where(and(eq(votes.productId, args.productId), eq(votes.userId, args.userId)));
+      .delete(applause)
+      .where(and(eq(applause.productId, args.productId), eq(applause.userId, args.userId)));
   } else {
     const hourAgo = new Date(Date.now() - 3600_000);
     const [recent] = await db()
       .select({ n: count() })
-      .from(votes)
-      .where(and(eq(votes.userId, args.userId), gte(votes.createdAt, hourAgo)));
-    if ((recent?.n ?? 0) >= VOTES_PER_HOUR) throw new EngagementError("You're voting very fast. Take a short break.");
+      .from(applause)
+      .where(and(eq(applause.userId, args.userId), gte(applause.createdAt, hourAgo)));
+    if ((recent?.n ?? 0) >= APPLAUSE_PER_HOUR)
+      throw new EngagementError("You're applauding very fast. Take a short break.");
 
-    const voter = await db().query.user.findFirst({ where: eq(user.id, args.userId), columns: { createdAt: true } });
+    const applauder = await db().query.user.findFirst({
+      where: eq(user.id, args.userId),
+      columns: { createdAt: true },
+    });
     const ipHash = fingerprint(args.ip);
     const [sameIp] = ipHash
       ? await db()
           .select({ n: count() })
-          .from(votes)
-          .where(and(eq(votes.productId, args.productId), eq(votes.ipHash, ipHash)))
+          .from(applause)
+          .where(and(eq(applause.productId, args.productId), eq(applause.ipHash, ipHash)))
       : [{ n: 0 }];
-    const { weight, flagReason } = voteWeight({
-      accountAgeHours: voter ? (Date.now() - voter.createdAt.getTime()) / 3600_000 : 0,
-      sameIpVotesOnProduct: sameIp?.n ?? 0,
+    const { weight, flagReason } = applauseWeight({
+      accountAgeHours: applauder ? (Date.now() - applauder.createdAt.getTime()) / 3600_000 : 0,
+      sameIpApplauseOnProduct: sameIp?.n ?? 0,
     });
     await db()
-      .insert(votes)
+      .insert(applause)
       .values({
         productId: args.productId,
         userId: args.userId,
@@ -77,8 +81,8 @@ export async function toggleVote(args: {
       .onConflictDoNothing();
   }
 
-  const [total] = await db().select({ n: count() }).from(votes).where(eq(votes.productId, args.productId));
-  return { voted: !existing, votes: total?.n ?? 0 };
+  const [total] = await db().select({ n: count() }).from(applause).where(eq(applause.productId, args.productId));
+  return { applauded: !existing, applause: total?.n ?? 0 };
 }
 
 export const MAX_COMMENT_LENGTH = 2000;

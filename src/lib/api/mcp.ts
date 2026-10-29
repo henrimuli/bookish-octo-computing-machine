@@ -57,7 +57,7 @@ export const TOOLS: Tool[] = [
   {
     name: "get_product",
     title: "Get product",
-    description: "Full details for one live product: description, maker, categories, votes, rank and awards.",
+    description: "Full details for one live product: description, maker, categories, applause, rank and awards.",
     input: getInput,
     readOnly: true,
     run: (args) => getProduct(args as z.input<typeof getInput>),
@@ -126,7 +126,7 @@ export const TOOLS: Tool[] = [
     name: "get_my_launches",
     title: "My launches",
     description:
-      "The user's listings with status, debut week, badge status, votes, views and clicks (needs an API token).",
+      "The user's listings with status, debut week, badge status, applause, views and clicks (needs an API token).",
     input: z.object({}),
     readOnly: true,
     run: (_args, ctx) => myLaunches(ctx.user),

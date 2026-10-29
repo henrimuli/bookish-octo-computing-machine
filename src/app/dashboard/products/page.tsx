@@ -104,7 +104,7 @@ async function Products() {
 
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               {[
-                ["Votes", stats.votes],
+                ["Applause", stats.applause],
                 ["Comments", stats.comments],
                 ["Views (30d)", stats.views_30d],
                 ["Clicks to site (30d)", stats.clicks_30d],

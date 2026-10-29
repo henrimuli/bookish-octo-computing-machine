@@ -2,17 +2,25 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/primitives";
 import type { BoardItem } from "@/lib/board/queries";
 import { ProductLogo } from "./product-logo";
-import { VoteButton } from "./vote-button";
+import { ClapButton } from "./clap-button";
 
 const medals = ["🥇", "🥈", "🥉"];
 
-export function ProductRow({ item, showRank = true }: { item: BoardItem; showRank?: boolean }) {
+export function ProductRow({
+  item,
+  showRank = true,
+  signedIn,
+}: {
+  item: BoardItem;
+  showRank?: boolean;
+  signedIn?: boolean;
+}) {
   return (
     <li className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/20">
       {showRank && (
         <span className="w-6 shrink-0 text-center font-display text-lg font-bold text-muted-foreground">
-          {/* Medals only for placings that can win: awards need at least one vote. */}
-          {item.rank <= 3 && item.votes > 0 ? medals[item.rank - 1] : item.rank}
+          {/* Medals only for placings that can win: awards need at least one clap. */}
+          {item.rank <= 3 && item.applause > 0 ? medals[item.rank - 1] : item.rank}
         </span>
       )}
       <ProductLogo name={item.name} src={item.logoUrl} />
@@ -35,7 +43,7 @@ export function ProductRow({ item, showRank = true }: { item: BoardItem; showRan
           {item.tier !== "free" && <Badge tone="accent">Featured</Badge>}
         </div>
       </div>
-      <VoteButton productId={item.id} voted={item.votedByMe} votes={item.votes} />
+      <ClapButton productId={item.id} applauded={item.applaudedByMe} applause={item.applause} signedIn={signedIn} />
     </li>
   );
 }

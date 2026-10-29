@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { nextDuelAction, pickWinnerAction } from "@/app/(site)/vote/actions";
+import { nextDuelAction, pickWinnerAction } from "@/app/(site)/applause/actions";
 import { Button } from "@/components/ui/button";
 import { Badge, Card } from "@/components/ui/primitives";
 import type { DuelProduct } from "@/lib/board/duels";
@@ -27,7 +27,7 @@ export function Duel({ initial, signedIn }: { initial: [DuelProduct, DuelProduct
   }
 
   function pick(winner: DuelProduct) {
-    if (!signedIn) return router.push(`/sign-in?next=${encodeURIComponent("/vote")}`);
+    if (!signedIn) return router.push(`/sign-in?next=${encodeURIComponent("/applause")}`);
     setError(null);
     start(async () => {
       const res = await pickWinnerAction(winner.id);

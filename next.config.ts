@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
       { source: "/submit/:id", destination: "/dashboard/products/:id", permanent: false },
       // Prices now sit next to what they're for (submit flow, directory service, dashboard).
       { source: "/pricing", destination: "/", permanent: false },
+      // Voting is now Applause.
+      { source: "/vote", destination: "/applause", permanent: true },
     ];
   },
 };

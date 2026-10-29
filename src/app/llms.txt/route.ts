@@ -16,7 +16,7 @@ export async function GET() {
     `> ${site.description}`,
     "",
     "## Key pages",
-    `- [This week's debuts](${base}/): products launching this week, ranked by community votes`,
+    `- [This week's debuts](${base}/): products launching this week, ranked by community applause`,
     `- [Past weeks](${base}/weeks): every weekly board, with final rankings`,
     `- [Categories](${base}/categories): products by category`,
     `- [How ranking works](${base}/how-ranking-works): scoring and anti-manipulation rules`,

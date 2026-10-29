@@ -31,7 +31,7 @@ export async function PeriodBoard({ scope, periodKey }: { scope: "month" | "year
         {items.length ? (
           <ol className="space-y-3">
             {items.map((item) => (
-              <ProductRow key={item.id} item={item} />
+              <ProductRow key={item.id} item={item} signedIn={Boolean(user)} />
             ))}
           </ol>
         ) : (

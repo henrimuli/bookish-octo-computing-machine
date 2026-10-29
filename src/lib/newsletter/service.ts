@@ -97,7 +97,7 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
       name: p!.name,
       tagline: p!.tagline,
       url: url(`/p/${p!.slug}`),
-      votes: p!.votes,
+      applause: p!.applause,
       place: a.place,
     }));
   const winnerIds = new Set(awards.map((a) => a.productId));
@@ -115,7 +115,7 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
     topOfWeek: closedBoard
       .filter((p) => !winnerIds.has(p.id))
       .slice(0, 7)
-      .map((p) => ({ name: p.name, tagline: p.tagline, url: url(`/p/${p.slug}`), votes: p.votes })),
+      .map((p) => ({ name: p.name, tagline: p.tagline, url: url(`/p/${p.slug}`), applause: p.applause })),
     debutingNow: debuting,
     sponsor: await newsletterSponsor(newWeek),
     siteUrl: url("/"),

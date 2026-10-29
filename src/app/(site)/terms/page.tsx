@@ -15,7 +15,7 @@ export default function TermsPage() {
 
       <h2>What we offer</h2>
       <ul>
-        <li>A launch board where makers list products and the community votes on them each week.</li>
+        <li>A launch board where makers list products and the community applauds them each week.</li>
         <li>Paid debut tiers, featured placements and newsletter sponsorships.</li>
         <li>
           A directory submission service: we submit your product to third-party directories by hand and report the
@@ -38,10 +38,11 @@ export default function TermsPage() {
         </li>
       </ul>
 
-      <h2>Voting and fair play</h2>
+      <h2>Applause and fair play</h2>
       <p>
-        Buying, trading or automating votes, or creating accounts to vote, is not allowed. We filter suspicious votes
-        and may disqualify products or close accounts involved in manipulation. Paid plans buy placement, never votes.
+        Buying, trading or automating applause, or creating accounts to applaud, is not allowed. We filter suspicious
+        applause and may disqualify products or close accounts involved in manipulation. Paid plans buy placement, never
+        applause.
       </p>
 
       <h2>Free listings and the badge</h2>

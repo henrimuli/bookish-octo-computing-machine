@@ -114,8 +114,9 @@ export const productMedia = pgTable("product_media", {
   position: integer("position").notNull().default(0),
 });
 
-export const votes = pgTable(
-  "votes",
+/** One row per account per product: that account's applause (a clap). */
+export const applause = pgTable(
+  "applause",
   {
     productId: uuid("product_id")
       .notNull()
@@ -133,8 +134,8 @@ export const votes = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.productId, t.userId] }),
-    index("votes_user_created_idx").on(t.userId, t.createdAt),
-    index("votes_ip_created_idx").on(t.ipHash, t.createdAt),
+    index("applause_user_created_idx").on(t.userId, t.createdAt),
+    index("applause_ip_created_idx").on(t.ipHash, t.createdAt),
   ],
 );
 

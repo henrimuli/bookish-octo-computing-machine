@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isFollowed, listingRel, withRef } from "@/lib/board/links";
-import { rank, voteWeight } from "@/lib/board/ranking";
+import { rank, applauseWeight } from "@/lib/board/ranking";
 import { domainOf, slugify } from "@/lib/slug";
 import { productInput } from "./input";
 import { extractPrefill } from "./prefill";
@@ -76,21 +76,24 @@ describe("productInput", () => {
 
 describe("ranking", () => {
   it("down-weights new accounts and shared IPs", () => {
-    expect(voteWeight({ accountAgeHours: 500, sameIpVotesOnProduct: 0 })).toEqual({ weight: 1, flagReason: null });
-    expect(voteWeight({ accountAgeHours: 1, sameIpVotesOnProduct: 0 }).weight).toBe(0.25);
-    expect(voteWeight({ accountAgeHours: 1, sameIpVotesOnProduct: 5 })).toEqual({
+    expect(applauseWeight({ accountAgeHours: 500, sameIpApplauseOnProduct: 0 })).toEqual({
+      weight: 1,
+      flagReason: null,
+    });
+    expect(applauseWeight({ accountAgeHours: 1, sameIpApplauseOnProduct: 0 }).weight).toBe(0.25);
+    expect(applauseWeight({ accountAgeHours: 1, sameIpApplauseOnProduct: 5 })).toEqual({
       weight: 0.1,
       flagReason: "new account, shared IP",
     });
   });
 
-  it("orders by score, then votes, then approval time", () => {
+  it("orders by score, then applause, then approval time", () => {
     const t = (h: number) => new Date(Date.UTC(2026, 9, 26, h));
     const ranked = rank([
-      { id: "a", score: 5, votes: 5, approvedAt: t(2) },
-      { id: "b", score: 7, votes: 3, approvedAt: t(3) },
-      { id: "c", score: 5, votes: 6, approvedAt: t(4) },
-      { id: "d", score: 5, votes: 5, approvedAt: t(1) },
+      { id: "a", score: 5, applause: 5, approvedAt: t(2) },
+      { id: "b", score: 7, applause: 3, approvedAt: t(3) },
+      { id: "c", score: 5, applause: 6, approvedAt: t(4) },
+      { id: "d", score: 5, applause: 5, approvedAt: t(1) },
     ]);
     expect(ranked.map((r) => [r.id, r.rank])).toEqual([
       ["b", 1],

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatWeekLabel } from "@/lib/weeks";
+import { ApplauseCount } from "./clap-icon";
 import { ProductLogo } from "./product-logo";
 
 export type SimpleItem = {
@@ -8,7 +9,7 @@ export type SimpleItem = {
   tagline: string;
   logo_url: string | null;
   launch_week_key: string;
-  votes: number;
+  applause: number;
 };
 
 /** Read-only product list for category and builder pages. */
@@ -25,7 +26,7 @@ export function SimpleList({ items }: { items: SimpleItem[] }) {
             <p className="truncate text-sm text-muted-foreground">{p.tagline}</p>
             <p className="mt-1 text-xs text-muted-foreground">Debuted {formatWeekLabel(p.launch_week_key)}</p>
           </div>
-          <span className="text-sm font-semibold text-muted-foreground">▲ {p.votes}</span>
+          <ApplauseCount count={p.applause} className="text-sm font-semibold text-muted-foreground" />
         </li>
       ))}
     </ul>

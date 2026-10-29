@@ -58,7 +58,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
     linkUsage(user.id),
   ]);
 
-  const sum = (k: "votes" | "views_30d" | "clicks_30d") => items.reduce((n, i) => n + i.stats[k], 0);
+  const sum = (k: "applause" | "views_30d" | "clicks_30d") => items.reduce((n, i) => n + i.stats[k], 0);
   const live = items.filter((i) => i.product.status === "approved" && hasStarted(i.product.launchWeekKey));
   const firstName = user.name?.split(" ")[0];
 
@@ -90,7 +90,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
 
   const stats: Array<{ label: string; value: string | number; note: string; icon: IconName }> = [
     { label: "Products", value: items.length, note: `${live.length} live`, icon: "products" },
-    { label: "Votes", value: sum("votes"), note: "all time", icon: "review" },
+    { label: "Applause", value: sum("applause"), note: "all time", icon: "review" },
     { label: "Views", value: sum("views_30d"), note: "last 30 days", icon: "overview" },
     { label: "Clicks to your sites", value: sum("clicks_30d"), note: "last 30 days", icon: "external" },
   ];
@@ -169,9 +169,9 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
                         <div className="hidden gap-5 text-right text-xs text-muted-foreground sm:flex">
                           <span>
                             <span className="block font-display text-base font-semibold text-foreground">
-                              {st.votes}
+                              {st.applause}
                             </span>
-                            votes
+                            applause
                           </span>
                           <span>
                             <span className="block font-display text-base font-semibold text-foreground">

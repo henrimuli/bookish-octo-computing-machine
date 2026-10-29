@@ -1,6 +1,6 @@
 /**
  * Launch board flows against a real Postgres: listings, scheduling, paid tiers,
- * moderation refunds, voting, ranking and the weekly rollover.
+ * moderation refunds, applause, ranking and the weekly rollover.
  * Runs when TEST_DATABASE_URL is set; the database is wiped.
  */
 import { and, eq, sql } from "drizzle-orm";
@@ -117,7 +117,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     fake.verifyResult = null;
     fake.refunds = [];
     await dbmod.db().execute(
-      sql`truncate products, launch_weeks, votes, comments, awards, orders, payment_events, refunds, closed_periods,
+      sql`truncate products, launch_weeks, applause, comments, awards, orders, payment_events, refunds, closed_periods,
           newsletter_subscribers, newsletter_issues, posts, ad_bookings, readiness_checks, api_tokens, "user" cascade`,
     );
   });
@@ -279,30 +279,34 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(sent.some((e) => e.subject.startsWith("About your DebutYard submission"))).toBe(true);
   });
 
-  it("only allows votes on live products, weights new accounts, and toggles", async () => {
+  it("only allows applause on live products, weights new accounts, and toggles", async () => {
     const maker = await makeUser();
     const upcoming = await liveProduct(maker, "soon.io", nextWeek);
-    const voter = await makeUser(1); // brand-new account
+    const applauder = await makeUser(1); // brand-new account
     await expect(
-      engagement.toggleVote({ userId: voter, productId: upcoming.id, ip: "1.2.3.4", userAgent: "x" }),
+      engagement.toggleApplause({ userId: applauder, productId: upcoming.id, ip: "1.2.3.4", userAgent: "x" }),
     ).rejects.toThrow(/isn't live/);
 
     const live = await liveProduct(maker, "live.io");
-    expect(await engagement.toggleVote({ userId: voter, productId: live.id, ip: "1.2.3.4", userAgent: "x" })).toEqual({
-      voted: true,
-      votes: 1,
+    expect(
+      await engagement.toggleApplause({ userId: applauder, productId: live.id, ip: "1.2.3.4", userAgent: "x" }),
+    ).toEqual({
+      applauded: true,
+      applause: 1,
     });
-    const [vote] = await dbmod.db().select().from(dbmod.schema.votes);
-    expect(vote).toMatchObject({ weight: 0.25, flagReason: "new account" });
-    expect(vote.ipHash).not.toContain("1.2.3.4");
+    const [clap] = await dbmod.db().select().from(dbmod.schema.applause);
+    expect(clap).toMatchObject({ weight: 0.25, flagReason: "new account" });
+    expect(clap.ipHash).not.toContain("1.2.3.4");
 
-    expect(await engagement.toggleVote({ userId: voter, productId: live.id, ip: null, userAgent: null })).toEqual({
-      voted: false,
-      votes: 0,
+    expect(
+      await engagement.toggleApplause({ userId: applauder, productId: live.id, ip: null, userAgent: null }),
+    ).toEqual({
+      applauded: false,
+      applause: 0,
     });
   });
 
-  it("ranks the week by weighted votes plus substantive comments", async () => {
+  it("ranks the week by weighted applause plus substantive comments", async () => {
     const maker = await makeUser();
     const a = await liveProduct(maker, "alpha.io");
     const maker2 = await makeUser();
@@ -311,16 +315,16 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     const veteran = await makeUser();
     const newbie1 = await makeUser(1);
     const newbie2 = await makeUser(1);
-    await engagement.toggleVote({ userId: veteran, productId: a.id, ip: "9.9.9.1", userAgent: null });
-    await engagement.toggleVote({ userId: newbie1, productId: b.id, ip: "9.9.9.2", userAgent: null });
-    await engagement.toggleVote({ userId: newbie2, productId: b.id, ip: "9.9.9.3", userAgent: null });
-    // b has more raw votes (2 vs 1) but new accounts weigh 0.25 each → 0.5 < 1.
+    await engagement.toggleApplause({ userId: veteran, productId: a.id, ip: "9.9.9.1", userAgent: null });
+    await engagement.toggleApplause({ userId: newbie1, productId: b.id, ip: "9.9.9.2", userAgent: null });
+    await engagement.toggleApplause({ userId: newbie2, productId: b.id, ip: "9.9.9.3", userAgent: null });
+    // b has more raw applause (2 vs 1) but new accounts weigh 0.25 each → 0.5 < 1.
     let board = await queries.weekBoard(thisWeek, veteran);
-    expect(board.map((x) => [x.slug, x.votes, x.score])).toEqual([
+    expect(board.map((x) => [x.slug, x.applause, x.score])).toEqual([
       ["alpha-io", 1, 1],
       ["beta-io", 2, 0.5],
     ]);
-    expect(board[0].votedByMe).toBe(true);
+    expect(board[0].applaudedByMe).toBe(true);
 
     // Two substantive comments (+0.5 each) put b ahead; the maker's own comment doesn't count.
     await engagement.addComment({
@@ -342,21 +346,21 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(board[0]).toMatchObject({ slug: "beta-io", score: 1.5, comments: 3 });
   });
 
-  it("closes ended weeks once: awards the top 3 with votes and makes them winners", async () => {
+  it("closes ended weeks once: awards the top 3 with applause and makes them winners", async () => {
     const lastWeek = addWeeks(thisWeek, -1);
-    const voters = [await makeUser(), await makeUser(), await makeUser()];
+    const applauders = [await makeUser(), await makeUser(), await makeUser()];
     const ids: string[] = [];
     for (const [i, d] of ["w1.io", "w2.io", "w3.io", "w4.io", "w5.io"].entries()) {
       const m = await makeUser();
       const p = await liveProduct(m, d, lastWeek);
       ids.push(p.id);
-      // w1 gets 3 votes, w2 2, w3 1, w4 1, w5 none — cast inside last week.
+      // w1 gets 3 applause, w2 2, w3 1, w4 1, w5 none — cast inside last week.
       const n = [3, 2, 1, 1, 0][i];
       for (let v = 0; v < n; v++) {
         await dbmod
           .db()
-          .insert(dbmod.schema.votes)
-          .values({ productId: p.id, userId: voters[v], weight: 1, createdAt: weekBounds(lastWeek).startsAt });
+          .insert(dbmod.schema.applause)
+          .values({ productId: p.id, userId: applauders[v], weight: 1, createdAt: weekBounds(lastWeek).startsAt });
       }
     }
 
@@ -420,29 +424,29 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
         { productId: p.id, kind: "outbound_click" },
       ]);
     const [row] = await dashboard.dashboardProducts(maker);
-    expect(row.stats).toMatchObject({ views_30d: 2, clicks_30d: 1, votes: 0 });
+    expect(row.stats).toMatchObject({ views_30d: 2, clicks_30d: 1, applause: 0 });
   });
 
-  async function voteAt(productId: string, userId: string, at: Date) {
-    await dbmod.db().insert(dbmod.schema.votes).values({ productId, userId, weight: 1, createdAt: at });
+  async function applaudAt(productId: string, userId: string, at: Date) {
+    await dbmod.db().insert(dbmod.schema.applause).values({ productId, userId, weight: 1, createdAt: at });
   }
 
   it("scores each product on its own debut week and awards ended months once", async () => {
     // September 2026 = W37..W40 (weeks whose Monday falls in September).
     const [w37, w38] = ["2026-W37", "2026-W38"];
-    const voters = [await makeUser(), await makeUser(), await makeUser()];
+    const applauders = [await makeUser(), await makeUser(), await makeUser()];
     const a = await liveProduct(await makeUser(), "sep-a.io", w37);
     const b = await liveProduct(await makeUser(), "sep-b.io", w38);
     const c = await liveProduct(await makeUser(), "sep-c.io", w38);
     const inWeek = (w: string) => new Date(weekBounds(w).startsAt.getTime() + 3600_000);
-    await voteAt(a.id, voters[0], inWeek(w37));
-    await voteAt(a.id, voters[1], inWeek(w37));
-    for (const v of voters) await voteAt(b.id, v, inWeek(w38));
-    // Votes after a product's debut week show on the page but don't score.
-    for (const v of voters) await voteAt(c.id, v, inWeek("2026-W39"));
+    await applaudAt(a.id, applauders[0], inWeek(w37));
+    await applaudAt(a.id, applauders[1], inWeek(w37));
+    for (const v of applauders) await applaudAt(b.id, v, inWeek(w38));
+    // Applause after a product's debut week show on the page but don't score.
+    for (const v of applauders) await applaudAt(c.id, v, inWeek("2026-W39"));
 
     const board = await queries.boardForWeeks([w37, w38]);
-    expect(board.map((p) => [p.slug, p.votes, p.score, p.weekKey])).toEqual([
+    expect(board.map((p) => [p.slug, p.applause, p.score, p.weekKey])).toEqual([
       ["sep-b-io", 3, 3, w38],
       ["sep-a-io", 2, 2, w37],
       ["sep-c-io", 3, 0, w38],
@@ -464,11 +468,11 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(await dbmod.db().select().from(dbmod.schema.awards)).toHaveLength(2);
   });
 
-  it("serves duel pairs the viewer hasn't voted on and runs out cleanly", async () => {
+  it("serves duel pairs the viewer hasn't applauded and runs out cleanly", async () => {
     const viewer = await makeUser();
     const ps = [];
     for (const d of ["d1.io", "d2.io", "d3.io"]) ps.push(await liveProduct(await makeUser(), d));
-    await voteAt(ps[0].id, viewer, new Date());
+    await applaudAt(ps[0].id, viewer, new Date());
 
     const pair = await duels.duelPair(viewer);
     expect(pair?.map((p) => p.id).sort()).toEqual([ps[1].id, ps[2].id].sort());
@@ -492,9 +496,9 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(await newsletter.sendWeeklyDigest(now)).toEqual({ skipped: "week not closed" });
 
     const lastWeek = addWeeks(thisWeek, -1);
-    const voter = await makeUser();
+    const applauder = await makeUser();
     const w = await liveProduct(await makeUser(), "digest-win.io", lastWeek);
-    await voteAt(w.id, voter, weekBounds(lastWeek).startsAt);
+    await applaudAt(w.id, applauder, weekBounds(lastWeek).startsAt);
     await liveProduct(await makeUser(), "digest-new.io", thisWeek);
     await rollover.closeEndedWeeks();
 
@@ -532,7 +536,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     const lastWeek = addWeeks(thisWeek, -1);
     expect(await blog.draftWeeklyRecap(now)).toEqual({ skipped: "week not closed" });
 
-    const voter = await makeUser();
+    const applauder = await makeUser();
     const p = await products.saveProduct(await makeUser(), {
       ...input("recap-a.io", "Evil [x](javascript:alert(1))"),
     });
@@ -543,7 +547,7 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
       .set({ status: "approved", launchWeekKey: lastWeek, approvedAt: new Date() })
       .where(eq(dbmod.schema.products.id, p.id));
     await liveProduct(await makeUser(), "recap-b.io", lastWeek);
-    await voteAt(p.id, voter, weekBounds(lastWeek).startsAt);
+    await applaudAt(p.id, applauder, weekBounds(lastWeek).startsAt);
     await rollover.closeEndedWeeks();
 
     const res = await blog.draftWeeklyRecap(now);
