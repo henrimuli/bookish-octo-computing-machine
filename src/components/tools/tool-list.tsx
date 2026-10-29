@@ -36,7 +36,7 @@ export function freeTools(): FreeTool[] {
     {
       href: "/tools/dofollow-checker",
       label: "Dofollow link checker",
-      description: "See whether a page links to your site, and if the link passes SEO value.",
+      description: "See whether that link you got is really dofollow.",
       icon: (
         <svg {...ICON}>
           <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
