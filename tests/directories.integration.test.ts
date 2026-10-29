@@ -167,7 +167,13 @@ describe.skipIf(!TEST_DB)("directories and submissions (Postgres)", () => {
     const linkType = (d: (typeof usable)[number]) =>
       d.linkTypeObserved === "unknown" ? d.linkTypeClaimed : d.linkTypeObserved;
     expect(stats.dofollow).toBe(usable.filter((d) => linkType(d) === "dofollow").length);
-    expect(stats.medianDr).toBeGreaterThan(0);
+    // The seed may leave DR unmeasured; then there's no median to show.
+    const drs = usable.flatMap((d) => (d.dr === null ? [] : [d.dr]));
+    if (drs.length === 0) expect(stats.medianDr).toBeNull();
+    else {
+      expect(stats.medianDr).toBeGreaterThanOrEqual(Math.min(...drs));
+      expect(stats.medianDr).toBeLessThanOrEqual(Math.max(...drs));
+    }
   });
 
   it("imports CSV: updates by slug or host, creates new rows, reports bad rows", async () => {
