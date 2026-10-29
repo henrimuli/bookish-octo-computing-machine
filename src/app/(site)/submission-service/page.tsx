@@ -38,7 +38,7 @@ export default function SubmissionServicePage(props: PageProps<"/submission-serv
       <Heading>Get listed on 40–180 directories. Done for you.</Heading>
       <p className="mt-3 max-w-2xl text-muted-foreground">
         You keep building. We submit your product by hand to directories that fit it, verify every link ourselves, and
-        you follow each one from queued to live on your dashboard.
+        you follow each one&apos;s progress on your dashboard.
       </p>
       <TrustChips />
       <ServiceSteps />

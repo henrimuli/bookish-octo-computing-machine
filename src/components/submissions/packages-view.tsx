@@ -80,6 +80,7 @@ export async function PackageCards({ product, returnTo }: { product?: string; re
                   providers={providers}
                   productId={boost?.id}
                   returnTo={returnTo}
+                  accountEmail={user?.email}
                   className="mt-6"
                 />
               </Card>
