@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertPublicUrl, isPrivateIp, safeFetchText, UnsafeUrlError } from "./net";
+import { assertPublicUrl, isPrivateIp, safeFetchBytes, safeFetchText, UnsafeUrlError } from "./net";
 
 const publicDns = async () => ["93.184.216.34"];
 
@@ -65,5 +65,29 @@ describe("safeFetchText", () => {
     const fetchImpl = (async () => new Response("a".repeat(5000))) as unknown as typeof fetch;
     const res = await safeFetchText("https://big.example/", { fetchImpl, resolve: publicDns, maxBytes: 1000 });
     expect(res.body.length).toBeLessThan(5000);
+  });
+});
+
+describe("safeFetchBytes", () => {
+  const image = (bytes: number) => async () =>
+    new Response(new Uint8Array(bytes).fill(7), { status: 200, headers: { "content-type": "image/png" } });
+
+  it("returns the body as bytes", async () => {
+    const res = await safeFetchBytes("https://cdn.example/og.png", "image/*", {
+      fetchImpl: image(3000),
+      resolve: publicDns,
+    });
+    expect(res).toMatchObject({ status: 200, contentType: "image/png", truncated: false });
+    expect(res.body.byteLength).toBe(3000);
+  });
+
+  it("flags bodies cut off at maxBytes", async () => {
+    const res = await safeFetchBytes("https://cdn.example/og.png", "image/*", {
+      fetchImpl: image(3000),
+      resolve: publicDns,
+      maxBytes: 1000,
+    });
+    expect(res.truncated).toBe(true);
+    expect(res.body.byteLength).toBe(1000);
   });
 });

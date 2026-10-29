@@ -14,7 +14,7 @@ import type { Prefill } from "@/lib/products/prefill";
 import { planChoices, type PlanChoices } from "@/lib/products/plan-choices";
 import { prefillFromSite } from "@/lib/products/prefill-service";
 import { listCategories, screenshotsEnabled, uploadsEnabled } from "@/lib/products/queries";
-import { captureHomepage, SCREENSHOTS_PER_HOUR } from "@/lib/products/screenshots";
+import { captureHomepage, importOgImage, SCREENSHOTS_PER_HOUR } from "@/lib/products/screenshots";
 import {
   bookableWeeks,
   ProductError,
@@ -94,19 +94,26 @@ export async function saveProductAction(input: ProductInput, productId?: string)
   }
 }
 
-/** Screenshots the product's homepage (screenshot worker → R2). Runs alongside the prefill so it never holds the form up. */
-export async function screenshotAction(url: string): Promise<Result<{ url: string }>> {
+/**
+ * The listing's first screenshot: the homepage's OG image copied into R2, or,
+ * when the site has none we can use, a screenshot from the worker. Runs after
+ * the prefill (which finds the OG image), so it never holds the form up.
+ */
+export async function homepageImageAction(url: string, ogImageUrl?: string): Promise<Result<{ url: string }>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first." };
-  if (!screenshotsEnabled()) return { ok: false, error: "Screenshots aren't set up." };
+  if (!uploadsEnabled()) return { ok: false, error: "Screenshots aren't set up." };
+  if (!ogImageUrl && !screenshotsEnabled()) return { ok: false, error: "No homepage image found." };
   try {
     await spend("screenshot", url, { userId: user.id, clientKey: "web", source: "web" }, SCREENSHOTS_PER_HOUR);
   } catch (err) {
     if (err instanceof ToolError) return { ok: false, error: err.message };
     throw err;
   }
-  const shot = await captureHomepage(url);
-  return shot ? { ok: true, data: { url: shot } } : { ok: false, error: "We couldn't screenshot that site." };
+  const og = ogImageUrl ? await importOgImage(ogImageUrl) : null;
+  if (og) return { ok: true, data: { url: og } };
+  const shot = screenshotsEnabled() ? await captureHomepage(url) : null;
+  return shot ? { ok: true, data: { url: shot } } : { ok: false, error: "We couldn't get an image of that site." };
 }
 
 /** Presigned upload for a listing screenshot (R2). */

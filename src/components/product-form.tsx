@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { logoUploadAction, prefillAction, saveProductAction, screenshotAction } from "@/app/submit/actions";
+import { homepageImageAction, logoUploadAction, prefillAction, saveProductAction } from "@/app/submit/actions";
 import { ScreenshotsField } from "@/components/screenshots";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Spinner } from "@/components/ui/primitives";
@@ -54,7 +54,7 @@ export function ProductForm({
   initial?: ProductInput;
   productId?: string;
   uploadsEnabled: boolean;
-  /** The screenshot worker is set up: fetching also captures the homepage. */
+  /** The screenshot worker is set up: a fetch screenshots the homepage when it has no OG image. */
   screenshotsEnabled?: boolean;
   initialWebsiteUrl?: string;
   layout?: "page" | "modal";
@@ -104,12 +104,17 @@ export function ProductForm({
     return res.url;
   }
 
-  /** Screenshots the homepage into the first free slot. Runs beside the prefill, so the form fills first. */
-  async function capture(url: string) {
-    if (!screenshotsEnabled || screenshots.length >= MAX_SCREENSHOTS) return;
+  /**
+   * Puts the homepage's OG image (or, without one, a screenshot) into the first
+   * free slot. Called once the prefill has found the OG image, so the form fills first.
+   */
+  async function capture(url: string, ogImageUrl?: string) {
+    if (!uploadsEnabled || (!ogImageUrl && !screenshotsEnabled) || screenshots.length >= MAX_SCREENSHOTS) {
+      return setCapturing(false);
+    }
     setCapturing(true);
     try {
-      const res = await screenshotAction(url);
+      const res = await homepageImageAction(url, ogImageUrl);
       if (res.ok) {
         setValues((v) => {
           const shots = v.screenshots ?? [];
@@ -124,11 +129,16 @@ export function ProductForm({
   function prefill(url: string) {
     fetchedUrl.current = url;
     setMessage(null);
-    void capture(url);
+    const wantsImage = uploadsEnabled && screenshots.length < MAX_SCREENSHOTS;
+    if (wantsImage) setCapturing(true);
     startPrefill(async () => {
       const res = await prefillAction(url);
-      if (!res.ok) return setMessage(res.error);
+      if (!res.ok) {
+        if (wantsImage) void capture(url);
+        return setMessage(res.error);
+      }
       const d = res.data;
+      if (wantsImage) void capture(d.url, d.imageUrl);
       // Pre-tick suggested categories only if the maker hasn't picked any yet.
       const known = new Set(categories.map((c) => c.slug));
       const suggested = d.categories.filter((c) => known.has(c)).slice(0, MAX_CATEGORIES);

@@ -4,7 +4,7 @@ import { env } from "@/env";
 /**
  * Screenshots from the screenshot worker (workers/screenshot), which runs
  * Playwright off Vercel and stores PNGs in R2: directory evidence, and the
- * homepage capture on the debut form. Optional: without WORKER_URL, staff
+ * homepage capture on the debut form when a site has no OG image. Optional: without WORKER_URL, staff
  * paste evidence links by hand and makers upload their own screenshots.
  */
 
