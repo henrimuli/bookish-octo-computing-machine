@@ -29,9 +29,12 @@ describe("featured windows", () => {
     expect(isFeaturedNow("free", week, booked, at("2026-10-27T00:00:00Z"))).toBe(false);
   });
 
-  it("makes Spotlight the hero only during its debut week", () => {
-    expect(isHeroNow("spotlight", week, at("2026-10-30T00:00:00Z"))).toBe(true);
-    expect(isHeroNow("spotlight", week, at("2026-11-03T00:00:00Z"))).toBe(false);
-    expect(isHeroNow("premium", week, at("2026-10-30T00:00:00Z"))).toBe(false);
+  it("keeps Spotlight in the Spotlight for 30 days from going live, and only Spotlight", () => {
+    const approved = at("2026-10-28T15:00:00Z");
+    expect(isHeroNow("spotlight", week, approved, at("2026-10-28T14:59:59Z"))).toBe(false);
+    expect(isHeroNow("spotlight", week, approved, at("2026-11-20T00:00:00Z"))).toBe(true);
+    expect(isHeroNow("spotlight", week, approved, at("2026-11-27T14:59:59Z"))).toBe(true);
+    expect(isHeroNow("spotlight", week, approved, at("2026-11-27T15:00:00Z"))).toBe(false);
+    expect(isHeroNow("premium", week, approved, at("2026-10-30T00:00:00Z"))).toBe(false);
   });
 });

@@ -37,5 +37,10 @@ export async function reject(productId: string, reason: string) {
     await db().update(schema.products).set({ tier: "free" }).where(eq(schema.products.id, productId));
   }
   await notifyProductRejected(p, paid.length > 0);
+  if (current.tier === "spotlight") {
+    // Its spot is free again.
+    const { notifySpotlightWaitlist } = await import("./spotlight");
+    await notifySpotlightWaitlist().catch((err) => console.error("spotlight waitlist notify failed", err));
+  }
   return p;
 }

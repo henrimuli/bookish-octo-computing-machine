@@ -25,11 +25,7 @@ export default function ProductsPage() {
       <PageHeader
         title="Products"
         description="Your listings, their stats, and the badge that keeps your link followed."
-        actions={
-          <ButtonLink href="/?debut=1" scroll={false}>
-            Debut a product
-          </ButtonLink>
-        }
+        actions={<ButtonLink href="/dashboard/products/new">Debut a product</ButtonLink>}
       />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-muted/50" />}>
         <Products />
@@ -48,7 +44,7 @@ async function Products() {
       {items.length === 0 && (
         <Card className="text-center">
           <p className="font-medium">You haven&apos;t submitted anything yet.</p>
-          <ButtonLink href="/?debut=1" scroll={false} className="mt-4">
+          <ButtonLink href="/dashboard/products/new" className="mt-4">
             Debut your product
           </ButtonLink>
         </Card>

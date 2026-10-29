@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { redeemFastTrackAction, startTierCheckoutAction, submitFreeAction } from "@/app/submit/actions";
+import {
+  joinSpotlightWaitlistAction,
+  redeemFastTrackAction,
+  startTierCheckoutAction,
+  submitFreeAction,
+} from "@/app/submit/actions";
 import { BadgePanel } from "@/components/badge-panel";
 import { Button } from "@/components/ui/button";
 import { Badge, Input } from "@/components/ui/primitives";
@@ -29,6 +34,7 @@ export function PlanPicker({
   weeks,
   providers,
   freeFastTrack = null,
+  spotlightWaitlisted = false,
   badge,
   onSubmitted,
   onCheckout,
@@ -114,29 +120,33 @@ export function PlanPicker({
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {options.map((o) => (
-          <button
-            key={o.tier}
-            type="button"
-            disabled={!o.available}
-            onClick={() => setSelected(o.tier)}
-            aria-pressed={selected === o.tier}
-            className={cn(
-              "flex flex-col rounded-lg border bg-card p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-              selected === o.tier
-                ? "border-primary ring-2 ring-primary/30"
-                : "border-border hover:border-foreground/30",
-            )}
-          >
-            <span className="font-medium">{o.label}</span>
-            <span className="mt-1 font-display text-2xl font-bold">{o.price}</span>
-            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-              {o.perks.map((perk) => (
-                <li key={perk}>• {perk}</li>
-              ))}
-            </ul>
-          </button>
-        ))}
+        {options.map((o) =>
+          o.soldOut ? (
+            <SoldOutCard key={o.tier} option={o} productId={productId} waitlisted={spotlightWaitlisted} />
+          ) : (
+            <button
+              key={o.tier}
+              type="button"
+              disabled={!o.available}
+              onClick={() => setSelected(o.tier)}
+              aria-pressed={selected === o.tier}
+              className={cn(
+                "flex flex-col rounded-lg border bg-card p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                selected === o.tier
+                  ? "border-primary ring-2 ring-primary/30"
+                  : "border-border hover:border-foreground/30",
+              )}
+            >
+              <span className="font-medium">{o.label}</span>
+              <span className="mt-1 font-display text-2xl font-bold">{o.price}</span>
+              <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {o.perks.map((perk) => (
+                  <li key={perk}>• {perk}</li>
+                ))}
+              </ul>
+            </button>
+          ),
+        )}
       </div>
 
       <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-5">
@@ -243,6 +253,63 @@ export function PlanPicker({
           <p className="text-xs text-muted-foreground">Checkout opens in a new tab. Keep this one open.</p>
         )}
         {error && <p className="text-sm text-danger">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Spotlight with every spot taken: it can't be picked, but the maker can ask
+ * to be emailed when one of the spots opens.
+ */
+function SoldOutCard({
+  option,
+  productId,
+  waitlisted,
+}: {
+  option: PlanChoices["options"][number];
+  productId: string;
+  waitlisted: boolean;
+}) {
+  const [joined, setJoined] = useState(waitlisted);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  function join() {
+    setError(null);
+    start(async () => {
+      const res = await joinSpotlightWaitlistAction(productId);
+      if (!res.ok) return setError(res.error);
+      setJoined(true);
+    });
+  }
+
+  return (
+    <div className="flex flex-col rounded-lg border-2 border-dashed border-accent bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium">{option.label}</span>
+        <Badge tone="accent">Sold out</Badge>
+      </div>
+      <span className="mt-1 font-display text-2xl font-bold text-muted-foreground line-through decoration-1">
+        {option.price}
+      </span>
+      <ul className="mt-3 space-y-1 text-xs text-muted-foreground opacity-70">
+        {option.perks.map((perk) => (
+          <li key={perk}>• {perk}</li>
+        ))}
+      </ul>
+      <div className="mt-auto space-y-1.5 pt-4">
+        <p className="text-xs font-medium">All Spotlight spots are taken right now.</p>
+        {joined ? (
+          <p className="rounded-md bg-primary/10 px-2.5 py-2 text-xs text-primary">
+            You&apos;re on the waitlist. We&apos;ll email you when a spot opens.
+          </p>
+        ) : (
+          <Button size="sm" variant="outline" className="w-full" onClick={join} disabled={pending}>
+            {pending ? "Adding you…" : "Notify me when one opens"}
+          </Button>
+        )}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     </div>
   );

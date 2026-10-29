@@ -68,14 +68,14 @@ export const SKUS = [
     "launch_premium",
     "Premium Debut",
     7900,
-    "Instant debut on approval, 30 days featured, social posts, written launch post.",
+    "Instant debut on approval (or pick a week), 30 days featured, newsletter inclusion, written launch post.",
   ),
   oneTime(
     "launch",
     "launch_spotlight",
     "Spotlight",
     14900,
-    "Instant debut on approval, homepage hero for debut week, 40-directory submission package.",
+    "Instant debut on approval, 30 days in the homepage Spotlight (3 spots at any time), written launch post, 40-directory submission package.",
   ),
   oneTime("relaunch", "relaunch", "Relaunch", 1500, "One more week on the board for a new version."),
 

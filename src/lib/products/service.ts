@@ -15,28 +15,6 @@ export type Product = typeof products.$inferSelect;
 
 export class ProductError extends Error {}
 
-/** Spotlight hero slots per debut week. */
-export const SPOTLIGHTS_PER_WEEK = 3;
-
-/** Spotlights booked (or waiting for review) for a week, excluding one product. */
-export async function spotlightsBooked(weekKey: string, exceptId?: string): Promise<number> {
-  const [row] = await db()
-    .select({ n: count() })
-    .from(products)
-    .where(
-      and(
-        eq(products.tier, "spotlight"),
-        inArray(products.status, ["pending", "approved"]),
-        or(
-          eq(products.launchWeekKey, weekKey),
-          and(eq(products.status, "pending"), eq(products.requestedWeekKey, weekKey)),
-        ),
-        exceptId ? ne(products.id, exceptId) : undefined,
-      ),
-    );
-  return row?.n ?? 0;
-}
-
 /** Free debuts a maker can have waiting or scheduled at once. */
 export const MAX_ACTIVE_FREE = 2;
 const DEFAULT_FREE_CAPACITY = 30;

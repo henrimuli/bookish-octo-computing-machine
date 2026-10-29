@@ -176,6 +176,13 @@
       "when": 1793279712907,
       "tag": "20261029131512_applause",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793299107144,
+      "tag": "20261029183827_spotlight_waitlist",
+      "breakpoints": true
     }
   ]
 }

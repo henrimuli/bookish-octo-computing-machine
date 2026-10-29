@@ -33,6 +33,8 @@ export async function startCheckout(input: {
   userId?: string | null;
   couponCode?: string | null;
   metadata?: Record<string, unknown>;
+  /** "dashboard": the provider returns the buyer to /dashboard/checkout/* instead of /checkout/*. */
+  returnTo?: "dashboard";
 }): Promise<{ orderId: string; url: string }> {
   const sku = getSku(input.skuId);
   if (!sku || sku.type !== "one_time") throw new CheckoutError("Unknown product.");
@@ -58,6 +60,7 @@ export async function startCheckout(input: {
     .returning();
 
   const provider = getProvider(input.provider);
+  const base = input.returnTo === "dashboard" ? "/dashboard/checkout" : "/checkout";
   try {
     const session = await provider.createCheckout({
       orderId: order.id,
@@ -65,8 +68,8 @@ export async function startCheckout(input: {
       amountCents: price.amountCents,
       currency: "USD",
       description: `DebutYard: ${sku.name}`,
-      returnUrl: siteUrl(`/checkout/return?provider=${input.provider}&order=${order.id}`),
-      cancelUrl: siteUrl(`/checkout/cancelled?order=${order.id}`),
+      returnUrl: siteUrl(`${base}/return?provider=${input.provider}&order=${order.id}`),
+      cancelUrl: siteUrl(`${base}/cancelled?order=${order.id}`),
     });
     await db().update(orders).set({ providerRef: session.providerRef }).where(eq(orders.id, order.id));
     return { orderId: order.id, url: session.url };

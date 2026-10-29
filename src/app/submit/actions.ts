@@ -15,15 +15,8 @@ import { planChoices, type PlanChoices } from "@/lib/products/plan-choices";
 import { prefillFromSite } from "@/lib/products/prefill-service";
 import { listCategories, screenshotsEnabled, uploadsEnabled } from "@/lib/products/queries";
 import { captureHomepage, importOgImage, SCREENSHOTS_PER_HOUR } from "@/lib/products/screenshots";
-import {
-  assertHasScreenshot,
-  bookableWeeks,
-  ProductError,
-  saveProduct,
-  spotlightsBooked,
-  SPOTLIGHTS_PER_WEEK,
-  submitForReview,
-} from "@/lib/products/service";
+import { assertHasScreenshot, bookableWeeks, ProductError, saveProduct, submitForReview } from "@/lib/products/service";
+import { joinSpotlightWaitlist, spotlightAvailable } from "@/lib/products/spotlight";
 import { createUploadUrl, MAX_UPLOAD_BYTES } from "@/lib/storage";
 import { spend, ToolError } from "@/lib/tools/service";
 
@@ -210,8 +203,11 @@ export async function startTierCheckoutAction(args: {
     if (!args.weekKey || !bookableWeeks().includes(args.weekKey)) return { ok: false, error: "Pick a debut week." };
     weekKey = args.weekKey;
   }
-  if (args.tier === "spotlight" && (await spotlightsBooked(weekKey!, product.id)) >= SPOTLIGHTS_PER_WEEK) {
-    return { ok: false, error: "Spotlight is sold out for that week. Pick another week." };
+  if (args.tier === "spotlight" && !(await spotlightAvailable(product.id))) {
+    return {
+      ok: false,
+      error: "All 3 Spotlight spots are taken. Join the waitlist and we'll email you when one opens.",
+    };
   }
 
   try {
@@ -230,4 +226,18 @@ export async function startTierCheckoutAction(args: {
     console.error("tier checkout failed", err);
     return { ok: false, error: "Couldn't start checkout. Please try again." };
   }
+}
+
+/** Spotlight is full: email the maker when one of the 3 spots opens. */
+export async function joinSpotlightWaitlistAction(productId: string): Promise<Result> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  const owned = /^[0-9a-f-]{36}$/.test(productId)
+    ? await db().query.products.findFirst({
+        where: and(eq(schema.products.id, productId), eq(schema.products.createdBy, user.id)),
+        columns: { id: true },
+      })
+    : null;
+  await joinSpotlightWaitlist(user.id, owned?.id ?? null);
+  return { ok: true, data: undefined };
 }

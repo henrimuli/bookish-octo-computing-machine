@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
       area="Dashboard"
       groups={groups}
       actions={
-        <ButtonLink href="/?debut=1" className="w-full">
+        <ButtonLink href="/dashboard/products/new" className="w-full">
           <Icon name="plus" />
           Debut a product
         </ButtonLink>

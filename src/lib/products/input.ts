@@ -51,7 +51,7 @@ export const TIERS = {
   fast_track: { sku: "launch_fast_track", label: "Fast Track", picksWeek: false },
   pro: { sku: "launch_pro", label: "Pro Debut", picksWeek: true },
   premium: { sku: "launch_premium", label: "Premium Debut", picksWeek: true },
-  spotlight: { sku: "launch_spotlight", label: "Spotlight", picksWeek: true },
+  spotlight: { sku: "launch_spotlight", label: "Spotlight", picksWeek: false },
 } as const;
 
 export type Tier = keyof typeof TIERS;

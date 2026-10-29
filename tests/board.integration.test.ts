@@ -437,25 +437,55 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     expect(w1?.isWinner).toBe(true);
   });
 
-  it("caps Spotlight at three per week and features paid debuts", async () => {
-    const week = addWeeks(thisWeek, 2);
-    for (const d of ["s1.io", "s2.io", "s3.io"]) {
-      const m = await makeUser();
-      const p = await products.saveProduct(m, input(d));
-      await dbmod
-        .db()
-        .update(dbmod.schema.products)
-        .set({ tier: "spotlight", status: "pending", requestedWeekKey: week })
-        .where(eq(dbmod.schema.products.id, p.id));
-    }
-    expect(await products.spotlightsBooked(week)).toBe(3);
-    expect(await products.spotlightsBooked(addWeeks(week, 1))).toBe(0);
+  it("caps Spotlight at three at any time, waitlists makers and features paid debuts", async () => {
+    const P = dbmod.schema.products;
+    const spotlight = await import("@/lib/products/spotlight");
+    const setTo = (id: string, patch: Partial<typeof P.$inferInsert>) =>
+      dbmod.db().update(P).set(patch).where(eq(P.id, id));
 
+    // Waiting for review, and live inside its 30 days: both hold a spot.
+    const pending = await products.saveProduct(await makeUser(), input("s1.io"));
+    await setTo(pending.id, { tier: "spotlight", status: "pending" });
+    const live = await liveProduct(await makeUser(), "s2.io");
+    await setTo(live.id, { tier: "spotlight" });
+    // Its 30 days are over: the spot is free again.
+    const oldWeek = addWeeks(thisWeek, -7);
+    await products.ensureWeek(oldWeek);
+    const expired = await liveProduct(await makeUser(), "s3.io");
+    await setTo(expired.id, { tier: "spotlight", launchWeekKey: oldWeek, approvedAt: weekBounds(oldWeek).startsAt });
+    expect(await spotlight.spotlightSpotsTaken()).toBe(2);
+    expect(await spotlight.spotlightAvailable()).toBe(true);
+
+    const third = await products.saveProduct(await makeUser(), input("s4.io"));
+    await setTo(third.id, { tier: "spotlight", status: "pending" });
+    expect(await spotlight.spotlightAvailable()).toBe(false);
+    // The listing being bought for doesn't count against itself.
+    expect(await spotlight.spotlightAvailable(third.id)).toBe(true);
+
+    // Full: a maker joins the waitlist (twice is fine) and hears nothing yet.
+    const waiting = await makeUser();
+    const want = await products.saveProduct(waiting, input("want.io"));
+    await spotlight.joinSpotlightWaitlist(waiting, want.id);
+    await spotlight.joinSpotlightWaitlist(waiting, want.id);
+    expect(await spotlight.onSpotlightWaitlist(waiting)).toBe(true);
+    expect(await spotlight.notifySpotlightWaitlist()).toBe(0);
+
+    // A spot opens: everyone waiting is emailed once.
+    await setTo(third.id, { status: "rejected" });
+    expect(await spotlight.notifySpotlightWaitlist()).toBe(1);
+    expect(sent.filter((e) => e.subject === "A Spotlight spot just opened")).toHaveLength(1);
+    expect(await spotlight.notifySpotlightWaitlist()).toBe(0);
+    expect(await spotlight.onSpotlightWaitlist(waiting)).toBe(false);
+
+    // The live Spotlight is in the Spotlight only, never also in the featured cards.
     const m = await makeUser();
     const pro = await liveProduct(m, "featured.io");
-    await dbmod.db().update(dbmod.schema.products).set({ tier: "pro" }).where(eq(dbmod.schema.products.id, pro.id));
+    await setTo(pro.id, { tier: "pro" });
     const { cardMediaForSlugs, featuredNow } = await import("@/lib/board/featured");
-    expect((await featuredNow()).map((f) => f.slug)).toEqual(["featured-io"]);
+    expect((await featuredNow()).map((f) => [f.slug, f.hero])).toEqual([
+      ["s2-io", true],
+      ["featured-io", false],
+    ]);
     expect((await cardMediaForSlugs(["featured-io"])).get("featured-io")).toEqual({
       imageUrl: "https://featured.io/shot.png",
       websiteUrl: "https://featured.io/",
