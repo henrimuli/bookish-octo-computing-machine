@@ -12,6 +12,7 @@ const groups: NavGroup[] = [
       { href: "/admin/submissions", label: "Submissions", icon: "inbox" },
       { href: "/admin/directories", label: "Directories", icon: "directory" },
       { href: "/admin/ads", label: "Ads", icon: "megaphone" },
+      { href: "/admin/email", label: "Email", icon: "mail" },
     ],
   },
   {
@@ -19,7 +20,6 @@ const groups: NavGroup[] = [
     items: [
       { href: "/admin/blog", label: "Blog", icon: "pen" },
       { href: "/admin/newsletter", label: "Newsletter", icon: "mail" },
-      { href: "/admin/emails", label: "Emails", icon: "mail" },
     ],
   },
   {

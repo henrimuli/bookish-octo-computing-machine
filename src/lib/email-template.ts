@@ -42,7 +42,9 @@ export type Block =
   | { section: string }
   | { code: string }
   /** Small muted text: expiry times, "if you didn't ask for this". */
-  | { note: string };
+  | { note: string }
+  /** An earlier message, quoted under a reply: "On {date}, {name} wrote:". */
+  | { quote: string; cite: string };
 
 export type EmailInput = {
   variant: "customer" | "newsletter" | "staff";
@@ -55,6 +57,8 @@ export type EmailInput = {
   reason?: string;
   /** Staff: what sent this email. */
   trigger?: string;
+  /** Replaces "— The DebutYard team", e.g. "— Henry, DebutYard" on hand-written email. */
+  signOff?: string;
   /** Newsletter only. */
   unsubscribeUrl?: string;
   blocks: Block[];
@@ -185,6 +189,11 @@ function blockHtml(b: Block): string {
     return row(
       `<pre class="dy-soft dy-text" style="margin:0;white-space:pre-wrap;word-break:break-all;background:${L.bg};border:1px solid ${L.border};border-radius:10px;padding:14px 16px;font:13px/1.55 ui-monospace,Menlo,Consolas,monospace;color:${L.text}">${esc(b.code)}</pre>`,
     );
+  if ("quote" in b)
+    return row(
+      `<div class="dy-muted" style="font-size:13px;color:${L.muted};margin:0 0 6px">${esc(b.cite)}</div><div class="dy-muted dy-rule" style="border-left:3px solid ${L.border};padding:2px 0 2px 12px;font-size:14px;line-height:1.55;color:${L.muted};white-space:pre-wrap">${esc(b.quote)}</div>`,
+      "12px 0 0",
+    );
   return row(
     `<p class="dy-muted" style="margin:0;font-size:13px;line-height:1.55;color:${L.muted}">${inline(b.note)}</p>`,
   );
@@ -192,6 +201,7 @@ function blockHtml(b: Block): string {
 
 function blockText(b: Block): string {
   if ("heading" in b) return b.heading;
+  if ("quote" in b) return `${b.cite}\n${b.quote.replace(/^/gm, "> ")}`;
   if ("callout" in b) return `${b.callout}\n${plain(b.text)}`;
   if ("text" in b) return plain(b.text);
   if ("button" in b) return `${b.button}: ${b.href}`;
@@ -321,13 +331,15 @@ function footer(e: EmailInput): string {
 
 export function renderEmail(e: EmailInput): RenderedEmail {
   const preheader = e.preheader ?? firstText(e.blocks);
+  const signature = e.signOff ?? `— The ${site.name} team`;
+  // The sign-off goes after the message and before any quoted earlier message.
+  const quoteAt = e.blocks.findIndex((b) => "quote" in b);
+  const body = quoteAt === -1 ? e.blocks : e.blocks.slice(0, quoteAt);
+  const quoted = quoteAt === -1 ? [] : e.blocks.slice(quoteAt);
   const signOff =
     e.variant === "staff"
       ? ""
-      : row(
-          `<p class="dy-muted" style="margin:0;font-size:15px;color:${L.muted}">— The ${esc(site.name)} team</p>`,
-          "4px 0 0",
-        );
+      : row(`<p class="dy-muted" style="margin:0;font-size:15px;color:${L.muted}">${esc(signature)}</p>`, "4px 0 0");
 
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${esc(e.subject)}</title><style>${DARK_CSS}</style></head>
@@ -340,8 +352,9 @@ export function renderEmail(e: EmailInput): RenderedEmail {
         ${header(e)}
         <tr><td class="dy-pad" style="padding:30px 32px 32px;font-family:${FONT}">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-            ${e.blocks.map(blockHtml).join("\n")}
+            ${body.map(blockHtml).join("\n")}
             ${signOff}
+            ${quoted.map(blockHtml).join("\n")}
           </table>
         </td></tr>
       </table>
@@ -357,14 +370,17 @@ export function renderEmail(e: EmailInput): RenderedEmail {
     e.variant === "staff"
       ? [`${e.trigger ? `${e.trigger} ` : ""}Sent to the staff inbox.`, `Admin: ${abs("/admin/dashboard")}`]
       : [
-          `— The ${site.name} team`,
+          signature,
           [e.reason ? `You're getting this because ${e.reason}.` : "", `Questions? Write to ${site.supportEmail}.`]
             .filter(Boolean)
             .join(" "),
           e.variant === "newsletter" && e.unsubscribeUrl ? `Unsubscribe: ${e.unsubscribeUrl}` : "",
           `${site.legalName} · Nairobi · ${site.url}`,
         ].filter(Boolean);
-  const text = [...e.blocks.map(blockText), ...foot].join("\n\n");
+  const text =
+    e.variant === "staff"
+      ? [...e.blocks.map(blockText), ...foot].join("\n\n")
+      : [...body.map(blockText), ...foot.slice(0, 1), ...quoted.map(blockText), ...foot.slice(1)].join("\n\n");
 
   return { subject: e.subject, html, text };
 }
