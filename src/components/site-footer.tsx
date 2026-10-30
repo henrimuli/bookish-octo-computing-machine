@@ -71,13 +71,25 @@ export function SiteFooter() {
           ))}
         </div>
       </Container>
-      <Container className="flex flex-col gap-3 border-t border-border/70 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <Container className="flex flex-col gap-3 border-t border-border/70 py-6 text-xs text-muted-foreground sm:flex-row sm:items-end sm:justify-between">
         <p>
           © {site.legalName} ·{" "}
           <a href={`mailto:${site.supportEmail}`} className="hover:text-foreground">
             {site.supportEmail}
           </a>
         </p>
+        <div className="flex sm:flex-1 sm:justify-center">
+          <a href="https://verifieddr.com/website/debutyard-com" target="_blank" rel="noopener">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://verifieddr.com/badge/debutyard-com-dark.svg?style=minimal"
+              alt="Verified DR - Verified Domain Rating for debutyard.com"
+              width={200}
+              height={24}
+              className="block"
+            />
+          </a>
+        </div>
         <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
           {legal.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-foreground">
