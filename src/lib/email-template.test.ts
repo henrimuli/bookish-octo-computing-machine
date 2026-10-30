@@ -74,6 +74,33 @@ describe("renderEmail", () => {
   });
 });
 
+describe("renderEmail for hand-written support mail", () => {
+  const e = renderEmail({
+    variant: "customer",
+    label: "Support",
+    subject: "Re: Billing <question>",
+    signOff: "— Henry, DebutYard",
+    blocks: [
+      { text: "Sorted, the refund is on its way." },
+      { cite: "On 28 Oct 2026, Ada <ada@x.test> wrote:", quote: "Can I get a refund?\nThanks <3" },
+    ],
+  });
+
+  it("signs with the staff member's name instead of the team", () => {
+    expect(e.html).toContain("— Henry, DebutYard");
+    expect(e.html).not.toContain("The DebutYard team");
+    expect(e.text).toContain("— Henry, DebutYard");
+  });
+
+  it("puts the quoted message after the sign-off, escaped, and quotes it in text", () => {
+    expect(e.html.indexOf("— Henry, DebutYard")).toBeLessThan(e.html.indexOf("Can I get a refund?"));
+    expect(e.html).toContain("Thanks &lt;3");
+    expect(e.html).toContain("Ada &lt;ada@x.test&gt; wrote:");
+    expect(e.text.indexOf("— Henry, DebutYard")).toBeLessThan(e.text.indexOf("> Can I get a refund?"));
+    expect(e.text).toContain("> Can I get a refund?\n> Thanks <3");
+  });
+});
+
 describe("renderDigest", () => {
   const product = (name: string, logoUrl: string | null) => ({
     name,

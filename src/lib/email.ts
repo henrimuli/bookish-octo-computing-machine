@@ -4,6 +4,10 @@ import { env } from "@/env";
 
 export type Email = {
   to: string;
+  /** Defaults to EMAIL_FROM. */
+  from?: string;
+  replyTo?: string;
+  cc?: string[];
   subject: string;
   html: string;
   text: string;
@@ -25,15 +29,16 @@ export function resendClient(): Resend | null {
   return client;
 }
 
-/** Sends through Resend; without an API key (local dev) it logs the email instead. */
-export async function sendEmail(email: Email): Promise<void> {
+/** Sends through Resend and returns its email id; without an API key (local dev) it logs the email instead. */
+export async function sendEmail(email: Email): Promise<string | null> {
   const r = resendClient();
   if (!r) {
     console.info(`[email] to=${email.to} subject="${email.subject}"\n${email.text}`);
-    return;
+    return null;
   }
-  const { error } = await r.emails.send({ from: env().EMAIL_FROM, ...email });
+  const { data, error } = await r.emails.send({ ...email, from: email.from ?? env().EMAIL_FROM });
   if (error) throw new Error(`Email failed: ${error.message}`);
+  return data?.id ?? null;
 }
 
 /** Resend accepts at most 100 emails per batch call. */
