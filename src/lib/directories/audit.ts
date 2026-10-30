@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail, type EmailItem } from "@/lib/email-template";
 import { safeFetchText } from "@/lib/net";
 
 const { directories } = schema;
@@ -46,7 +47,7 @@ export async function auditDirectories(now = new Date(), batch = 40) {
     .limit(batch);
 
   let failed = 0;
-  const retired: string[] = [];
+  const retired: EmailItem[] = [];
   for (const d of due) {
     let error: string | null = null;
     try {
@@ -62,19 +63,28 @@ export async function auditDirectories(now = new Date(), batch = 40) {
       .set({ auditedAt: now, auditFailures: failures, auditError: error, ...(retire ? { isActive: false } : {}) })
       .where(eq(directories.id, d.id));
     if (error) failed++;
-    if (retire) retired.push(`${d.name} (${d.url}): ${error}`);
+    if (retire) retired.push({ name: d.name, detail: d.url, chip: { label: error!, tone: "bad" as const } });
   }
 
   if (retired.length) {
-    const intro = `These directories failed ${AUDIT_DEACTIVATE_AFTER} audits in a row and are no longer picked for orders:`;
-    const outro = "Reactivate one in /admin/directories if it's back.";
-    const esc = (v: string) =>
-      v.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+    const n = `${retired.length} ${retired.length === 1 ? "directory" : "directories"}`;
     await sendEmail({
       to: env().ADMIN_EMAIL ?? site.supportEmail,
-      subject: `Directory audit: ${retired.length} ${retired.length === 1 ? "directory" : "directories"} deactivated`,
-      text: [intro, ...retired.map((r) => `- ${r}`), outro].join("\n"),
-      html: `<p>${esc(intro)}</p><ul>${retired.map((r) => `<li>${esc(r)}</li>`).join("")}</ul><p>${esc(outro)}</p>`,
+      ...renderEmail({
+        variant: "staff",
+        label: "Directories",
+        subject: `Directory audit: ${n} deactivated`,
+        trigger: "Sent by the directory audit cron.",
+        blocks: [
+          { heading: `${n} deactivated` },
+          {
+            text: `These directories failed ${AUDIT_DEACTIVATE_AFTER} audits in a row and are no longer picked for orders:`,
+          },
+          { items: retired },
+          { text: "Reactivate one if it's back." },
+          { button: "Open directories", href: new URL("/admin/directories", env().NEXT_PUBLIC_SITE_URL).toString() },
+        ],
+      }),
     });
   }
 

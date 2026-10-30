@@ -19,6 +19,7 @@ const groups: NavGroup[] = [
     items: [
       { href: "/admin/blog", label: "Blog", icon: "pen" },
       { href: "/admin/newsletter", label: "Newsletter", icon: "mail" },
+      { href: "/admin/emails", label: "Emails", icon: "mail" },
     ],
   },
   {
