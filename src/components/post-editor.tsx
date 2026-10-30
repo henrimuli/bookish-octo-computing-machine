@@ -15,7 +15,7 @@ type Initial = {
   body: string;
   coverUrl: string;
   status: "draft" | "published";
-  kind: "post" | "recap";
+  kind: "post" | "recap" | "launch";
 };
 
 export function PostEditor({ initial }: { initial: Initial }) {
@@ -61,6 +61,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={form.status === "published" ? "success" : "default"}>{form.status}</Badge>
         {form.kind === "recap" && <Badge>weekly recap</Badge>}
+        {form.kind === "launch" && <Badge>launch post</Badge>}
         {form.status === "published" && (
           <Link href={`/blog/${form.slug}`} target="_blank" className="text-sm text-primary hover:underline">
             View post ↗

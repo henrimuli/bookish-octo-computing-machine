@@ -6,6 +6,8 @@ import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
 import { renderEmail, type Block } from "@/lib/email-template";
 import { formatPeriodLabel } from "@/lib/periods";
+import { PERK_LABELS, type PerkTask } from "@/lib/perks/service";
+import { TIERS, type Tier } from "@/lib/products/input";
 import { formatWeekLabel, formatWeekRange, weekKeyFor } from "@/lib/weeks";
 
 type Product = typeof schema.products.$inferSelect;
@@ -156,27 +158,31 @@ export async function notifyBadgeMissing(p: Product, graceUntil: Date) {
   ]);
 }
 
-/** Paid-tier perks that are delivered by hand: a to-do for the team. */
-const MANUAL_PERKS: Record<string, string[]> = {
-  fast_track: [],
-  pro: ["Include in this week's newsletter"],
-  premium: ["Include in this week's newsletter", "Write the launch post (blog)"],
-  spotlight: ["Top newsletter slot", "Write the launch post (blog)"],
-};
-
-export async function notifyAdminPaidTier(p: Product, tier: string) {
-  const todo = MANUAL_PERKS[tier] ?? [];
-  if (todo.length === 0) return;
+/** A paid debut's perks need the team: one row per to-do, linking to where it's done. */
+export async function notifyAdminPaidTier(p: Product, tier: Tier, tasks: PerkTask[]) {
+  if (tasks.length === 0) return;
+  const label = TIERS[tier].label;
+  const date = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   await toStaff(
-    "To do",
-    `To do for ${p.name} (${tier})`,
+    "Needs attention",
+    `Needs attention: ${p.name} (${label})`,
     [
-      { heading: `To do for ${p.name}` },
-      { text: `${p.name} bought ${tier}. These perks are delivered by hand:` },
-      { bullets: todo },
-      { button: "Open the listing", href: url(`/p/${p.slug}`) },
+      { heading: `${p.name} needs attention` },
+      { text: `${p.name} bought ${label}. These perks are on the team:` },
+      {
+        items: tasks.map((t) => ({
+          name: PERK_LABELS[t.kind],
+          detail:
+            t.kind === "launch_post"
+              ? `Suggested on the Blog page${t.dueAt ? `, due ${date(t.dueAt)}` : ""}`
+              : `Goes out automatically in the issue after ${formatWeekLabel(t.weekKey)} unless you skip it`,
+          href: url(t.kind === "launch_post" ? "/admin/blog" : "/admin/newsletter"),
+          chip: { label, tone: "neutral" as const },
+        })),
+      },
+      { link: `View ${p.name}`, href: url(`/p/${p.slug}`) },
     ],
-    "Sent when a paid tier with hand-delivered perks is bought.",
+    "Sent when a paid tier with team-delivered perks is bought.",
   );
 }
 

@@ -2,8 +2,9 @@ import { Suspense, type ReactNode } from "react";
 import { AccountFooter } from "@/components/app-shell/account-footer";
 import { AppShell, type NavGroup } from "@/components/app-shell/app-shell";
 import { getCurrentUser, isStaff } from "@/lib/auth";
+import { openPerkCounts } from "@/lib/perks/service";
 
-const groups: NavGroup[] = [
+const navGroups = (perks: { newsletter: number; blog: number }): NavGroup[] => [
   { items: [{ href: "/admin/dashboard", label: "Overview", icon: "overview" }] },
   {
     label: "Operations",
@@ -18,8 +19,8 @@ const groups: NavGroup[] = [
   {
     label: "Content",
     items: [
-      { href: "/admin/blog", label: "Blog", icon: "pen" },
-      { href: "/admin/newsletter", label: "Newsletter", icon: "mail" },
+      { href: "/admin/blog", label: "Blog", icon: "pen", count: perks.blog },
+      { href: "/admin/newsletter", label: "Newsletter", icon: "mail", count: perks.newsletter },
     ],
   },
   {
@@ -45,11 +46,13 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 async function AdminFrame({ children }: { children: ReactNode }) {
   const user = await getCurrentUser().catch(() => null);
   if (!(await isStaff(user))) return <main className="flex flex-1 items-center justify-center">{children}</main>;
+  // Paid perks waiting on the team; a failed count never blocks the admin.
+  const perks = await openPerkCounts().catch(() => ({ newsletter: 0, blog: 0 }));
   return (
     <AppShell
       area="Admin"
       badge="Admin"
-      groups={groups}
+      groups={navGroups(perks)}
       footer={
         <Suspense fallback={<div className="h-12 animate-pulse rounded-md bg-muted" />}>
           <AccountFooter area="admin" />

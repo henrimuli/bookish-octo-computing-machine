@@ -18,6 +18,12 @@ export type DigestData = {
   topOfWeek: DigestProduct[];
   debutingNow: Array<DigestProduct & { featured: boolean }>;
   sponsor: { bookingId: string; name: string; tagline: string; url: string; logoUrl: string | null } | null;
+  /** Spotlight's top newsletter slot: a boxed row above everything else. `tagline` is the blurb. */
+  spotlight?: DigestProduct[];
+  /** Pro and Premium debuts' newsletter mentions. `tagline` is the blurb. */
+  featuredDebuts?: DigestProduct[];
+  /** The perk tasks these mentions deliver, marked done once the issue is sent. */
+  perkTaskIds?: string[];
   siteUrl: string;
 };
 
@@ -38,6 +44,9 @@ const item = (p: DigestProduct, extra: Partial<EmailItem> = {}): EmailItem => ({
 
 export function renderDigest(d: DigestData, unsubscribeUrl: string): { subject: string; html: string; text: string } {
   const blocks: Block[] = [{ heading: "Your weekly look at what just launched" }];
+  if (d.spotlight?.length) {
+    blocks.push({ box: "Spotlight", items: d.spotlight.map((p) => item(p)) });
+  }
   if (d.winners.length) {
     blocks.push(
       { section: `Debut of the Week · ${d.closedWeekLabel}` },
@@ -49,6 +58,9 @@ export function renderDigest(d: DigestData, unsubscribeUrl: string): { subject: 
       box: "Sponsor",
       items: [{ name: d.sponsor.name, detail: d.sponsor.tagline, href: d.sponsor.url, logo: d.sponsor.logoUrl }],
     });
+  }
+  if (d.featuredDebuts?.length) {
+    blocks.push({ section: "Featured debuts" }, { items: d.featuredDebuts.map((p) => item(p)) });
   }
   if (d.debutingNow.length) {
     blocks.push(
