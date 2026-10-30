@@ -149,17 +149,25 @@ export async function badgeRecord(productId: string) {
   });
 }
 
-/** Moves a draft into the review queue. Free debuts need a verified badge; paid tiers arrive via checkout. */
-export async function submitForReview(productId: string, userId: string): Promise<Product> {
+/**
+ * Moves a draft into the review queue. Free debuts need a verified badge; paid tiers arrive via checkout.
+ * `override` (owners and admins, see canOverrideFreeRules) skips the badge and the waiting-debut cap.
+ * The badge record is left as it is, so the listing's link stays nofollow until a badge is really found.
+ */
+export async function submitForReview(
+  productId: string,
+  userId: string,
+  opts: { override?: boolean } = {},
+): Promise<Product> {
   const p = await getOwned(productId, userId);
   if (p.status !== "draft" && p.status !== "rejected") return p;
   await assertHasScreenshot(p);
-  if (p.tier === "free" && (await activeFreeCount(userId, p.id)) >= MAX_ACTIVE_FREE) {
+  if (p.tier === "free" && !opts.override && (await activeFreeCount(userId, p.id)) >= MAX_ACTIVE_FREE) {
     throw new ProductError(
       `You can have ${MAX_ACTIVE_FREE} free debuts waiting at a time. Upgrade this one, or wait for one to launch.`,
     );
   }
-  if (p.tier === "free" && (await badgeRecord(p.id))?.status !== "verified") {
+  if (p.tier === "free" && !opts.override && (await badgeRecord(p.id))?.status !== "verified") {
     throw new ProductError(
       "Free debuts need the DebutYard badge on your site. Add it, run the check, and submit once we've found it.",
     );

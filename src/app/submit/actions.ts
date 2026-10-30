@@ -2,7 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getCurrentUser } from "@/lib/auth";
+import { canOverrideFreeRules, getCurrentUser } from "@/lib/auth";
 import { enabledProviders } from "@/lib/payments";
 import { CouponError } from "@/lib/payments/pricing";
 import { CheckoutError, startCheckout } from "@/lib/payments/service";
@@ -40,7 +40,7 @@ export async function debutSetupAction(): Promise<
 export async function planChoicesAction(productId: string): Promise<Result<PlanChoices>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first." };
-  const choices = await planChoices(user.id, productId);
+  const choices = await planChoices(user.id, productId, { override: await canOverrideFreeRules(user) });
   return choices ? { ok: true, data: choices } : { ok: false, error: "Listing not found." };
 }
 
@@ -144,7 +144,7 @@ export async function submitFreeAction(productId: string): Promise<Result> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in first." };
   try {
-    const p = await submitForReview(productId, user.id);
+    const p = await submitForReview(productId, user.id, { override: await canOverrideFreeRules(user) });
     if (p.status === "pending") await notifyProductSubmitted(p);
   } catch (err) {
     if (err instanceof ProductError) return { ok: false, error: err.message };

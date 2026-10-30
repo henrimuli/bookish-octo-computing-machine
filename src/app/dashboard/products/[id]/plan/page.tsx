@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { PlanPicker } from "@/components/plan-picker";
-import { requireUser } from "@/lib/auth";
+import { canOverrideFreeRules, requireUser } from "@/lib/auth";
 import { planChoices } from "@/lib/products/plan-choices";
 
 export const metadata: Metadata = { title: "Choose your debut", robots: { index: false } };
@@ -39,7 +39,7 @@ export default function PlanPage(props: PageProps<"/dashboard/products/[id]/plan
 async function Plans({ params }: { params: PageProps<"/dashboard/products/[id]/plan">["params"] }) {
   const { id } = await params;
   const user = await requireUser(`/dashboard/products/${id}/plan`);
-  const choices = await planChoices(user.id, id);
+  const choices = await planChoices(user.id, id, { override: await canOverrideFreeRules(user) });
   if (!choices) notFound();
   return <PlanPicker {...choices} />;
 }
