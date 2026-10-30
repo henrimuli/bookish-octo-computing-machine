@@ -1,7 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { confirmSubscription, subscribe, unsubscribe } from "@/lib/newsletter/service";
+import { getCurrentUser } from "@/lib/auth";
+import { confirmSubscription, subscribe, subscribeVerified, unsubscribe } from "@/lib/newsletter/service";
 
 export type SubscribeState = { ok: boolean; message: string } | null;
 
@@ -23,6 +24,14 @@ export async function subscribeAction(_prev: SubscribeState, form: FormData): Pr
   const result = await subscribe(parsed.data.email, parsed.data.source ?? null);
   if (result === "already_subscribed") return { ok: true, message: "You're already subscribed. See you Monday!" };
   return { ok: true, message: "Check your inbox and click the link to confirm." };
+}
+
+/** The "send me the weekly digest" switch on the sign-in form: runs once sign-in has finished. */
+export async function subscribeSignedInAction(): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (!user?.email) return false;
+  await subscribeVerified(user.email, "sign-in");
+  return true;
 }
 
 export async function unsubscribeAction(_prev: boolean | null, form: FormData): Promise<boolean> {

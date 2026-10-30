@@ -36,7 +36,8 @@ export type Block =
   | { callout: string; text: string }
   | { facts: Array<[label: string, value: string]> }
   | { bullets: string[] }
-  | { items: EmailItem[] }
+  /** `box` draws the rows inside a tinted, bordered box under that label (e.g. a sponsor). */
+  | { items: EmailItem[]; box?: string }
   /** A small uppercase label over a group of items. */
   | { section: string }
   | { code: string }
@@ -162,11 +163,19 @@ function blockHtml(b: Block): string {
     return row(
       `<ul class="dy-text" style="margin:0;padding-left:20px;font-size:15px;line-height:1.6;color:${L.text}">${b.bullets.map((x) => `<li style="margin:0 0 4px">${inline(x)}</li>`).join("")}</ul>`,
     );
-  if ("items" in b)
+  if ("items" in b) {
+    const rows = b.items.map((i, n) => itemHtml(i, n === b.items.length - 1)).join("");
+    if (b.box !== undefined) {
+      return row(
+        `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td class="dy-soft" style="background:${L.bg};border:1px solid ${L.border};border-radius:12px;padding:12px 16px 2px"><div class="dy-muted" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:${L.muted}">${esc(b.box)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:15px">${rows}</table></td></tr></table>`,
+        "8px 0 18px",
+      );
+    }
     return row(
-      `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="dy-rule" style="border-top:1px solid ${L.border};font-size:15px">${b.items.map((i, n) => itemHtml(i, n === b.items.length - 1)).join("")}</table>`,
+      `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="dy-rule" style="border-top:1px solid ${L.border};font-size:15px">${rows}</table>`,
       "0 0 18px",
     );
+  }
   if ("section" in b)
     return row(
       `<div class="dy-muted" style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:${L.muted}">${esc(b.section)}</div>`,
@@ -190,13 +199,19 @@ function blockText(b: Block): string {
   if ("facts" in b) return b.facts.map(([k, v]) => `${k}: ${plain(v)}`).join("\n");
   if ("bullets" in b) return b.bullets.map((x) => `- ${plain(x)}`).join("\n");
   if ("items" in b)
-    return b.items
-      .map((i) => {
-        const tail = [i.chip?.label, i.aside].filter(Boolean).join(", ");
-        const lead = i.medal ? `#${i.medal} ` : "- ";
-        return `${lead}${i.name}${i.detail ? `: ${i.detail}` : ""}${tail ? ` (${tail})` : ""}${i.href ? `\n  ${i.href}` : ""}`;
-      })
-      .join("\n");
+    return (
+      (b.box
+        ? `${b.box.toUpperCase()}
+`
+        : "") +
+      b.items
+        .map((i) => {
+          const tail = [i.chip?.label, i.aside].filter(Boolean).join(", ");
+          const lead = i.medal ? `#${i.medal} ` : "- ";
+          return `${lead}${i.name}${i.detail ? `: ${i.detail}` : ""}${tail ? ` (${tail})` : ""}${i.href ? `\n  ${i.href}` : ""}`;
+        })
+        .join("\n")
+    );
   if ("section" in b) return b.section.toUpperCase();
   if ("code" in b) return b.code;
   return plain(b.note);
