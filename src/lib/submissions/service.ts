@@ -6,6 +6,8 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail, type Block } from "@/lib/email-template";
+import { toStaff } from "@/lib/notifications";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { inspectBacklink } from "@/lib/directories/backlink";
 import { effectiveLinkType } from "@/lib/directories/service";
@@ -29,20 +31,22 @@ const token = () => randomBytes(18).toString("base64url");
 const url = (path: string) => new URL(path, env().NEXT_PUBLIC_SITE_URL).toString();
 const DAY = 86_400_000;
 
-function escape(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+/** A Submission service email to the buyer. */
+async function mail(to: string, subject: string, blocks: Block[], preheader?: string) {
+  await sendEmail({
+    to,
+    ...renderEmail({
+      variant: "customer",
+      label: "Submission service",
+      subject,
+      preheader,
+      reason: "you ordered DebutYard's directory submission service",
+      blocks,
+    }),
+  });
 }
 
-async function mail(to: string, subject: string, lines: string[], link?: { label: string; href: string }) {
-  const text = [...lines, link ? `${link.label}: ${link.href}` : "", `— ${site.name}`].filter(Boolean).join("\n\n");
-  const html =
-    lines.map((l) => `<p>${escape(l)}</p>`).join("") +
-    (link ? `<p><a href="${link.href}">${escape(link.label)}</a></p>` : "") +
-    `<p>— ${site.name}</p>`;
-  await sendEmail({ to, subject, text, html });
-}
-
-const adminEmail = () => env().ADMIN_EMAIL ?? site.supportEmail;
+const staffTrigger = "Sent by the submission service.";
 
 /**
  * Payment fulfilment: opens the order and emails the buyer their private
@@ -106,23 +110,36 @@ export async function openOrderFromPayment(payment: Payment, bundled?: PackageId
     payment.email,
     `Next step for your ${site.name} ${p.label} order`,
     [
-      bundled
-        ? `Your Spotlight debut includes our ${p.label} directory submission package (${p.count} directories).`
-        : `Thanks for your order (${p.label}: ${p.count} directories, ${formatUsd(payment.amountCents)}).`,
-      "Tell us about your product: logo, descriptions, categories and a couple of preferences. It takes about five minutes, and submissions start within 48 hours of receiving it.",
-      "This link is private to you. It also becomes your live tracking dashboard, so keep it.",
+      { heading: "One step left: tell us about your product" },
+      {
+        text: bundled
+          ? `Your Spotlight debut includes our ${p.label} directory submission package (${p.count} directories).`
+          : `Thanks for your order (${p.label}: ${p.count} directories, ${formatUsd(payment.amountCents)}).`,
+      },
+      {
+        text: "Tell us about your product: logo, descriptions, categories and a couple of preferences. It takes about five minutes, and submissions start within 48 hours of receiving it.",
+      },
+      { button: "Fill in your product details", href: url(`/orders/${order.intakeToken}`) },
+      { note: "This link is private to you. It also becomes your live tracking dashboard, so keep it." },
     ],
-    { label: "Fill in your product details", href: url(`/orders/${order.intakeToken}`) },
+    "It takes about five minutes. Submissions start within 48 hours.",
   );
-  await mail(
-    adminEmail(),
+  await toStaff(
+    "Orders",
     `New submission order: ${p.label} (${bundled ? "bundled with Spotlight" : formatUsd(payment.amountCents)})`,
     [
-      `Buyer: ${payment.email}`,
-      `Package: ${p.label}, ${p.count} directories`,
-      product ? `Boost for ${product.name}` : "Waiting for intake.",
+      { heading: `New submission order: ${p.label}` },
+      {
+        facts: [
+          ["Buyer", payment.email],
+          ["Package", `${p.label}, ${p.count} directories`],
+          ["Paid", bundled ? "Bundled with Spotlight" : formatUsd(payment.amountCents)],
+          ["Status", product ? `Boost for ${product.name}` : "Waiting for intake"],
+        ],
+      },
+      { button: "Open in the ops console", href: url(`/admin/submissions/${order.id}`) },
     ],
-    { label: "Ops console", href: url(`/admin/submissions/${order.id}`) },
+    staffTrigger,
   );
   return order;
 }
@@ -217,18 +234,34 @@ export async function submitIntake(intakeToken: string, raw: IntakeInput, now = 
     input.contactEmail,
     `We've got everything: your ${PACKAGES[order.package].label} submissions start within 48 hours`,
     [
-      `We've lined up ${targets.length} directories for ${input.productName}. You'll see each one move from queued to live on your dashboard, with every link checked by us.`,
-      input.badgePreference === "allow"
-        ? "You allowed badge directories, so we'll email you one HTML block to paste into your site footer."
-        : "You chose no badges, so we only use directories that don't ask for one.",
+      { heading: "We've got everything we need" },
+      {
+        text: `We've lined up ${targets.length} directories for ${input.productName}. You'll see each one move from queued to live on your dashboard, with every link checked by us.`,
+      },
+      {
+        text:
+          input.badgePreference === "allow"
+            ? "You allowed badge directories, so we'll email you one HTML block to paste into your site footer."
+            : "You chose no badges, so we only use directories that don't ask for one.",
+      },
+      { button: "Open your live dashboard", href: url(`/orders/${order.intakeToken}`) },
     ],
-    { label: "Your live dashboard", href: url(`/orders/${order.intakeToken}`) },
   );
-  await mail(
-    adminEmail(),
+  await toStaff(
+    "Orders",
     `Intake received: ${input.productName} (${PACKAGES[order.package].label})`,
-    [`${targets.length} targets queued, due ${updated.dueAt!.toDateString()}.`],
-    { label: "Open in the ops console", href: url(`/admin/submissions/${order.id}`) },
+    [
+      { heading: `Intake received: ${input.productName}` },
+      {
+        facts: [
+          ["Package", PACKAGES[order.package].label],
+          ["Targets", `${targets.length} queued`],
+          ["Due", updated.dueAt!.toDateString()],
+        ],
+      },
+      { button: "Open in the ops console", href: url(`/admin/submissions/${order.id}`) },
+    ],
+    staffTrigger,
   );
   return updated;
 }
@@ -497,17 +530,23 @@ export async function deliverOrder(orderId: string, now = new Date()) {
     order,
     rows.map((r) => r.s),
   );
-  await mail(
-    order.contactEmail ?? order.email,
-    `Delivered: ${s.live} live listings for ${order.productName}`,
-    [
-      `Your ${PACKAGES[order.package].label} order is complete: ${s.live} listings are live, ${s.dofollow} of them with a verified dofollow link.`,
-      "Your report lists every directory with its live URL and link check, plus the logins of any accounts we created for you.",
-      `Link Monitor is included for ${months} months: we re-check every live link and email you if one is removed or turns nofollow.`,
-      "Share the read-only report with your team, or download it as CSV or PDF.",
-    ],
-    { label: "Open your report", href: url(`/orders/${order.intakeToken}`) },
-  );
+  await mail(order.contactEmail ?? order.email, `Delivered: ${s.live} live listings for ${order.productName}`, [
+    { heading: `Your ${PACKAGES[order.package].label} order is complete` },
+    {
+      facts: [
+        ["Live listings", String(s.live)],
+        ["Verified dofollow", String(s.dofollow)],
+        ["Link Monitor", `Included for ${months} months`],
+      ],
+    },
+    {
+      text: "Your report lists every directory with its live URL and link check, plus the logins of any accounts we created for you.",
+    },
+    { button: "Open your report", href: url(`/orders/${order.intakeToken}`) },
+    {
+      note: "We re-check every live link and email you if one is removed or turns nofollow. Share the read-only report with your team, or download it as CSV or PDF.",
+    },
+  ]);
   return order;
 }
 
@@ -536,20 +575,30 @@ export async function sendOrderDigests(now = new Date()) {
     if (fresh.length === 0) continue;
     const live = fresh.filter((f) => f.status === "live");
     const needs = fresh.filter((f) => f.status === "needs_action");
-    const lines = [
-      live.length ? `New live listings: ${live.map((l) => l.name).join(", ")}.` : "",
-      needs.length
-        ? `We need something from you for: ${needs.map((n) => `${n.name}${n.needs ? ` (${n.needs})` : ""}`).join("; ")}.`
-        : "",
-    ].filter(Boolean);
+    const blocks: Block[] = [{ heading: `Progress on ${o.productName}` }];
+    if (live.length) {
+      blocks.push(
+        { section: "New live listings" },
+        { items: live.map((l) => ({ name: l.name, chip: { label: "Live", tone: "good" as const } })) },
+      );
+    }
+    if (needs.length) {
+      blocks.push(
+        { section: "We need something from you" },
+        {
+          items: needs.map((n) => ({
+            name: n.name,
+            detail: n.needs ?? undefined,
+            chip: { label: "Needs you", tone: "warn" as const },
+          })),
+        },
+      );
+    }
+    blocks.push({ button: "Open your dashboard", href: url(`/orders/${o.intakeToken}`) });
     await mail(
       o.contactEmail ?? o.email,
       `${o.productName}: ${live.length} new live listing${live.length === 1 ? "" : "s"}`,
-      lines,
-      {
-        label: "Your dashboard",
-        href: url(`/orders/${o.intakeToken}`),
-      },
+      blocks,
     );
     await db().update(orders).set({ digestAt: now }).where(eq(orders.id, o.id));
     sent++;
@@ -644,15 +693,13 @@ export async function sendBadgeBlock(order: SubmissionOrder, now = new Date()) {
   const dashboard = url(`/orders/${order.intakeToken}`);
   const intro = `${block.directories.length} of the directories we're submitting ${order.productName ?? "your product"} to only list products that show their badge. Paste this block into your site's footer (any page we can reach from your homepage works):`;
   const outro = `We check your site daily and submit each one as soon as its badge is up. Any still missing after ${BADGE_WAIT_DAYS} days are swapped for directories that don't need a badge.`;
-  await sendEmail({
-    to,
-    subject: "One step for your listings: add your directory badges",
-    text: [intro, block.html, outro, `Your dashboard: ${dashboard}`, `— ${site.name}`].join("\n\n"),
-    html:
-      `<p>${escape(intro)}</p>` +
-      `<pre style="white-space:pre-wrap;background:#f4f4f5;padding:12px;border-radius:6px">${escape(block.html)}</pre>` +
-      `<p>${escape(outro)}</p><p><a href="${dashboard}">Your dashboard</a></p><p>— ${site.name}</p>`,
-  });
+  await mail(to, "One step for your listings: add your directory badges", [
+    { heading: "Add your directory badges" },
+    { text: intro },
+    { code: block.html },
+    { text: outro },
+    { button: "Open your dashboard", href: dashboard },
+  ]);
   await db().update(orders).set({ badgeBlockSentAt: now }).where(eq(orders.id, order.id));
   return true;
 }

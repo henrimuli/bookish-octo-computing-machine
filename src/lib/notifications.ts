@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail, type Block } from "@/lib/email-template";
 import { formatPeriodLabel } from "@/lib/periods";
 import { formatWeekLabel, formatWeekRange, weekKeyFor } from "@/lib/weeks";
 
@@ -13,84 +14,121 @@ function url(path: string) {
   return new URL(path, env().NEXT_PUBLIC_SITE_URL).toString();
 }
 
-function escape(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
-/** Plain paragraphs → matching text and HTML bodies. Links are given as [label](url). */
-function compose(paragraphs: string[]) {
-  const text = paragraphs.map((p) => p.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1: $2")).join("\n\n");
-  const html = paragraphs
-    .map((p) => `<p>${escape(p).replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')}</p>`)
-    .join("");
-  return { text: `${text}\n\n— ${site.name}`, html: `${html}<p>— ${site.name}</p>` };
-}
-
 async function makerEmail(p: Product): Promise<string | null> {
   const u = await db().query.user.findFirst({ where: eq(schema.user.id, p.createdBy), columns: { email: true } });
   return u?.email ?? null;
 }
 
-async function toMaker(p: Product, subject: string, paragraphs: string[]) {
+async function toMaker(p: Product, subject: string, blocks: Block[], preheader?: string) {
   const to = await makerEmail(p);
-  if (to) await sendEmail({ to, subject, ...compose(paragraphs) });
+  if (!to) return;
+  await sendEmail({
+    to,
+    ...renderEmail({
+      variant: "customer",
+      label: "Your listing",
+      subject,
+      preheader,
+      reason: `you listed ${p.name} on DebutYard`,
+      blocks,
+    }),
+  });
+}
+
+export async function toStaff(label: string, subject: string, blocks: Block[], trigger: string) {
+  await sendEmail({
+    to: env().ADMIN_EMAIL ?? site.supportEmail,
+    ...renderEmail({ variant: "staff", label, subject, trigger, blocks }),
+  });
 }
 
 export async function notifyProductSubmitted(p: Product) {
-  await sendEmail({
-    to: env().ADMIN_EMAIL ?? site.supportEmail,
-    subject: `Review: ${p.name} (${p.tier})`,
-    ...compose([
-      `${p.name}: ${p.tagline}`,
-      `Website: ${p.websiteUrl}`,
-      `[Open the review queue](${url("/admin/review")})`,
-    ]),
-  });
+  await toStaff(
+    "Review",
+    `Review: ${p.name} (${p.tier})`,
+    [
+      { heading: `${p.name} is waiting for review` },
+      { text: p.tagline },
+      {
+        facts: [
+          ["Tier", p.tier],
+          ["Website", p.websiteUrl],
+        ],
+      },
+      { button: "Open the review queue", href: url("/admin/review") },
+    ],
+    "Sent when a listing is submitted for review.",
+  );
 }
 
 export async function notifyProductApproved(p: Product) {
   const week = p.launchWeekKey!;
   // Paid debuts go into the current week, so they're live now.
   const liveNow = week <= weekKeyFor(new Date());
-  await toMaker(p, liveNow ? `${p.name} is approved and live` : `${p.name} is approved for ${formatWeekLabel(week)}`, [
-    liveNow
-      ? `Good news: ${p.name} is approved and live now on this week's board (${formatWeekRange(week)}). Applause runs until Sunday at 23:59 UTC.`
-      : `Good news: ${p.name} is approved and debuts in ${formatWeekLabel(week)} (${formatWeekRange(week)}). Applause opens Monday at 00:00 UTC and runs all week.`,
-    p.tier === "free"
-      ? `To keep a followed (dofollow) link from your listing, add the DebutYard badge to your homepage. Your snippet and a one-click check are in your [dashboard](${url("/dashboard")}).`
-      : `Your paid debut includes a followed link, no badge needed.`,
-    `Your listing: [${url(`/p/${p.slug}`)}](${url(`/p/${p.slug}`)})`,
-  ]);
+  await toMaker(
+    p,
+    liveNow ? `${p.name} is approved and live` : `${p.name} is approved for ${formatWeekLabel(week)}`,
+    [
+      { heading: liveNow ? `${p.name} is live on this week's board` : `${p.name} debuts in ${formatWeekLabel(week)}` },
+      {
+        text: liveNow
+          ? `Good news: ${p.name} is approved and live now on this week's board (${formatWeekRange(week)}). Applause runs until Sunday at 23:59 UTC.`
+          : `Good news: ${p.name} is approved and debuts in ${formatWeekLabel(week)} (${formatWeekRange(week)}). Applause opens Monday at 00:00 UTC and runs all week.`,
+      },
+      { button: "View your listing", href: url(`/p/${p.slug}`) },
+      p.tier === "free"
+        ? {
+            callout: "Keep your followed link",
+            text: "To keep a followed (dofollow) link from your listing, add the DebutYard badge to your homepage. Your snippet and a one-click check are in your dashboard.",
+          }
+        : { text: "Your paid debut includes a followed link, no badge needed." },
+      { link: "Open your dashboard", href: url("/dashboard") },
+    ],
+    liveNow ? "Applause runs until Sunday at 23:59 UTC." : "Applause opens Monday at 00:00 UTC.",
+  );
 }
 
 export async function notifyProductRejected(p: Product, refunded: boolean) {
   await toMaker(p, `About your DebutYard submission: ${p.name}`, [
-    `Thanks for submitting ${p.name}. We couldn't approve it this time.`,
-    `Reason: ${p.rejectionReason ?? "It doesn't meet our listing guidelines."}`,
-    refunded
-      ? "Under our money-back guarantee, we've refunded your payment in full. It can take a few business days to appear."
-      : `You can update the listing and resubmit from your [dashboard](${url("/dashboard")}).`,
+    { heading: `We couldn't approve ${p.name}` },
+    { text: `Thanks for submitting ${p.name}. We couldn't approve it this time.` },
+    { callout: "Reason", text: p.rejectionReason ?? "It doesn't meet our listing guidelines." },
+    ...(refunded
+      ? [
+          {
+            text: "Under our money-back guarantee, we've refunded your payment in full. It can take a few business days to appear.",
+          },
+        ]
+      : [
+          { text: "You can update the listing and resubmit it from your dashboard." },
+          { button: "Update your listing", href: url("/dashboard") },
+        ]),
   ]);
 }
 
 export async function notifyPaidTierApplied(p: Product, tierLabel: string) {
   await toMaker(p, `${tierLabel} confirmed for ${p.name}`, [
-    `Payment received: ${p.name} now has ${tierLabel}.`,
-    p.status === "approved" && p.launchWeekKey
-      ? p.launchWeekKey <= weekKeyFor(new Date())
-        ? "It's live now on this week's board."
-        : `It's scheduled for ${formatWeekLabel(p.launchWeekKey)} (${formatWeekRange(p.launchWeekKey)}).`
-      : "We review new listings within 24 hours. It goes live the moment it's approved, and we'll email you then.",
-    `Track it in your [dashboard](${url("/dashboard")}).`,
+    { heading: `${tierLabel} is on for ${p.name}` },
+    { text: `Payment received: ${p.name} now has ${tierLabel}.` },
+    {
+      text:
+        p.status === "approved" && p.launchWeekKey
+          ? p.launchWeekKey <= weekKeyFor(new Date())
+            ? "It's live now on this week's board."
+            : `It's scheduled for ${formatWeekLabel(p.launchWeekKey)} (${formatWeekRange(p.launchWeekKey)}).`
+          : "We review new listings within 24 hours. It goes live the moment it's approved, and we'll email you then.",
+    },
+    { button: "Track it in your dashboard", href: url("/dashboard") },
   ]);
 }
 
 export async function notifyWinner(p: Product, place: number, weekKey: string) {
   const medal = ["", "🥇 #1", "🥈 #2", "🥉 #3"][place] ?? `#${place}`;
   await toMaker(p, `${medal} Debut of the Week: ${p.name}`, [
-    `Congratulations! ${p.name} finished ${medal} in ${formatWeekLabel(weekKey)} on DebutYard.`,
-    "Your listing now keeps a followed link permanently, badge or not.",
-    `Show it off: your winner badge snippet is in your [dashboard](${url("/dashboard")}).`,
+    { heading: `${p.name} is Debut of the Week ${medal}` },
+    { text: `Congratulations! ${p.name} finished ${medal} in ${formatWeekLabel(weekKey)} on DebutYard.` },
+    { text: "Your listing now keeps a followed link permanently, badge or not." },
+    { button: "Get your winner badge", href: url("/dashboard") },
   ]);
 }
 
@@ -99,16 +137,22 @@ export async function notifyPeriodWinner(p: Product, place: number, scope: "mont
   const title = scope === "month" ? "Debut of the Month" : "Debut of the Year";
   const label = formatPeriodLabel(scope, key);
   await toMaker(p, `${medal} ${title}: ${p.name}`, [
-    `${p.name} finished ${medal} among every product that debuted on DebutYard in ${label}.`,
-    `It now shows on your listing and on the [${label} board](${url(`/${scope}/${key}`)}).`,
+    { heading: `${p.name} is ${title} ${medal}` },
+    { text: `${p.name} finished ${medal} among every product that debuted on DebutYard in ${label}.` },
+    { text: `It now shows on your listing and on the ${label} board.` },
+    { button: `See the ${label} board`, href: url(`/${scope}/${key}`) },
   ]);
 }
 
 export async function notifyBadgeMissing(p: Product, graceUntil: Date) {
   await toMaker(p, `Your DebutYard badge is missing on ${p.domain}`, [
-    `Our weekly check couldn't find the DebutYard badge on ${p.websiteUrl}.`,
-    `If it's not back by ${graceUntil.toUTCString().slice(0, 16)}, the link from your listing switches to nofollow. It switches back as soon as the badge returns.`,
-    `Snippet and re-check: [dashboard](${url("/dashboard")}).`,
+    { heading: `We couldn't find your badge on ${p.domain}` },
+    { text: `Our weekly check couldn't find the DebutYard badge on ${p.websiteUrl}.` },
+    {
+      callout: `Put it back by ${graceUntil.toUTCString().slice(0, 16)}`,
+      text: "After that, the link from your listing switches to nofollow. It switches back as soon as the badge returns.",
+    },
+    { button: "Get the snippet and re-check", href: url("/dashboard") },
   ]);
 }
 
@@ -123,26 +167,31 @@ const MANUAL_PERKS: Record<string, string[]> = {
 export async function notifyAdminPaidTier(p: Product, tier: string) {
   const todo = MANUAL_PERKS[tier] ?? [];
   if (todo.length === 0) return;
-  await sendEmail({
-    to: env().ADMIN_EMAIL ?? site.supportEmail,
-    subject: `To do for ${p.name} (${tier})`,
-    ...compose([
-      `${p.name} bought ${tier}. These perks are delivered by hand:`,
-      ...todo.map((t) => `• ${t}`),
-      `Listing: [${url(`/p/${p.slug}`)}](${url(`/p/${p.slug}`)})`,
-    ]),
-  });
+  await toStaff(
+    "To do",
+    `To do for ${p.name} (${tier})`,
+    [
+      { heading: `To do for ${p.name}` },
+      { text: `${p.name} bought ${tier}. These perks are delivered by hand:` },
+      { bullets: todo },
+      { button: "Open the listing", href: url(`/p/${p.slug}`) },
+    ],
+    "Sent when a paid tier with hand-delivered perks is bought.",
+  );
 }
 
 export async function notifyRecapDrafted(post: { id: string; title: string }) {
-  await sendEmail({
-    to: env().ADMIN_EMAIL ?? site.supportEmail,
-    subject: `Recap draft ready: ${post.title}`,
-    ...compose([
-      "The weekly recap is drafted from last week's board. Add a line about each winner, then publish.",
-      `[Edit the draft](${url(`/admin/blog/${post.id}`)})`,
-    ]),
-  });
+  await toStaff(
+    "Blog",
+    `Recap draft ready: ${post.title}`,
+    [
+      { heading: "The weekly recap is drafted" },
+      { text: "It's drafted from last week's board. Add a line about each winner, then publish." },
+      { facts: [["Draft", post.title]] },
+      { button: "Edit the draft", href: url(`/admin/blog/${post.id}`) },
+    ],
+    "Sent when the weekly rollover drafts the recap post.",
+  );
 }
 
 /** A Spotlight spot opened for someone on the waitlist. Spots go to whoever books first. */
@@ -150,12 +199,21 @@ export async function notifySpotlightOpen(to: string, productId: string | null) 
   const book = url(productId ? `/dashboard/products/${productId}/plan` : "/dashboard/products");
   await sendEmail({
     to,
-    subject: "A Spotlight spot just opened",
-    ...compose([
-      "You asked us to tell you when a Spotlight spot opened on the DebutYard homepage. One just did.",
-      "There are only 3 at any time, and the spot goes to whoever books it first, so it may not stay open long. Spotlight keeps your product at the top of the homepage for 30 days.",
-      `[Book the Spotlight](${book})`,
-      "If it's gone by the time you get there, you can join the waitlist again from the same page.",
-    ]),
+    ...renderEmail({
+      variant: "customer",
+      label: "Spotlight",
+      subject: "A Spotlight spot just opened",
+      preheader: "Spots go to whoever books first.",
+      reason: "you joined the Spotlight waitlist",
+      blocks: [
+        { heading: "A Spotlight spot just opened" },
+        { text: "You asked us to tell you when a Spotlight spot opened on the DebutYard homepage. One just did." },
+        {
+          text: "There are only 3 at any time, and the spot goes to whoever books it first, so it may not stay open long. Spotlight keeps your product at the top of the homepage for 30 days.",
+        },
+        { button: "Book the Spotlight", href: book },
+        { note: "If it's gone by the time you get there, you can join the waitlist again from the same page." },
+      ],
+    }),
   });
 }

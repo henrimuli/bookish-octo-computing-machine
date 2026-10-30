@@ -2,8 +2,8 @@ import "server-only";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { env } from "@/env";
-import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
 import { getProvider } from "@/lib/payments";
 import { getSku } from "@/lib/payments/skus";
 import type { SubscriptionState } from "@/lib/payments/types";
@@ -23,21 +23,22 @@ const url = (path: string) => new URL(path, env().NEXT_PUBLIC_SITE_URL).toString
 const date = (d: Date | null) =>
   d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
 
-function escape(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
 async function mailUser(userId: string, subject: string, lines: string[]) {
   const u = await db().query.user.findFirst({ where: eq(schema.user.id, userId), columns: { email: true } });
   if (!u) return;
-  const href = url("/dashboard/billing");
   await sendEmail({
     to: u.email,
-    subject,
-    text: [...lines, `Billing: ${href}`, `— ${site.name}`].join("\n\n"),
-    html:
-      lines.map((l) => `<p>${escape(l)}</p>`).join("") +
-      `<p><a href="${href}">Manage your plan</a></p><p>— ${site.name}</p>`,
+    ...renderEmail({
+      variant: "customer",
+      label: "Billing",
+      subject,
+      reason: "you have a DebutYard plan",
+      blocks: [
+        { heading: subject },
+        ...lines.filter(Boolean).map((text) => ({ text })),
+        { button: "Manage your plan", href: url("/dashboard/billing") },
+      ],
+    }),
   });
 }
 

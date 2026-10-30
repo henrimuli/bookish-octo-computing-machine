@@ -10,6 +10,7 @@ import { forbidden, redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { env } from "@/env";
 import { sendEmail } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
 import { slugify, uniqueSlug } from "@/lib/slug";
 
 function socialProviders() {
@@ -74,9 +75,20 @@ function createAuth() {
         sendMagicLink: async ({ email, url }) => {
           await sendEmail({
             to: email,
-            subject: "Your DebutYard sign-in link",
-            text: `Sign in to DebutYard: ${url}\n\nThis link expires in 15 minutes. If you didn't ask for it, ignore this email.`,
-            html: `<p>Sign in to DebutYard:</p><p><a href="${url}">Sign in</a></p><p>This link expires in 15 minutes. If you didn't ask for it, ignore this email.</p>`,
+            ...renderEmail({
+              variant: "customer",
+              label: "Sign in",
+              subject: "Your DebutYard sign-in link",
+              preheader: "This link expires in 15 minutes.",
+              reason: "someone asked to sign in to DebutYard with this address",
+              blocks: [
+                { heading: "Sign in to DebutYard" },
+                { text: "Use the button below to sign in. It expires in 15 minutes." },
+                { button: "Sign in", href: url },
+                { note: `Button not working? Paste this link into your browser: ${url}` },
+                { note: "If you didn't ask for this, ignore this email. Nobody can sign in without the link." },
+              ],
+            }),
           });
         },
       }),

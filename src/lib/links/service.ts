@@ -3,8 +3,8 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "dr
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { env } from "@/env";
-import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail, type Block, type Tone } from "@/lib/email-template";
 import { limit } from "@/lib/billing/entitlements";
 import { checkLink, targetDomain, type LinkCheckResult } from "@/lib/directories/verify";
 import { captureEvidence, evidenceKey } from "@/lib/evidence";
@@ -29,18 +29,22 @@ export class LinkError extends Error {}
 const url = (path: string) => new URL(path, env().NEXT_PUBLIC_SITE_URL).toString();
 const ts = (d: Date) => sql`${d.toISOString()}::timestamptz`;
 
-function escape(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
-async function mail(to: string, subject: string, lines: string[], link: { label: string; href: string }) {
+async function mail(
+  to: string,
+  subject: string,
+  heading: string,
+  blocks: Block[],
+  link: { label: string; href: string },
+) {
   await sendEmail({
     to,
-    subject,
-    text: [...lines, `${link.label}: ${link.href}`, `— ${site.name}`].join("\n\n"),
-    html:
-      lines.map((l) => `<p>${escape(l)}</p>`).join("") +
-      `<p><a href="${link.href}">${escape(link.label)}</a></p><p>— ${site.name}</p>`,
+    ...renderEmail({
+      variant: "customer",
+      label: "Link Monitor",
+      subject,
+      reason: "Link Monitor checks your backlinks for you",
+      blocks: [{ heading }, ...blocks, { button: link.label, href: link.href }],
+    }),
   });
 }
 
@@ -319,10 +323,10 @@ async function overLimit(links: TrackedLink[], now: Date): Promise<Set<string>> 
   return skip;
 }
 
-const CHANGE_TEXT: Record<Change, string> = {
-  nofollow: "now nofollow",
-  removed: "listing removed or unreachable",
-  recovered: "dofollow again",
+const CHANGE_CHIP: Record<Change, { label: string; tone: Tone }> = {
+  nofollow: { label: "Now nofollow", tone: "warn" },
+  removed: { label: "Removed or unreachable", tone: "bad" },
+  recovered: { label: "Dofollow again", tone: "good" },
 };
 
 /** One email per owner per run, summarising what changed. */
@@ -368,20 +372,30 @@ async function sendAlerts(outcomes: CheckOutcome[]) {
     if (!to) continue;
     const summary = summarizeChanges(items.map((i) => i.change));
     const bad = items.some((i) => i.change !== "recovered");
-    const lines = items.map((i) => {
-      const label = names.get(i.link.submissionId ?? "")?.name ?? i.link.url;
-      return `${label}: ${CHANGE_TEXT[i.change]} (${i.link.url})`;
+    const rows = items.map((i) => {
+      const name = names.get(i.link.submissionId ?? "")?.name;
+      return {
+        name: name ?? i.link.url,
+        detail: name ? i.link.url : undefined,
+        href: i.link.url,
+        chip: CHANGE_CHIP[i.change],
+      };
     });
     await mail(
       to,
       `Link Monitor: ${summary}`,
+      bad ? "Some of your backlinks changed" : "Some of your backlinks are back",
       [
-        bad ? "Some of your backlinks changed since our last check." : "Good news: some of your backlinks are back.",
-        ...lines,
-        bad
-          ? "A directory may have changed its link policy or removed the listing. It's worth checking the page and contacting the directory."
-          : "",
-      ].filter(Boolean),
+        { text: bad ? "Here's what changed since our last check." : "Good news: these links are followed again." },
+        { items: rows },
+        ...(bad
+          ? [
+              {
+                text: "A directory may have changed its link policy or removed the listing. It's worth checking the page and contacting the directory.",
+              },
+            ]
+          : []),
+      ],
       { label: "See all your links", href },
     );
     sent++;
@@ -442,10 +456,13 @@ export async function endIncludedMonitoring(now = new Date()) {
       await mail(
         to,
         `Monitoring for ${o.productName ?? "your order"} continues on your plan`,
+        "Your links stay monitored",
         [
-          `The Link Monitor included with your order has ended. Your plan has room, so we keep checking all ${ids.length} links: they now count toward your plan.`,
+          {
+            text: `The Link Monitor included with your order has ended. Your plan has room, so we keep checking all ${ids.length} links: they now count toward your plan.`,
+          },
         ],
-        { label: "Your links", href: url("/dashboard/links") },
+        { label: "See your links", href: url("/dashboard/links") },
       );
     } else {
       await db().update(trackedLinks).set({ active: false }).where(inArray(trackedLinks.id, ids));
@@ -453,9 +470,15 @@ export async function endIncludedMonitoring(now = new Date()) {
       await mail(
         to,
         `Link Monitor for ${o.productName ?? "your order"} has ended`,
+        "Your included Link Monitor has ended",
         [
-          `The Link Monitor included with your order has ended, so we've stopped checking its ${ids.length} live links.`,
-          "Directories change their link policies and remove listings over time. Keep getting an alert when that happens with the Link Monitor plan: $9/month for 100 links, with weekly checks.",
+          {
+            text: `The Link Monitor included with your order has ended, so we've stopped checking its ${ids.length} live links.`,
+          },
+          {
+            callout: "Keep getting alerts",
+            text: "Directories change their link policies and remove listings over time. The Link Monitor plan is $9/month for 100 links, with weekly checks.",
+          },
         ],
         { label: "Keep monitoring", href: url("/dashboard/billing#plans") },
       );

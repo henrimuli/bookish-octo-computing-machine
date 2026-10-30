@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { addImpressions, newsletterSponsor } from "@/lib/ads/service";
 import { sendBatch, sendEmail } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
 import { weekBoard } from "@/lib/board/queries";
 import { addWeeks, formatWeekLabel, weekKeyFor } from "@/lib/weeks";
 import { renderDigest, type DigestData } from "./render";
@@ -25,9 +26,21 @@ async function sendConfirm(email: string, token: string) {
   const link = url(`/newsletter/confirm?token=${token}`);
   await sendEmail({
     to: email,
-    subject: "Confirm your DebutYard newsletter subscription",
-    text: `Confirm your subscription to the weekly DebutYard digest:\n${link}\n\nIf you didn't ask for this, ignore this email.`,
-    html: `<p>Confirm your subscription to the weekly DebutYard digest:</p><p><a href="${link}">Confirm subscription</a></p><p>If you didn't ask for this, ignore this email.</p>`,
+    ...renderEmail({
+      variant: "newsletter",
+      label: "Weekly digest",
+      subject: "Confirm your DebutYard newsletter subscription",
+      preheader: "One click and you're in: winners and new debuts, every Monday.",
+      reason: "someone signed this address up for the DebutYard weekly digest",
+      blocks: [
+        { heading: "Confirm your subscription" },
+        {
+          text: "Confirm your subscription to the weekly DebutYard digest: last week's winners and this week's debuts, every Monday.",
+        },
+        { button: "Confirm subscription", href: link },
+        { note: "If you didn't ask for this, ignore this email and you won't hear from us." },
+      ],
+    }),
   });
 }
 
@@ -97,6 +110,7 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
       name: p!.name,
       tagline: p!.tagline,
       url: url(`/p/${p!.slug}`),
+      logoUrl: p!.logoUrl,
       applause: p!.debutApplause,
       place: a.place,
     }));
@@ -106,7 +120,13 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
   const debuting = [...newBoard]
     .sort((a, b) => (paidRank[a.tier] ?? 9) - (paidRank[b.tier] ?? 9))
     .slice(0, 10)
-    .map((p) => ({ name: p.name, tagline: p.tagline, url: url(`/p/${p.slug}`), featured: p.tier in paidRank }));
+    .map((p) => ({
+      name: p.name,
+      tagline: p.tagline,
+      url: url(`/p/${p.slug}`),
+      logoUrl: p.logoUrl,
+      featured: p.tier in paidRank,
+    }));
 
   return {
     closedWeekLabel: formatWeekLabel(closedWeek),
@@ -115,7 +135,13 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
     topOfWeek: closedBoard
       .filter((p) => !winnerIds.has(p.id))
       .slice(0, 7)
-      .map((p) => ({ name: p.name, tagline: p.tagline, url: url(`/p/${p.slug}`), applause: p.applause })),
+      .map((p) => ({
+        name: p.name,
+        tagline: p.tagline,
+        url: url(`/p/${p.slug}`),
+        logoUrl: p.logoUrl,
+        applause: p.applause,
+      })),
     debutingNow: debuting,
     sponsor: await newsletterSponsor(newWeek),
     siteUrl: url("/"),

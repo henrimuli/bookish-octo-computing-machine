@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
 import { startCheckout } from "@/lib/payments/service";
 import { formatUsd } from "@/lib/payments/skus";
 import type { ProviderId } from "@/lib/payments/types";
@@ -204,19 +205,52 @@ export async function activateBooking(bookingId: string, now = new Date()) {
   const owner = row.userId ? await db().query.user.findFirst({ where: eq(schema.user.id, row.userId) }) : null;
   if (owner) {
     const dash = new URL("/dashboard", env().NEXT_PUBLIC_SITE_URL).toString();
+    const name = product?.name ?? "your listing";
     await sendEmail({
       to: owner.email,
-      subject: `Booked: ${label} for ${product?.name ?? "your listing"}`,
-      text: `Your ${label} for ${product?.name} is booked for ${when}.\n\nImpressions and clicks show on your dashboard: ${dash}\n\n— ${site.name}`,
-      html: `<p>Your ${label} for <strong>${product?.name}</strong> is booked for ${when}.</p><p>Impressions and clicks show on your <a href="${dash}">dashboard</a>.</p><p>— ${site.name}</p>`,
+      ...renderEmail({
+        variant: "customer",
+        label: "Advertising",
+        subject: `Booked: ${label} for ${name}`,
+        reason: `you booked a ${label} on DebutYard`,
+        blocks: [
+          { heading: `Your ${label} is booked` },
+          {
+            facts: [
+              ["Placement", label],
+              ["Listing", name],
+              ["Runs", when],
+            ],
+          },
+          { text: "Impressions and clicks show on your dashboard as they come in." },
+          { button: "Open your dashboard", href: dash },
+        ],
+      }),
     });
   }
   if (lapsed) {
     await sendEmail({
       to: env().ADMIN_EMAIL ?? site.supportEmail,
-      subject: `Check inventory: late payment for ${label} (${formatWeekLabel(row.weekKey)})`,
-      text: `Booking ${row.id} was paid after its hold lapsed and is now active. Check the week isn't over capacity.`,
-      html: `<p>Booking <code>${row.id}</code> was paid after its hold lapsed and is now active. Check the week isn't over capacity.</p>`,
+      ...renderEmail({
+        variant: "staff",
+        label: "Ads",
+        subject: `Check inventory: late payment for ${label} (${formatWeekLabel(row.weekKey)})`,
+        trigger: "Sent when an ad is paid for after its hold lapsed.",
+        blocks: [
+          { heading: "Check ad inventory" },
+          {
+            text: "This booking was paid after its hold lapsed and is now active. Check the week isn't over capacity.",
+          },
+          {
+            facts: [
+              ["Booking", row.id],
+              ["Placement", label],
+              ["Week", formatWeekLabel(row.weekKey)],
+            ],
+          },
+          { button: "Open ads", href: new URL("/admin/ads", env().NEXT_PUBLIC_SITE_URL).toString() },
+        ],
+      }),
     });
   }
   return row;
@@ -281,6 +315,7 @@ export async function newsletterSponsor(weekKey: string) {
     bookingId: ad.bookingId,
     name: ad.name,
     tagline: ad.tagline,
+    logoUrl: ad.logoUrl,
     url: new URL(ad.href, env().NEXT_PUBLIC_SITE_URL).toString(),
   };
 }
@@ -368,19 +403,33 @@ export async function settleBookings(now = new Date()) {
 async function sendReport(to: string, b: Booking, productName: string, paidCents: number) {
   const label = PLACEMENTS[b.placement].label;
   const cpc = cpcCents(paidCents, b.clicks);
-  const lines = [
-    `Your ${label} for ${productName} has finished.`,
-    `Impressions: ${b.impressions}. Clicks: ${b.clicks}.${cpc !== null && paidCents > 0 ? ` Cost per click: ${formatUsd(cpc)}.` : ""}`,
-    b.extensions > 0
-      ? `Our CPC guarantee kept it up ${b.extensions} extra week${b.extensions === 1 ? "" : "s"} for free.`
-      : "",
-    `Book again any time: ${new URL("/advertise", env().NEXT_PUBLIC_SITE_URL)}`,
-  ].filter(Boolean);
+  const facts: Array<[string, string]> = [
+    ["Impressions", String(b.impressions)],
+    ["Clicks", String(b.clicks)],
+  ];
+  if (cpc !== null && paidCents > 0) facts.push(["Cost per click", formatUsd(cpc)]);
   await sendEmail({
     to,
-    subject: `Your ${label} results: ${b.clicks} click${b.clicks === 1 ? "" : "s"}`,
-    text: `${lines.join("\n\n")}\n\n— ${site.name}`,
-    html: `${lines.map((l) => `<p>${l}</p>`).join("")}<p>— ${site.name}</p>`,
+    ...renderEmail({
+      variant: "customer",
+      label: "Advertising",
+      subject: `Your ${label} results: ${b.clicks} click${b.clicks === 1 ? "" : "s"}`,
+      reason: `you booked a ${label} on DebutYard`,
+      blocks: [
+        { heading: `Your ${label} results` },
+        { text: `Your ${label} for ${productName} has finished.` },
+        { facts },
+        ...(b.extensions > 0
+          ? [
+              {
+                callout: "CPC guarantee",
+                text: `Our CPC guarantee kept it up ${b.extensions} extra week${b.extensions === 1 ? "" : "s"} for free.`,
+              },
+            ]
+          : []),
+        { button: "Book again", href: new URL("/advertise", env().NEXT_PUBLIC_SITE_URL).toString() },
+      ],
+    }),
   });
 }
 

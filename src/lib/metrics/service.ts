@@ -2,8 +2,8 @@ import "server-only";
 import { and, asc, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { env } from "@/env";
-import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
+import { renderEmail } from "@/lib/email-template";
 import { entitled } from "@/lib/billing/entitlements";
 import { domainOf } from "@/lib/slug";
 import { BULK_MAX, createDrProvider, DR_DROP_ALERT, type DrProvider, type DrReading } from "./providers";
@@ -165,15 +165,24 @@ export async function snapshotDomains(now = new Date(), { batch = 100 } = {}) {
       const drop = res.previous ? res.previous.dr - res.row.dr : 0;
       if (drop >= DR_DROP_ALERT) {
         for (const w of watched.get(domain) ?? []) {
-          const lines = [
-            `The Authority Score of ${domain} fell from ${res.previous!.dr} to ${res.row.dr} since our last check.`,
-            "A drop like this usually means some sites that linked to you removed the link or lost authority themselves. Your Link Monitor shows which listings changed.",
-          ];
           await sendEmail({
             to: w.email,
-            subject: `Authority Score alert: ${domain} dropped ${Math.round(drop)} points`,
-            text: [...lines, `Details: ${w.href}`, `— ${site.name}`].join("\n\n"),
-            html: `${lines.map((l) => `<p>${l}</p>`).join("")}<p><a href="${w.href}">See the details</a></p><p>— ${site.name}</p>`,
+            ...renderEmail({
+              variant: "customer",
+              label: "Authority Score",
+              subject: `Authority Score alert: ${domain} dropped ${Math.round(drop)} points`,
+              reason: `you track the Authority Score of ${domain}`,
+              blocks: [
+                { heading: `${domain} dropped ${Math.round(drop)} points` },
+                {
+                  text: `The Authority Score of ${domain} fell from ${res.previous!.dr} to ${res.row.dr} since our last check.`,
+                },
+                {
+                  text: "A drop like this usually means some sites that linked to you removed the link or lost authority themselves. Your Link Monitor shows which listings changed.",
+                },
+                { button: "See the details", href: w.href },
+              ],
+            }),
           });
           alerts++;
         }
