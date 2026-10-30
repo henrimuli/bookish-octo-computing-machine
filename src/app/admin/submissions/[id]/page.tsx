@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 import { OpsRows } from "@/components/submissions/ops-rows";
 import { OrderControls, ResendBadgeBlock } from "@/components/submissions/order-controls";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge, Card, Heading } from "@/components/ui/primitives";
 import { db, schema } from "@/db";
 import { requireStaff } from "@/lib/auth";
@@ -23,15 +24,17 @@ export default function OrderOpsPage(props: PageProps<"/admin/submissions/[id]">
         ← All orders
       </Link>
       <Suspense fallback={<p className="mt-6 text-muted-foreground">Loading…</p>}>
-        <Detail params={props.params} />
+        <Detail params={props.params} searchParams={props.searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "params">) {
+async function Detail({ params, searchParams }: PageProps<"/admin/submissions/[id]">) {
   await requireStaff();
   const { id } = await params;
+  // The order page has two views: the directory list (default) and the order's inbox.
+  const showInbox = (await searchParams).view === "inbox";
   if (!z.string().uuid().safeParse(id).success) notFound();
   const order = await db().query.submissionOrders.findFirst({ where: eq(schema.submissionOrders.id, id) });
   if (!order) notFound();
@@ -69,6 +72,20 @@ async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "pa
         <Heading className="text-2xl sm:text-3xl">{order.productName ?? order.email}</Heading>
         <Badge>{PACKAGES[order.package].label}</Badge>
         <Badge tone={order.status === "delivered" ? "success" : "default"}>{order.status.replace("_", " ")}</Badge>
+        <div className="ml-auto">
+          {showInbox ? (
+            <ButtonLink href={`/admin/submissions/${order.id}`} variant="outline" size="sm">
+              ← Back to directories
+            </ButtonLink>
+          ) : (
+            <ButtonLink href={`/admin/submissions/${order.id}?view=inbox`} variant="outline" size="sm">
+              Inbox
+              <span className="rounded-full bg-muted px-2 text-xs tabular-nums text-muted-foreground">
+                {messages.length}
+              </span>
+            </ButtonLink>
+          )}
+        </div>
       </div>
       <p className="text-sm text-muted-foreground">
         {s.live} live ({s.dofollow} dofollow) · {s.inReview} in review · {s.needsAction} need the client · {s.scheduled}
@@ -83,7 +100,9 @@ async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "pa
         staff={staff}
         canDeliver={order.status === "queued" || order.status === "in_progress"}
       />
-      {order.status === "awaiting_intake" ? (
+      {showInbox ? (
+        <InboxPanel inbox={inbox} messages={messages} />
+      ) : order.status === "awaiting_intake" ? (
         <Card className="p-5 text-sm text-muted-foreground">
           Waiting for the client to fill in the intake form. They were emailed the link.
         </Card>
@@ -158,54 +177,62 @@ async function Detail({ params }: Pick<PageProps<"/admin/submissions/[id]">, "pa
               }))}
             />
           </Card>
-          <Card className="p-5">
-            <h2 className="font-medium">Inbox</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {inbox ? (
-                <>
-                  Use <code className="break-all">{inbox}</code> when creating directory accounts. Verification emails
-                  land here.
-                </>
-              ) : (
-                "Set INBOUND_EMAIL_DOMAIN and RESEND_WEBHOOK_SECRET, with receiving on for that domain in Resend, to get mail here."
-              )}
-            </p>
-            {messages.length > 0 && (
-              <ul className="mt-4 divide-y divide-border text-sm">
-                {messages.map((m) => (
-                  <li key={m.id} className="py-3">
-                    <details>
-                      <summary className="cursor-pointer">
-                        <span className="font-medium">{m.subject || "(no subject)"}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {m.fromAddress} · {m.receivedAt.toUTCString().slice(5, 22)}
-                        </span>
-                      </summary>
-                      <div className="mt-2 space-y-2">
-                        {messageLinks(m.text, m.html).map((l) => (
-                          <a
-                            key={l.url}
-                            href={l.url}
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                            className={`block truncate text-xs hover:underline ${l.likely ? "font-medium text-primary" : "text-muted-foreground"}`}
-                          >
-                            {l.likely ? "Verify: " : ""}
-                            {l.url}
-                          </a>
-                        ))}
-                        <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">
-                          {m.text.slice(0, 5000) || "(HTML only)"}
-                        </pre>
-                      </div>
-                    </details>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
         </>
       )}
     </div>
+  );
+}
+
+/** Mail that directories send to this order's inbox address: verification links first. */
+function InboxPanel({ inbox, messages }: { inbox: string | null; messages: Awaited<ReturnType<typeof messagesFor>> }) {
+  return (
+    <Card className="p-5">
+      <h2 className="font-medium">Inbox</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {inbox ? (
+          <>
+            Use <code className="break-all">{inbox}</code> when creating directory accounts. Verification emails land
+            here.
+          </>
+        ) : (
+          "Set INBOUND_EMAIL_DOMAIN and RESEND_WEBHOOK_SECRET, with receiving on for that domain in Resend, to get mail here."
+        )}
+      </p>
+      {messages.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">No mail yet.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-border text-sm">
+          {messages.map((m) => (
+            <li key={m.id} className="py-3">
+              <details>
+                <summary className="cursor-pointer">
+                  <span className="font-medium">{m.subject || "(no subject)"}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {m.fromAddress} · {m.receivedAt.toUTCString().slice(5, 22)}
+                  </span>
+                </summary>
+                <div className="mt-2 space-y-2">
+                  {messageLinks(m.text, m.html).map((l) => (
+                    <a
+                      key={l.url}
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className={`block truncate text-xs hover:underline ${l.likely ? "font-medium text-primary" : "text-muted-foreground"}`}
+                    >
+                      {l.likely ? "Verify: " : ""}
+                      {l.url}
+                    </a>
+                  ))}
+                  <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">
+                    {m.text.slice(0, 5000) || "(HTML only)"}
+                  </pre>
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
