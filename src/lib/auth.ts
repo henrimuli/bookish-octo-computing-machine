@@ -158,6 +158,15 @@ export async function staffRole(user: Pick<SessionUser, "email"> | null): Promis
   return user?.email ? roleForEmail(user.email) : null;
 }
 
+/**
+ * Owners and admins may submit free debuts without the badge and past the
+ * waiting-debut cap, e.g. to try listings before launch. Ops staff may not.
+ */
+export async function canOverrideFreeRules(user: Pick<SessionUser, "email"> | null): Promise<boolean> {
+  const role = await staffRole(user);
+  return role === "owner" || role === "admin";
+}
+
 export async function isStaff(user: Pick<SessionUser, "email"> | null): Promise<boolean> {
   return (await staffRole(user)) !== null;
 }

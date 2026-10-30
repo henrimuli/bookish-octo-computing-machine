@@ -53,6 +53,8 @@ export function PlanPicker({
   const [coupon, setCoupon] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [badgeFound, setBadgeFound] = useState(badge.verified);
+  // Owners and admins can submit without the badge (the server checks their role again).
+  const badgeOk = badgeFound || badge.override;
   const [pending, start] = useTransition();
   const option = options.find((o) => o.tier === selected)!;
 
@@ -195,6 +197,11 @@ export function PlanPicker({
           <div className="space-y-3 rounded-md border border-border bg-card p-4">
             {badgeFound ? (
               <p className="text-sm font-medium text-success">Badge found on your site. You can submit now.</p>
+            ) : badge.override ? (
+              <p className="text-sm">
+                <span className="font-medium">Admin override:</span> you can submit without the badge, and past the
+                limit of waiting free debuts. The listing&apos;s link stays nofollow until a badge is found.
+              </p>
             ) : (
               <>
                 <p className="text-sm font-medium">
@@ -216,10 +223,10 @@ export function PlanPicker({
 
         {selected === "free" ? (
           <div className="space-y-1.5">
-            <Button onClick={submitFree} disabled={pending || !option.available || !badgeFound}>
+            <Button onClick={submitFree} disabled={pending || !option.available || !badgeOk}>
               {pending ? "Submitting…" : "Submit for review"}
             </Button>
-            {option.available && !badgeFound && (
+            {option.available && !badgeOk && (
               <p className="text-xs text-muted-foreground">
                 Locked until we find the badge. Paste it, then click “Check my site”. Paid plans don&apos;t need it.
               </p>

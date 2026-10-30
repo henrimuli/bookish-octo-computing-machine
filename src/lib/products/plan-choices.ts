@@ -38,6 +38,8 @@ export type PlanChoices = {
   /** The badge a free debut needs before it can be submitted. */
   badge: {
     verified: boolean;
+    /** An owner or admin is signed in: they may submit without the badge. */
+    override: boolean;
     snippets: { light: string; dark: string };
     previewUrls: { light: string; dark: string };
     dnsHost: string;
@@ -83,8 +85,16 @@ const perks: Record<Tier, string[]> = {
   ],
 };
 
-/** The maker's plan options for one of their listings, or null if it isn't theirs. */
-export async function planChoices(userId: string, productId: string): Promise<PlanChoices | null> {
+/**
+ * The maker's plan options for one of their listings, or null if it isn't theirs.
+ * `override` (owners and admins) lifts the badge requirement and the waiting-debut cap.
+ */
+export async function planChoices(
+  userId: string,
+  productId: string,
+  opts: { override?: boolean } = {},
+): Promise<PlanChoices | null> {
+  const override = opts.override ?? false;
   const editable = /^[0-9a-f-]{36}$/.test(productId) ? await getEditableProduct(productId, userId) : null;
   if (!editable) return null;
   const p = editable.product;
@@ -99,7 +109,9 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
   ]);
   const siteUrl = env().NEXT_PUBLIC_SITE_URL;
   const freeAvailable =
-    (p.status === "draft" || p.status === "rejected") && p.tier === "free" && activeFree < MAX_ACTIVE_FREE;
+    (p.status === "draft" || p.status === "rejected") &&
+    p.tier === "free" &&
+    (override || activeFree < MAX_ACTIVE_FREE);
   const thisWeek = weekKeyFor(new Date());
 
   const options: PlanOption[] = (Object.keys(TIERS) as Tier[]).map((tier) => {
@@ -147,6 +159,7 @@ export async function planChoices(userId: string, productId: string): Promise<Pl
     spotlightWaitlisted: waitlisted,
     badge: {
       verified: badge?.status === "verified",
+      override,
       snippets: {
         light: badgeSnippet({ siteUrl, slug: p.slug, theme: "light" }),
         dark: badgeSnippet({ siteUrl, slug: p.slug, theme: "dark" }),

@@ -74,6 +74,18 @@ describe.skipIf(!TEST_DB)("admin (Postgres)", () => {
     expect(await auth.isStaff({ email: "mate@x.test" })).toBe(false);
   });
 
+  it("lets owners and admins, not ops, override the free-debut rules", async () => {
+    const adminId = await admins.addAdmin({ email: "boss@x.test", role: "admin" }, "owner");
+    const opsId = await admins.addAdmin({ email: "helper@x.test", role: "ops" }, "owner");
+    expect(await auth.canOverrideFreeRules({ email: "owner@debutyard.test" })).toBe(true);
+    expect(await auth.canOverrideFreeRules({ email: "boss@x.test" })).toBe(true);
+    expect(await auth.canOverrideFreeRules({ email: "helper@x.test" })).toBe(false);
+    expect(await auth.canOverrideFreeRules({ email: "rando@x.test" })).toBe(false);
+    expect(await auth.canOverrideFreeRules(null)).toBe(false);
+    await admins.removeAdmin(adminId, { email: "owner@debutyard.test" });
+    await admins.removeAdmin(opsId, { email: "owner@debutyard.test" });
+  });
+
   it("builds the overview on a fresh database", async () => {
     const o = await overview.adminOverview(new Date());
     expect(o.users.total).toBe(3);

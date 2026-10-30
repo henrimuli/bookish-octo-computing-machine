@@ -199,6 +199,23 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
     await expect(products.submitForReview(third.id, u)).rejects.toThrow(/2 free debuts/);
   });
 
+  it("lets owners and admins submit free debuts without the badge or the cap, leaving the badge unverified", async () => {
+    const u = await makeUser();
+    const ids: string[] = [];
+    for (const d of ["staff-a.io", "staff-b.io", "staff-c.io"]) {
+      const p = await products.saveProduct(u, input(d));
+      expect((await products.submitForReview(p.id, u, { override: true })).status).toBe("pending");
+      ids.push(p.id);
+    }
+    const badge = await dbmod.db().query.badgeVerifications.findFirst({
+      where: eq(dbmod.schema.badgeVerifications.productId, ids[2]),
+    });
+    expect(badge?.status).toBe("unverified");
+    // Without the override the same maker is held to both rules.
+    const fourth = await products.saveProduct(u, input("staff-d.io"));
+    await expect(products.submitForReview(fourth.id, u)).rejects.toThrow(/2 free debuts/);
+  });
+
   it("schedules free approvals into the next week with room", async () => {
     const u = await makeUser();
     await products.ensureWeek(nextWeek);
