@@ -12,7 +12,7 @@ Turnstile is free, and debutyard.com doesn't need to use Cloudflare for DNS.
 4. Fill in the form:
    - **Widget name:** `DebutYard Authority Score checker`. Only you see this.
    - **Hostnames:** add `debutyard.com` and `www.debutyard.com`. Tokens are only valid on the hostnames listed here.
-   - **Widget mode:** choose **Invisible**.
+   - **Widget mode:** choose **Invisible**. Cloudflare requires sites using Invisible mode to link the Turnstile Privacy Addendum from their privacy policy; ours does, under "Bot protection" at `/privacy`.
    - **Pre-clearance:** leave it at **No**.
 5. Click **Create**.
 6. Cloudflare shows two keys. Keep this page open for the next section.

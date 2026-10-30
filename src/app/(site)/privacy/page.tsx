@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Privacy policy" };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="October 26, 2026">
+    <LegalPage title="Privacy policy" updated="October 30, 2026">
       <p>
         This policy explains what {site.legalName} ({site.country}) collects when you use {site.name}, why, and your
         choices. We follow Kenya&apos;s Data Protection Act, 2019, and aim to meet the GDPR standard for visitors from
@@ -36,9 +36,21 @@ export default function PrivacyPage() {
 
       <h2>Who we share it with</h2>
       <p>
-        Service providers that run parts of {site.name} for us: hosting (Vercel), database (Supabase), file storage
-        (Cloudflare), email (Resend) and payments (Paystack, PayPal). For the submission service, we share the product
-        details you give us with the directories we submit to. We don&apos;t sell personal data.
+        Service providers that run parts of {site.name} for us: hosting (Vercel), database (Supabase), file storage and
+        bot protection (Cloudflare), email (Resend) and payments (Paystack, PayPal). For the submission service, we
+        share the product details you give us with the directories we submit to. We don&apos;t sell personal data.
+      </p>
+
+      <h2>Bot protection</h2>
+      <p>
+        The Authority Score checker uses Cloudflare Turnstile to tell people from automated traffic. When you run a
+        check, Turnstile collects information about your device and browser, such as your IP address and browser
+        signals, and Cloudflare processes it to decide whether the request is genuine. Cloudflare&apos;s handling of
+        this data is covered by the{" "}
+        <a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener noreferrer">
+          Cloudflare Turnstile Privacy Addendum
+        </a>
+        .
       </p>
 
       <h2>Retention</h2>

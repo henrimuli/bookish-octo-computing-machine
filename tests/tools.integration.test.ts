@@ -170,7 +170,7 @@ describe.skipIf(!TEST_DB)("free tools (Postgres)", () => {
       await expect(tools.checkDr("fresh-two.io", web("7.7.7.7"))).rejects.toThrow("limit for today");
       expect(drCalls).not.toContain("fresh-two.io");
       // Cached domains still work, and the refused lookup didn't count against the visitor.
-      expect((await tools.checkDr("acme.io", web("7.7.7.7"))).remaining).toEqual({ hour: 3, day: 13 });
+      expect((await tools.checkDr("fresh-one.io", web("7.7.7.7"))).remaining).toEqual({ hour: 3, day: 13 });
     } finally {
       delete process.env.DR_DAILY_PROVIDER_CAP;
       env.resetEnvForTests();
