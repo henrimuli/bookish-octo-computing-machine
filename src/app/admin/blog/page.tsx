@@ -43,7 +43,7 @@ async function Suggested() {
       <p className="mt-1 text-xs text-muted-foreground">
         Launch posts paid debuts bought. Start a draft from the listing, write it up, and publishing marks it done.
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {tasks.map((t) => {
           const dueSoon = t.task.status === "suggested" && t.task.dueAt !== null && t.task.dueAt < endOfWeek;
           return (

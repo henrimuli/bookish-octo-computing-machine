@@ -128,7 +128,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/dashboard"
         ))}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0 space-y-6">
           <Card className="p-0">
             <div className="flex items-center justify-between border-b border-border px-5 py-4">

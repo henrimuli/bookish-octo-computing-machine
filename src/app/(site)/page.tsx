@@ -45,7 +45,7 @@ export default function Home() {
         <Sponsored />
       </Suspense>
 
-      <Container className="grid items-start gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <Container className="grid grid-cols-1 items-start gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_300px]">
         <section className="min-w-0">
           <Suspense
             fallback={

@@ -78,7 +78,7 @@ async function Queue() {
         <h2 className="font-display text-xl font-semibold">Pending ({pending.length})</h2>
         {pending.length === 0 && <p className="text-muted-foreground">Nothing to review.</p>}
         {pending.map(({ p, makerEmail, makerName }) => (
-          <Card key={p.id} className="grid gap-4 sm:grid-cols-[1fr_260px]">
+          <Card key={p.id} className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_260px]">
             <div className="flex gap-4">
               <ProductLogo name={p.name} src={p.logoUrl} />
               <div className="min-w-0 space-y-1">
