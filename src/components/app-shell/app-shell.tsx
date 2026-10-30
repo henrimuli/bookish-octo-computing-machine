@@ -7,7 +7,14 @@ import { Icon, type IconName } from "@/components/app-shell/icons";
 import { LogoMark } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
-export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: IconName;
+  exact?: boolean;
+  /** Open to-dos, shown as a small count on the right. Hidden when 0. */
+  count?: number;
+};
 export type NavGroup = { label?: string; items: NavItem[] };
 
 /**
@@ -152,6 +159,14 @@ function NavLinks({
               >
                 <Icon name={item.icon} />
                 {item.label}
+                {item.count ? (
+                  <span
+                    className="ml-auto rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold text-primary"
+                    aria-label={`${item.count} open`}
+                  >
+                    {item.count}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );

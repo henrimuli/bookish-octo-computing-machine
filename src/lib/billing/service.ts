@@ -310,7 +310,6 @@ export async function redeemFastTrack(userId: string, productId: string, now = n
   try {
     const updated = await applyPaidTier(productId, "fast_track", null);
     await notify.notifyPaidTierApplied(updated, `${TIERS.fast_track.label} (Maker Pro credit)`);
-    await notify.notifyAdminPaidTier(updated, "fast_track");
     if (p.status !== "pending" && updated.status === "pending") await notify.notifyProductSubmitted(updated);
     return updated;
   } catch (err) {

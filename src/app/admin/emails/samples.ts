@@ -193,19 +193,34 @@ export const samples: Sample[] = [
   },
   {
     id: "staff-todo",
-    name: "Paid tier to-do",
+    name: "Paid perks need attention",
     audience: "Staff",
     render: () =>
       renderEmail({
         variant: "staff",
-        label: "To do",
-        subject: "To do for Kaptn (premium)",
-        trigger: "Sent when a paid tier with hand-delivered perks is bought.",
+        label: "Needs attention",
+        subject: "Needs attention: Kaptn (Premium Debut)",
+        trigger: "Sent when a paid tier with team-delivered perks is bought.",
         blocks: [
-          { heading: "To do for Kaptn" },
-          { text: "Kaptn bought premium. These perks are delivered by hand:" },
-          { bullets: ["Include in this week's newsletter", "Write the launch post (blog)"] },
-          { button: "Open the listing", href: url("/p/kaptn") },
+          { heading: "Kaptn needs attention" },
+          { text: "Kaptn bought Premium Debut. These perks are on the team:" },
+          {
+            items: [
+              {
+                name: "Newsletter mention",
+                detail: "Goes out automatically in the issue after Week 44, 2026 unless you skip it",
+                href: url("/admin/newsletter"),
+                chip: { label: "Premium Debut", tone: "neutral" },
+              },
+              {
+                name: "Launch post",
+                detail: "Suggested on the Blog page, due Nov 8",
+                href: url("/admin/blog"),
+                chip: { label: "Premium Debut", tone: "neutral" },
+              },
+            ],
+          },
+          { link: "View Kaptn", href: url("/p/kaptn") },
         ],
       }),
   },
@@ -251,14 +266,23 @@ export const samples: Sample[] = [
             url: url("/advertise"),
             logoUrl: null,
           },
-          debutingNow: [
+          spotlight: [
+            {
+              name: "Shipnote",
+              tagline: "Release notes your customers read, written from your commits",
+              url: url("/p/shipnote"),
+              logoUrl: null,
+            },
+          ],
+          featuredDebuts: [
             {
               name: "Pagepulse",
               tagline: "Uptime checks with a status page included",
               url: url("/p/pagepulse"),
               logoUrl: null,
-              featured: true,
             },
+          ],
+          debutingNow: [
             {
               name: "Quillbase",
               tagline: "A writing inbox for your team's drafts",

@@ -190,6 +190,13 @@
       "when": 1793301088301,
       "tag": "20261029191128_spotlight_waitlist_cron",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793370156297,
+      "tag": "20261030142236_perk_tasks",
+      "breakpoints": true
     }
   ]
 }
