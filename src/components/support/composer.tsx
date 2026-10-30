@@ -22,7 +22,7 @@ const field = "w-full bg-transparent py-2 text-sm outline-none placeholder:text-
 
 /**
  * To, Cc, subject and message, with a preview of the branded email and Send.
- * Typed text becomes the template's paragraphs, "- " lines become bullets and
+ * Typed text becomes the template's paragraphs, and
  * selected text can be made a link. The template adds the sign-off.
  */
 export function Composer({

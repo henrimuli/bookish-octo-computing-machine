@@ -148,7 +148,7 @@ export function BodyEditor({
     <div className={cn("relative", className)}>
       {empty && (
         <p className="pointer-events-none absolute inset-x-3 top-3 text-sm leading-relaxed text-muted-foreground">
-          Write your message… Select text to add a link; start a line with &ldquo;- &rdquo; for a bullet.
+          Write your message… Select text to add a link.
         </p>
       )}
       <div
