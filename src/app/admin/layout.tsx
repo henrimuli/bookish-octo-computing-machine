@@ -3,9 +3,10 @@ import { AccountFooter } from "@/components/app-shell/account-footer";
 import { AppShell, type NavGroup } from "@/components/app-shell/app-shell";
 import { InboxBadge } from "@/components/support/live-inbox";
 import { getCurrentUser, isStaff } from "@/lib/auth";
+import { openPerkCounts } from "@/lib/perks/service";
 import { inboxPulse } from "@/lib/support/service";
 
-const groups = (unread: number): NavGroup[] => [
+const navGroups = (perks: { newsletter: number; blog: number }, unread: number): NavGroup[] => [
   { items: [{ href: "/admin/dashboard", label: "Overview", icon: "overview" }] },
   {
     label: "Operations",
@@ -20,8 +21,8 @@ const groups = (unread: number): NavGroup[] => [
   {
     label: "Content",
     items: [
-      { href: "/admin/blog", label: "Blog", icon: "pen" },
-      { href: "/admin/newsletter", label: "Newsletter", icon: "mail" },
+      { href: "/admin/blog", label: "Blog", icon: "pen", count: perks.blog },
+      { href: "/admin/newsletter", label: "Newsletter", icon: "mail", count: perks.newsletter },
     ],
   },
   {
@@ -47,12 +48,16 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 async function AdminFrame({ children }: { children: ReactNode }) {
   const user = await getCurrentUser().catch(() => null);
   if (!(await isStaff(user))) return <main className="flex flex-1 items-center justify-center">{children}</main>;
-  const { unread } = await inboxPulse().catch(() => ({ unread: 0 }));
+  // Paid perks waiting on the team and unread support mail; a failed count never blocks the admin.
+  const [perks, { unread }] = await Promise.all([
+    openPerkCounts().catch(() => ({ newsletter: 0, blog: 0 })),
+    inboxPulse().catch(() => ({ unread: 0 })),
+  ]);
   return (
     <AppShell
       area="Admin"
       badge="Admin"
-      groups={groups(unread)}
+      groups={navGroups(perks, unread)}
       footer={
         <Suspense fallback={<div className="h-12 animate-pulse rounded-md bg-muted" />}>
           <AccountFooter area="admin" />

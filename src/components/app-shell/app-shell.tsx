@@ -12,7 +12,9 @@ export type NavItem = {
   label: string;
   icon: IconName;
   exact?: boolean;
-  /** Shown at the end of the row, e.g. an unread count. */
+  /** Open to-dos, shown as a small count on the right. Hidden when 0. */
+  count?: number;
+  /** A live element at the end of the row instead, e.g. the inbox's unread count. */
   badge?: ReactNode;
 };
 export type NavGroup = { label?: string; items: NavItem[] };
@@ -160,6 +162,14 @@ function NavLinks({
                 <Icon name={item.icon} />
                 {item.label}
                 {item.badge}
+                {item.count ? (
+                  <span
+                    className="ml-auto rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold text-primary"
+                    aria-label={`${item.count} open`}
+                  >
+                    {item.count}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { weekBoard } from "@/lib/board/queries";
 import { notifyRecapDrafted } from "@/lib/notifications";
+import { getPerkTask, linkLaunchPost, onPostDeleted, onPostPublished, PerkError } from "@/lib/perks/service";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { addWeeks, formatWeekLabel, formatWeekRange, weekKeyFor } from "@/lib/weeks";
 import { escapeMarkdown, excerptFrom } from "./markdown";
@@ -74,10 +75,12 @@ export async function setPublished(id: string, published: boolean): Promise<Post
     .set(published ? { status: "published", publishedAt: current.publishedAt ?? new Date() } : { status: "draft" })
     .where(eq(posts.id, id))
     .returning();
+  if (row.kind === "launch") await onPostPublished(id, published);
   return row;
 }
 
 export async function deletePost(id: string) {
+  await onPostDeleted(id);
   await db().delete(posts).where(eq(posts.id, id));
 }
 
@@ -203,4 +206,85 @@ export async function draftWeeklyRecap(now = new Date()) {
   if (!row) return { skipped: "already drafted" };
   await notifyRecapDrafted(row).catch((err) => console.error("recap draft email failed", err));
   return { drafted: row.slug };
+}
+
+/**
+ * A launch post outline from the listing, for staff to write up. Maker text is
+ * escaped. Leaves the prose to the writer (a "Write with Gemini" step can fill
+ * it in later).
+ */
+export async function launchMarkdown(productId: string) {
+  const { products, productCategories, categories, productMedia, user } = schema;
+  const [row] = await db()
+    .select({ p: products, makerName: user.name })
+    .from(products)
+    .leftJoin(user, eq(user.id, products.createdBy))
+    .where(eq(products.id, productId));
+  if (!row) return null;
+  const { p, makerName } = row;
+  const [cats, shots] = await Promise.all([
+    db()
+      .select({ name: categories.name, slug: categories.slug })
+      .from(productCategories)
+      .innerJoin(categories, eq(categories.slug, productCategories.categorySlug))
+      .where(eq(productCategories.productId, p.id)),
+    db().query.productMedia.findMany({
+      where: eq(productMedia.productId, p.id),
+      orderBy: (m, { asc }) => asc(m.position),
+    }),
+  ]);
+
+  const name = escapeMarkdown(p.name);
+  const paragraphs = p.description
+    .split(/\n\s*\n/)
+    .map(escapeMarkdown)
+    .filter(Boolean);
+  const links = [
+    `- Website: [${escapeMarkdown(p.domain)}](${p.websiteUrl})`,
+    `- On DebutYard: [${name}](/p/${p.slug})`,
+    p.twitterUrl && `- X: ${p.twitterUrl}`,
+    p.githubUrl && `- GitHub: ${p.githubUrl}`,
+  ].filter(Boolean);
+  const parts = [
+    `**${name}**: ${escapeMarkdown(p.tagline)}`,
+    "> To write: who it's for and the problem it solves.",
+    "## What it does",
+    ...paragraphs,
+    ...shots.map((m, i) => `![${name} screenshot ${i + 1}](${m.url})`),
+    "## Who's behind it",
+    makerName ? `${name} is made by ${escapeMarkdown(makerName)}.` : "> To write: a line about the maker.",
+    "## Links",
+    links.join("\n"),
+  ];
+  if (cats.length) {
+    parts.push(`Filed under ${cats.map((c) => `[${escapeMarkdown(c.name)}](/category/${c.slug})`).join(", ")}.`);
+  }
+  return { title: `Meet ${p.name}: ${p.tagline}`.slice(0, 140), excerpt: p.tagline, body: parts.join("\n\n") };
+}
+
+/** Starts the launch post for a perk task, or returns the draft it already has. */
+export async function startLaunchDraft(taskId: string, authorId: string): Promise<Post> {
+  const task = await getPerkTask(taskId);
+  if (!task || task.kind !== "launch_post") throw new PerkError("Launch post not found.");
+  if (task.postId) {
+    const existing = await getPost(task.postId);
+    if (existing) return existing;
+  }
+  if (task.status === "done" || task.status === "skipped") throw new PerkError(`This launch post is ${task.status}.`);
+  const outline = await launchMarkdown(task.productId);
+  if (!outline) throw new PerkError("The listing is gone.");
+  const slug = await uniqueSlug(slugify(outline.title, 80), slugTaken());
+  const [row] = await db()
+    .insert(posts)
+    .values({
+      kind: "launch",
+      slug,
+      title: outline.title,
+      body: outline.body,
+      excerpt: outline.excerpt,
+      authorId,
+    })
+    .returning();
+  await linkLaunchPost(task.id, row.id);
+  return row;
 }

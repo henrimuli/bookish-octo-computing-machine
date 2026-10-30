@@ -7,6 +7,7 @@ import { addImpressions, newsletterSponsor } from "@/lib/ads/service";
 import { sendBatch, sendEmail } from "@/lib/email";
 import { renderEmail } from "@/lib/email-template";
 import { weekBoard } from "@/lib/board/queries";
+import { markMentionsDelivered, mentionsForIssue } from "@/lib/perks/service";
 import { addWeeks, formatWeekLabel, weekKeyFor } from "@/lib/weeks";
 import { renderDigest, type DigestData } from "./render";
 import type { TrackedEvent } from "./webhook-rules";
@@ -111,13 +112,14 @@ export async function unsubscribe(token: string): Promise<boolean> {
 /** Digest for the week that just closed plus the week that just started. */
 export async function buildDigest(closedWeek: string): Promise<DigestData> {
   const newWeek = addWeeks(closedWeek, 1);
-  const [closedBoard, newBoard, awards] = await Promise.all([
+  const [closedBoard, newBoard, awards, mentions] = await Promise.all([
     weekBoard(closedWeek),
     weekBoard(newWeek),
     db().query.awards.findMany({
       where: and(eq(schema.awards.scope, "week"), eq(schema.awards.periodKey, closedWeek)),
       orderBy: (a, { asc }) => asc(a.place),
     }),
+    mentionsForIssue(closedWeek),
   ]);
   const byId = new Map(closedBoard.map((p) => [p.id, p]));
   const winners = awards
@@ -133,8 +135,20 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
     }));
   const winnerIds = new Set(awards.map((a) => a.productId));
 
+  // Paid mentions get their own rows (blurb included), so they aren't repeated further down.
+  const mention = (m: (typeof mentions)[number]) => ({
+    name: m.name,
+    tagline: m.task.blurb || m.tagline,
+    url: url(`/p/${m.slug}`),
+    logoUrl: m.logoUrl,
+  });
+  const spotlight = mentions.filter((m) => m.task.kind === "newsletter_top");
+  const featured = mentions.filter((m) => m.task.kind === "newsletter");
+  const mentioned = new Set(mentions.map((m) => m.slug));
+
   const paidRank = { spotlight: 0, premium: 1, pro: 2 } as Record<string, number>;
   const debuting = [...newBoard]
+    .filter((p) => !mentioned.has(p.slug))
     .sort((a, b) => (paidRank[a.tier] ?? 9) - (paidRank[b.tier] ?? 9))
     .slice(0, 10)
     .map((p) => ({
@@ -150,7 +164,7 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
     newWeekLabel: formatWeekLabel(newWeek),
     winners,
     topOfWeek: closedBoard
-      .filter((p) => !winnerIds.has(p.id))
+      .filter((p) => !winnerIds.has(p.id) && !mentioned.has(p.slug))
       .slice(0, 7)
       .map((p) => ({
         name: p.name,
@@ -161,6 +175,9 @@ export async function buildDigest(closedWeek: string): Promise<DigestData> {
       })),
     debutingNow: debuting,
     sponsor: await newsletterSponsor(newWeek),
+    spotlight: spotlight.map(mention),
+    featuredDebuts: featured.map(mention),
+    perkTaskIds: mentions.map((m) => m.task.id),
     siteUrl: url("/"),
   };
 }
@@ -178,7 +195,12 @@ export async function sendWeeklyDigest(now = new Date()) {
   if (!week) return { skipped: "week not closed" };
 
   const data = await buildDigest(closedWeek);
-  if (data.winners.length === 0 && data.debutingNow.length === 0 && data.topOfWeek.length === 0) {
+  if (
+    data.winners.length === 0 &&
+    data.debutingNow.length === 0 &&
+    data.topOfWeek.length === 0 &&
+    !data.perkTaskIds?.length
+  ) {
     return { skipped: "nothing to send" };
   }
 
@@ -216,6 +238,7 @@ export async function sendWeeklyDigest(now = new Date()) {
     const sent = emails.length ? await sendBatch(emails, `digest-${closedWeek}`) : 0;
     await db().update(issues).set({ sentAt: new Date(), recipients: sent }).where(eq(issues.weekKey, closedWeek));
     if (data.sponsor) await addImpressions(data.sponsor.bookingId, sent);
+    await markMentionsDelivered(data.perkTaskIds ?? [], closedWeek);
     return { week: closedWeek, sent };
   } catch (err) {
     await db()

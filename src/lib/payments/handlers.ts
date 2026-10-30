@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { notifyAdminPaidTier, notifyPaidTierApplied, notifyProductSubmitted } from "@/lib/notifications";
+import { createPerkTasks } from "@/lib/perks/service";
 import { TIERS, tierForSku } from "@/lib/products/input";
 import { applyPaidTier } from "@/lib/products/service";
 import { registerFulfillment } from "./fulfillment";
@@ -18,8 +19,10 @@ registerFulfillment("launch", async (order) => {
     columns: { status: true },
   });
   const product = await applyPaidTier(productId, tier, weekKey);
+  // Stored before the emails, so a failed send that retries fulfilment doesn't lose them.
+  const perks = await createPerkTasks(order, product, tier);
   await notifyPaidTierApplied(product, TIERS[tier].label);
-  await notifyAdminPaidTier(product, tier);
+  await notifyAdminPaidTier(product, tier, perks);
   if (before?.status !== "pending" && product.status === "pending") await notifyProductSubmitted(product);
   // Spotlight bundles a Starter submission package, started from this listing.
   if (tier === "spotlight") {
