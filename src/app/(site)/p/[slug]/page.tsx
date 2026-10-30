@@ -111,13 +111,14 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
         </p>
       )}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-10">
-          <header className="flex flex-col gap-6 sm:flex-row sm:items-start">
+          {/* Phones: logo and clap share the top row, the details go full width below. */}
+          <header className="flex flex-wrap gap-6 sm:flex-nowrap sm:items-start">
             <ProductLogo name={p.name} src={p.logoUrl} className="size-20" />
-            <div className="flex-1">
-              <h1 className="font-display text-3xl font-bold tracking-tight">{p.name}</h1>
-              <p className="mt-1 text-lg text-muted-foreground">{p.tagline}</p>
+            <div className="order-last min-w-0 basis-full sm:order-none sm:flex-1 sm:basis-auto">
+              <h1 className="font-display text-3xl font-bold tracking-tight [overflow-wrap:anywhere]">{p.name}</h1>
+              <p className="mt-1 text-lg text-muted-foreground [overflow-wrap:anywhere]">{p.tagline}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {[...data.awards]
                   .sort((a, b) => scopeOrder[a.scope] - scopeOrder[b.scope])
@@ -136,26 +137,33 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
                 ))}
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <VisitLink productId={p.id} href={href} rel={rel} className={buttonVariants({ size: "lg" })}>
-                  Visit {p.domain} ↗
+                <VisitLink
+                  productId={p.id}
+                  href={href}
+                  rel={rel}
+                  className={buttonVariants({ size: "lg", className: "max-w-full" })}
+                >
+                  <span className="truncate">Visit {p.domain}</span> ↗
                 </VisitLink>
               </div>
             </div>
             {data.live && (
-              <ClapButton
-                productId={p.id}
-                applauded={data.applaudedByMe}
-                applause={data.applause}
-                final={data.applauseFinal}
-                signedIn={Boolean(viewer)}
-                size="lg"
-              />
+              <div className="ml-auto sm:ml-0">
+                <ClapButton
+                  productId={p.id}
+                  applauded={data.applaudedByMe}
+                  applause={data.applause}
+                  final={data.applauseFinal}
+                  signedIn={Boolean(viewer)}
+                  size="lg"
+                />
+              </div>
             )}
           </header>
 
           <section>
             <h2 className="sr-only">About</h2>
-            <p className="whitespace-pre-line leading-7">{p.description}</p>
+            <p className="whitespace-pre-line leading-7 [overflow-wrap:anywhere]">{p.description}</p>
           </section>
 
           {data.media.length > 0 && <ScreenshotGallery urls={data.media.map((m) => m.url)} name={p.name} />}
@@ -248,8 +256,8 @@ async function Product({ params }: { params: PageProps<"/p/[slug]">["params"] })
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right">{children}</span>
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-right [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
 }

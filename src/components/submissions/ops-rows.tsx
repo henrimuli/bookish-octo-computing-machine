@@ -112,7 +112,7 @@ function RowEditor({ row, onMessage }: { row: OpsRow; onMessage: (m: { ok: boole
               {row.directory.instructions}
             </p>
           )}
-          <div className="grid gap-2 sm:grid-cols-[10rem_1fr]">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as Status)}

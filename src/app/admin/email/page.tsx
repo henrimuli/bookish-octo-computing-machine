@@ -283,7 +283,7 @@ async function ThreadView({ p, me }: { p: Params; me: string }) {
         staff={staff}
         backHref={backHref}
       />
-      <div className="grid gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_16rem]">
+      <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="min-w-0">
           <div className="flex items-start gap-2">
             <h1 className="flex-1 font-display text-xl font-semibold tracking-tight sm:text-2xl">

@@ -88,7 +88,7 @@ function Comment({ c, productId, replies }: { c: CommentView; productId: string;
           )}
           <span className="ml-2 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
         </div>
-        <p className="whitespace-pre-line text-sm">{c.body}</p>
+        <p className="whitespace-pre-line text-sm [overflow-wrap:anywhere]">{c.body}</p>
         <div className="flex gap-3 text-xs text-muted-foreground">
           {!c.parentId && (
             <button type="button" onClick={() => setReplying((r) => !r)} className="hover:text-foreground">

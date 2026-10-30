@@ -113,7 +113,7 @@ async function Detail({ params, searchParams }: PageProps<"/admin/submissions/[i
               <summary className="cursor-pointer px-5 py-3 font-medium">Product kit</summary>
               <dl className="divide-y divide-border border-t border-border text-sm">
                 {kit.map(([k, v]) => (
-                  <div key={k} className="grid gap-1 px-5 py-2 sm:grid-cols-[9rem_1fr]">
+                  <div key={k} className="grid grid-cols-1 gap-1 px-5 py-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
                     <dt className="text-muted-foreground">{k}</dt>
                     <dd className="break-words whitespace-pre-line">{v || "–"}</dd>
                   </div>
