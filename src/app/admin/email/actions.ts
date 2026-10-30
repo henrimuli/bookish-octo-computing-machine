@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getCurrentUser, isStaff } from "@/lib/auth";
 import {
   assign,
+  inboxPulse,
   previewSupportEmail,
   sendSupportEmail,
   setStarred,
@@ -85,4 +86,10 @@ export async function starAction(threadId: string, starred: boolean) {
 
 export async function assignAction(threadId: string, userId: string | null) {
   return run(async () => assign(uuid.parse(threadId), userId ? z.string().min(1).parse(userId) : null));
+}
+
+/** Polled by the admin: the inbox's unread count and when the latest message arrived. */
+export async function pulseAction(): Promise<{ unread: number; latest: string | null } | null> {
+  if (!(await staffOnly())) return null;
+  return inboxPulse();
 }

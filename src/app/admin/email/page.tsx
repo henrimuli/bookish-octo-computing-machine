@@ -9,7 +9,8 @@ import { MessageHtml, ReplyBox, SentEmail, StarToggle, ThreadToolbar } from "@/c
 import { Badge } from "@/components/ui/primitives";
 import { site } from "@/config/site";
 import { requireStaff } from "@/lib/auth";
-import { baseSubject, replySubject, supportKeyFrom } from "@/lib/support/rules";
+import { LiveRefresh } from "@/components/support/live-inbox";
+import { baseSubject, isRichHtml, replySubject, snippetFrom, splitQuoted, supportKeyFrom } from "@/lib/support/rules";
 import {
   FOLDERS,
   folderCounts,
@@ -108,6 +109,7 @@ async function Mailbox({ searchParams }: Pick<PageProps<"/admin/email">, "search
             <FolderLink key={f.folder} item={f} active={folder === f.folder} n={f.count ? counts[f.count] : 0} />
           ))}
         </div>
+        <LiveRefresh />
         <p className="hidden px-4 text-xs leading-relaxed text-muted-foreground lg:block">
           Mail to {site.supportEmail} lands here. Everyone on the admin team shares this inbox.
         </p>
@@ -286,9 +288,11 @@ async function ThreadView({ p, me }: { p: Params; me: string }) {
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-baseline gap-x-2">
                           <span className="text-sm font-semibold">{who}</span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {out ? `via ${m.fromAddress}` : `<${m.fromAddress}>`}
-                          </span>
+                          {(out || m.fromName) && (
+                            <span className="truncate text-xs text-muted-foreground">
+                              {out ? `via ${m.fromAddress}` : `<${m.fromAddress}>`}
+                            </span>
+                          )}
                           {!out && maker && m.fromAddress === thread.contactEmail && (
                             <Badge tone="primary" className="px-2 py-0 text-[11px]">
                               Maker
@@ -296,7 +300,7 @@ async function ThreadView({ p, me }: { p: Params; me: string }) {
                           )}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground group-open:hidden">
-                          {m.text.replace(/\s+/g, " ").slice(0, 160)}
+                          {snippetFrom(m.text, 160)}
                         </span>
                         <span className="hidden truncate text-xs text-muted-foreground group-open:block">
                           to {[...m.toAddresses, ...m.ccAddresses].join(", ")}
@@ -305,13 +309,7 @@ async function ThreadView({ p, me }: { p: Params; me: string }) {
                       <time className="shrink-0 text-xs text-muted-foreground">{longTime(m.createdAt)}</time>
                     </summary>
                     <div className="px-4 pb-4 sm:pl-16">
-                      {!out && m.html ? (
-                        <MessageHtml html={m.html} />
-                      ) : (
-                        <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                          {m.text || "(empty message)"}
-                        </div>
-                      )}
+                      {!out && isRichHtml(m.html) ? <MessageHtml html={m.html!} /> : <MessageText text={m.text} />}
                       {out && m.html && <SentEmail html={m.html} />}
                       {m.attachments.length > 0 && (
                         <ul className="mt-3 flex flex-wrap gap-2">
@@ -422,5 +420,53 @@ function CustomerCard({
         </>
       )}
     </aside>
+  );
+}
+
+// [label](url) as written in our composer, or a bare URL.
+const LINK = /(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s<>()]*[^\s<>().,;:!?'"])/g;
+
+function Linked({ text }: { text: string }) {
+  return text.split(LINK).map((part, i) => {
+    if (i % 2 === 0) return part;
+    const md = part.match(/^\[([^\]]+)\]\((.+)\)$/);
+    return (
+      <a
+        key={i}
+        href={md ? md[2] : part}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="font-medium text-primary underline underline-offset-2"
+      >
+        {md ? md[1] : part}
+      </a>
+    );
+  });
+}
+
+/**
+ * A plain message in the page's own colours. The history the sender's mail app
+ * quoted under it is folded away behind "•••", as in Gmail.
+ */
+function MessageText({ text }: { text: string }) {
+  const { own, quoted } = splitQuoted(text);
+  return (
+    <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+      {own ? <Linked text={own} /> : quoted ? null : "(empty message)"}
+      {quoted && (
+        <details className="mt-2">
+          <summary
+            aria-label="Show quoted text"
+            title="Show quoted text"
+            className="inline-block cursor-pointer list-none rounded bg-muted px-2 text-xs leading-4 text-muted-foreground hover:bg-muted/70 [&::-webkit-details-marker]:hidden"
+          >
+            •••
+          </summary>
+          <div className="mt-2 border-l-2 border-border pl-3 text-muted-foreground">
+            <Linked text={quoted} />
+          </div>
+        </details>
+      )}
+    </div>
   );
 }

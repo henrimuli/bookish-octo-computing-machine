@@ -4,6 +4,8 @@ import {
   bodyToBlocks,
   displayHtml,
   hasRemoteImages,
+  isRichHtml,
+  keyFromRefs,
   header,
   newReplyKey,
   parseAddress,
@@ -11,7 +13,9 @@ import {
   replyAddress,
   replySubject,
   snippetFrom,
+  splitQuoted,
   supportKeyFrom,
+  threadRef,
 } from "./rules";
 
 const SUPPORT = "support@debutyard.com";
@@ -61,6 +65,37 @@ describe("support inbox rules", () => {
       { text: "See [your listing](https://x.test)." },
     ]);
     expect(bodyToBlocks("  \n\n ")).toEqual([]);
+  });
+
+  it("hides the thread key in a reference and reads it back from ours only", () => {
+    const ref = threadRef("abc123", SUPPORT);
+    expect(ref).toBe("<thread.abc123@debutyard.com>");
+    expect(keyFromRefs(["<x@gmail.test>", ref.toUpperCase()], SUPPORT)).toBe("abc123");
+    expect(keyFromRefs(["<thread.abc123@evil.test>", "<abc@debutyard.com>"], SUPPORT)).toBeNull();
+  });
+
+  it("splits a reply from the history its mail app quoted, even when the header wraps", () => {
+    const gmail =
+      "Hi,\n\nI had an issue with an order\n\nOn Fri, Oct 30, 2026 at 5:39 PM DebutYard Support <\nsupport@debutyard.com> wrote:\n\n> This is a test email\n>\n> — Henry, DebutYard";
+    expect(splitQuoted(gmail)).toEqual({
+      own: "Hi,\n\nI had an issue with an order",
+      quoted: expect.stringMatching(/^On Fri[\s\S]*\n> This is a test email/),
+    });
+    expect(splitQuoted("Thanks!\n\n> earlier line\n> more").own).toBe("Thanks!");
+    expect(splitQuoted("No history here.")).toEqual({ own: "No history here.", quoted: "" });
+    expect(splitQuoted("Fine\n\n-----Original Message-----\nFrom: x").own).toBe("Fine");
+  });
+
+  it("tells designed email from plain writing, ignoring the quoted part", () => {
+    expect(isRichHtml('<div dir="ltr">Hi,<div><br></div>Thanks</div>')).toBe(false);
+    expect(
+      isRichHtml(
+        '<div dir="ltr">Thanks</div><div class="gmail_quote"><blockquote><table bgcolor="#fff"></table></blockquote></div>',
+      ),
+    ).toBe(false);
+    expect(isRichHtml('<table role="presentation"><tr><td>Newsletter</td></tr></table>')).toBe(true);
+    expect(isRichHtml('<p style="color:#333">Hi</p>')).toBe(true);
+    expect(isRichHtml(null)).toBe(false);
   });
 
   it("blocks remote images until asked", () => {

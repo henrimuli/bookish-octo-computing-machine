@@ -57,9 +57,52 @@ export function header(headers: Record<string, string> | null | undefined, name:
   return key ? headers[key] : null;
 }
 
+/**
+ * The hidden reference we put in References on every email we send, carrying
+ * the thread's key. Replies echo References back, so they find their thread
+ * while the customer only ever sees support@ as the address.
+ */
+export function threadRef(key: string, supportEmail: string): string {
+  return `<thread.${key}@${supportEmail.split("@")[1]}>`;
+}
+
+/** The thread key in one of our hidden references, or null. */
+export function keyFromRefs(refs: string[], supportEmail: string): string | null {
+  const suffix = `@${supportEmail.split("@")[1]}>`.toLowerCase();
+  for (const r of refs) {
+    const ref = r.toLowerCase();
+    if (!ref.startsWith("<thread.") || !ref.endsWith(suffix)) continue;
+    const key = ref.slice("<thread.".length, -suffix.length);
+    if (/^[a-z0-9]+$/.test(key)) return key;
+  }
+  return null;
+}
+
+// Where a mail client starts the quoted history: "On … wrote:" (possibly wrapped
+// over two lines), Outlook's "Original Message" or a "From:/Sent:" header block.
+const QUOTE_START =
+  /\n[ \t]*(?:On\s[^\n]{3,200}(?:\n[^\n]{0,200})?\swrote:[ \t]*(?:\n|$)|-{2,} ?(?:Original|Forwarded) Message|From: [^\n]+\n(?:Sent|Date): )/i;
+
+/** A message split into what the sender wrote and the history their mail client quoted under it. */
+export function splitQuoted(text: string): { own: string; quoted: string } {
+  const t = `\n${text.replace(/\r\n/g, "\n")}`;
+  const at = t.search(QUOTE_START);
+  let own = at === -1 ? t : t.slice(0, at);
+  let quoted = at === -1 ? "" : t.slice(at).trim();
+  // Trailing "> …" lines without a header are quoting too.
+  const lines = own.trimEnd().split("\n");
+  let cut = lines.length;
+  while (cut > 0 && (lines[cut - 1].startsWith(">") || (cut < lines.length && !lines[cut - 1].trim()))) cut--;
+  if (cut < lines.length && lines.slice(0, cut).some((l) => l.trim())) {
+    quoted = [lines.slice(cut).join("\n").trim(), quoted].filter(Boolean).join("\n");
+    own = lines.slice(0, cut).join("\n");
+  }
+  return { own: own.trim(), quoted };
+}
+
 /** First line or so of a message, for the list view. Drops quoted history. */
 export function snippetFrom(text: string, max = 140): string {
-  const own = text.split(/\n(?:On .{5,200} wrote:|-{2,} ?Original Message|From: .+)\n/)[0];
+  const { own } = splitQuoted(text);
   const flat = own
     .split("\n")
     .filter((l) => !l.startsWith(">"))
@@ -109,6 +152,24 @@ export function displayHtml(html: string, images: boolean): string {
     ? "default-src 'none'; img-src * data: cid:; style-src 'unsafe-inline' *; font-src *"
     : "default-src 'none'; img-src data:; style-src 'unsafe-inline'";
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>body{margin:0;padding:12px;font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#10201B;background:#fff;word-break:break-word}img{max-width:100%;height:auto}</style></head><body>${html}</body></html>`;
+}
+
+/** HTML with the quoted history of a reply (Gmail, Apple Mail, Outlook) cut off. */
+export function stripQuotedHtml(html: string): string {
+  const at = html.search(
+    /<div[^>]+class="?[^">]*gmail_quote|<blockquote|<div[^>]+id="?(?:divRplyFwdMsg|appendonsend)/i,
+  );
+  return at === -1 ? html : html.slice(0, at);
+}
+
+/**
+ * Whether an email's own HTML is designed (tables, images, colours) rather
+ * than plain writing. Plain writing is shown as text in the page's theme;
+ * designed email keeps its own light background.
+ */
+export function isRichHtml(html: string | null): boolean {
+  if (!html) return false;
+  return /<(?:table|img)\b|bgcolor|background(?:-color)?\s*:|[^-]color\s*:/i.test(stripQuotedHtml(html));
 }
 
 export function hasRemoteImages(html: string | null): boolean {

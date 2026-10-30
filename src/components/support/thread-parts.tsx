@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { assignAction, starAction, statusAction, unreadAction } from "@/app/admin/email/actions";
 import { Icon, type IconName } from "@/components/app-shell/icons";
 import { Button } from "@/components/ui/button";
 import { displayHtml, hasRemoteImages } from "@/lib/support/rules";
 import { cn } from "@/lib/utils";
 import { Composer, type ComposeMode } from "./composer";
+import { pollInbox } from "./live-inbox";
 
 type Status = "open" | "done" | "spam" | "trash";
 
@@ -54,6 +55,10 @@ export function ThreadToolbar({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Opening the conversation marked it read: update the sidebar badge now.
+  useEffect(() => {
+    void pollInbox();
+  }, [threadId]);
 
   const act = (fn: () => Promise<{ ok: boolean; error?: string }>, leave = true) =>
     start(async () => {
