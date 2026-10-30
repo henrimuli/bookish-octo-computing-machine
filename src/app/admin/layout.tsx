@@ -13,6 +13,7 @@ const navGroups = (perks: { newsletter: number; blog: number }): NavGroup[] => [
       { href: "/admin/submissions", label: "Submissions", icon: "inbox" },
       { href: "/admin/directories", label: "Directories", icon: "directory" },
       { href: "/admin/ads", label: "Ads", icon: "megaphone" },
+      { href: "/admin/email", label: "Email", icon: "mail" },
     ],
   },
   {
@@ -20,7 +21,6 @@ const navGroups = (perks: { newsletter: number; blog: number }): NavGroup[] => [
     items: [
       { href: "/admin/blog", label: "Blog", icon: "pen", count: perks.blog },
       { href: "/admin/newsletter", label: "Newsletter", icon: "mail", count: perks.newsletter },
-      { href: "/admin/emails", label: "Emails", icon: "mail" },
     ],
   },
   {
