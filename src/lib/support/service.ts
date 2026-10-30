@@ -11,11 +11,13 @@ import {
   header,
   newReplyKey,
   parseAddress,
+  keyFromRefs,
   quoteCite,
   referencedIds,
-  replyAddress,
   snippetFrom,
+  splitQuoted,
   supportKeyFrom,
+  threadRef,
 } from "./rules";
 
 const { supportThreads: threads, supportMessages: messages, user, products } = schema;
@@ -74,6 +76,11 @@ async function findThread(key: string, email: InboundEmail, contact: string, now
     if (byKey) return byKey;
   }
   const refs = referencedIds(header(email.headers, "in-reply-to"), header(email.headers, "references"));
+  const refKey = keyFromRefs(refs, site.supportEmail);
+  if (refKey) {
+    const byRef = await db().query.supportThreads.findFirst({ where: eq(threads.replyKey, refKey) });
+    if (byRef) return byRef;
+  }
   if (refs.length) {
     const [hit] = await db()
       .select({ thread: threads })
@@ -175,11 +182,14 @@ export async function receiveSupport(emailId: string, recipients: string[], now 
 export const FOLDERS = ["inbox", "starred", "sent", "done", "spam", "trash", "mine", "unassigned"] as const;
 export type Folder = (typeof FOLDERS)[number];
 
+const hasInbound = sql`exists (select 1 from ${messages} where ${messages.threadId} = ${threads.id} and ${messages.direction} = 'in')`;
+
 function folderWhere(folder: Folder, me: string): SQL | undefined {
   const live = notInArray(threads.status, ["spam", "trash"]);
   switch (folder) {
     case "inbox":
-      return eq(threads.status, "open");
+      // Mail we started stays in Sent until the customer answers.
+      return and(eq(threads.status, "open"), hasInbound);
     case "starred":
       return and(eq(threads.starred, true), live);
     case "sent":
@@ -251,6 +261,20 @@ export async function folderCounts(me: string) {
     })
     .from(threads);
   return row ?? { inbox: 0, mine: 0, unassigned: 0, spam: 0 };
+}
+
+/**
+ * What the admin polls for new mail: unread conversations in the inbox (the
+ * Email nav badge) and when the latest message arrived (a change refreshes the inbox page).
+ */
+export async function inboxPulse() {
+  const [row] = await db()
+    .select({
+      unread: count(sql`case when ${threads.status} = 'open' and ${threads.unread} then 1 end`),
+      latest: sql<string | null>`max(${threads.lastMessageAt})::text`,
+    })
+    .from(threads);
+  return { unread: row?.unread ?? 0, latest: row?.latest ?? null };
 }
 
 /** Who the contact is on DebutYard, for the card beside the conversation. */
@@ -361,16 +385,19 @@ async function lastMessage(threadId: string): Promise<Message | null> {
   return m ?? null;
 }
 
+/**
+ * Replies carry only what staff wrote: the customer already has the earlier
+ * messages, and quoting them piles every reply's history into the next one.
+ * A forward quotes the one message it forwards, without that message's own history.
+ */
 function renderCompose(input: ComposeInput, author: Author, quoted: Message | null): RenderedEmail {
   const blocks = bodyToBlocks(input.body);
-  if (quoted) {
+  if (quoted && input.mode === "forward") {
     const who = quoted.fromName ? `${quoted.fromName} <${quoted.fromAddress}>` : quoted.fromAddress;
+    const text = quoted.direction === "out" ? quoted.text : splitQuoted(quoted.text).own;
     blocks.push({
-      cite:
-        input.mode === "forward"
-          ? `Forwarded message. ${quoteCite(quoted.createdAt, who)}`
-          : quoteCite(quoted.createdAt, who),
-      quote: quoted.text.trim().slice(0, 20_000),
+      cite: `Forwarded message. ${quoteCite(quoted.createdAt, who)}`,
+      quote: text.trim().slice(0, 20_000),
     });
   }
   return renderEmail({
@@ -385,14 +412,14 @@ function renderCompose(input: ComposeInput, author: Author, quoted: Message | nu
 
 /** The email as the recipient will see it, for the composer's preview. */
 export async function previewSupportEmail(input: ComposeInput, author: Author): Promise<RenderedEmail> {
-  const quoted = input.mode !== "new" && input.threadId ? await lastMessage(input.threadId) : null;
+  const quoted = input.mode === "forward" && input.threadId ? await lastMessage(input.threadId) : null;
   return renderCompose(input, author, quoted);
 }
 
 /**
  * Sends hand-written email from support@ through the branded template and
- * files it in its thread (a new one for "new"). Replies come back to the
- * thread's support+key@ address.
+ * files it in its thread (a new one for "new"). Replies go to plain support@
+ * and find their thread through the hidden reference in References.
  */
 export async function sendSupportEmail(input: ComposeInput, author: Author, now = new Date()) {
   const to = [...new Set(input.to.map((a) => parseAddress(a).email))].filter(Boolean);
@@ -408,21 +435,24 @@ export async function sendSupportEmail(input: ComposeInput, author: Author, now 
   const quoted = thread ? await lastMessage(thread.id) : null;
   const rendered = renderCompose(input, author, quoted);
   const replyKey = thread?.replyKey ?? newReplyKey();
-  const headers: Record<string, string> = {};
-  if (input.mode !== "forward" && quoted?.messageId) {
-    headers["In-Reply-To"] = quoted.messageId;
-    headers.References = [quoted.references, quoted.messageId].filter(Boolean).join(" ").slice(-2000);
-  }
+  // References always starts with the thread's hidden reference, so the reply finds
+  // its thread; replies also answer the message they follow, so mail apps thread them.
+  const ours = threadRef(replyKey, site.supportEmail);
+  const earlier = (quoted?.references ?? "").match(/<[^<>\s]+>/g) ?? [];
+  const answering = input.mode !== "forward" && quoted?.messageId ? quoted.messageId : null;
+  const headers: Record<string, string> = {
+    References: [...new Set([ours, ...earlier, ...(answering ? [answering] : [])])].join(" ").slice(0, 2000),
+  };
+  if (answering) headers["In-Reply-To"] = answering;
 
   const resendId = await sendEmail({
     from: supportFrom(),
     to: to[0],
     cc: [...to.slice(1), ...cc],
-    replyTo: replyAddress(replyKey, site.supportEmail),
     subject: rendered.subject,
     html: rendered.html,
     text: rendered.text,
-    headers: Object.keys(headers).length ? headers : undefined,
+    headers,
     tags: [{ name: "kind", value: "support" }],
   });
 

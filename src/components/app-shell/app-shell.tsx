@@ -7,7 +7,14 @@ import { Icon, type IconName } from "@/components/app-shell/icons";
 import { LogoMark } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
-export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: IconName;
+  exact?: boolean;
+  /** Shown at the end of the row, e.g. an unread count. */
+  badge?: ReactNode;
+};
 export type NavGroup = { label?: string; items: NavItem[] };
 
 /**
@@ -152,6 +159,7 @@ function NavLinks({
               >
                 <Icon name={item.icon} />
                 {item.label}
+                {item.badge}
               </Link>
             </li>
           );

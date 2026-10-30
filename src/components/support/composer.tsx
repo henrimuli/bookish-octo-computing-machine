@@ -7,6 +7,7 @@ import { Icon } from "@/components/app-shell/icons";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { BodyEditor } from "./body-editor";
 import type { ComposeInput } from "@/lib/support/service";
 
 export type ComposeMode = ComposeInput["mode"];
@@ -21,8 +22,8 @@ const field = "w-full bg-transparent py-2 text-sm outline-none placeholder:text-
 
 /**
  * To, Cc, subject and message, with a preview of the branded email and Send.
- * Typed text becomes the template's paragraphs; "- " lines become bullets and
- * [label](url) becomes a link. The template adds the greeting-free sign-off.
+ * Typed text becomes the template's paragraphs, "- " lines become bullets and
+ * selected text can be made a link. The template adds the sign-off.
  */
 export function Composer({
   mode,
@@ -70,7 +71,7 @@ export function Composer({
     <div className={cn("flex min-h-0 flex-col", className)}>
       <div className="divide-y divide-border border-b border-border px-3">
         <label className="flex items-center gap-2">
-          <span className="w-12 shrink-0 text-sm text-muted-foreground">To</span>
+          <span className="w-16 shrink-0 text-sm text-muted-foreground">To</span>
           <input
             value={to}
             onChange={(e) => setTo(e.target.value)}
@@ -90,27 +91,20 @@ export function Composer({
         </label>
         {showCc && (
           <label className="flex items-center gap-2">
-            <span className="w-12 shrink-0 text-sm text-muted-foreground">Cc</span>
+            <span className="w-16 shrink-0 text-sm text-muted-foreground">Cc</span>
             <input value={cc} onChange={(e) => setCc(e.target.value)} className={field} />
           </label>
         )}
         <label className="flex items-center gap-2">
-          <span className="w-12 shrink-0 text-sm text-muted-foreground">Subject</span>
+          <span className="w-16 shrink-0 text-sm text-muted-foreground">Subject</span>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} className={field} />
         </label>
       </div>
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
-        }}
+      <BodyEditor
+        onChange={setBody}
+        onSubmit={send}
         autoFocus={mode === "reply" || mode === "replyAll"}
-        rows={10}
-        placeholder={
-          'Write your message…\n\nBlank lines start paragraphs, "- " makes a bullet, [label](https://…) makes a link.'
-        }
-        className="min-h-40 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground"
+        className="min-h-0 flex-1"
       />
       {error && <p className="px-3 pb-2 text-sm text-danger">{error}</p>}
       <div className="flex items-center gap-2 border-t border-border px-3 py-2">

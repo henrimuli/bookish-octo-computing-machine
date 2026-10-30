@@ -146,10 +146,13 @@ describe.skipIf(!TEST_DB)("support inbox (Postgres)", () => {
     const out = sent.at(-1)!;
     expect(out.to).toBe("ada@maker.test");
     expect(out.from).toBe("DebutYard Support <support@debutyard.com>");
-    expect(out.replyTo).toMatch(/^support\+[a-z0-9]{12}@debutyard\.com$/);
+    // Replies go to plain support@; the thread rides along hidden in References.
+    expect(out.replyTo).toBeUndefined();
     expect(out.headers?.["In-Reply-To"]).toBe("<m1@maker.test>");
+    expect(out.headers?.References).toMatch(/^<thread\.[a-z0-9]{12}@debutyard\.com> <m1@maker\.test>$/);
     expect(out.text).toContain("— Henry, DebutYard");
-    expect(out.text).toContain("> Hi, can I move my launch week?");
+    // No quoted history: the customer already has it.
+    expect(out.text).not.toContain("can I move my launch week");
 
     const { thread, messages } = (await support.getThread(threadId))!;
     expect(thread).toMatchObject({ assigneeId: henry.id, unread: false, messageCount: 2, status: "open" });
@@ -159,19 +162,29 @@ describe.skipIf(!TEST_DB)("support inbox (Postgres)", () => {
     expect((await support.listThreads({ folder: "mine", me: henry.id })).rows).toHaveLength(1);
   });
 
-  it("threads replies by reply address, by headers and by subject, and reopens finished ones", async () => {
+  it("threads replies by hidden reference, reply address, headers and subject, and reopens finished ones", async () => {
     const threadId = await threadOf("in_1");
-    const replyTo = sent.at(-1)!.replyTo!;
+    const references = sent.at(-1)!.headers!.References;
+    const key = references.match(/<thread\.([a-z0-9]+)@/)![1];
     await support.setStatus([threadId], "done");
 
-    mail.set("in_2", inbound({ subject: "Re: Billing question", text: "Thanks!", to: [replyTo] }));
-    expect(await post("in_2", [replyTo])).toEqual({ stored: true });
+    // A mail app's reply echoes our References, with an unrelated subject even.
+    mail.set(
+      "in_2",
+      inbound({ subject: "Thanks", text: "Thanks!", headers: { References: `${references} <x@gmail.test>` } }),
+    );
+    expect(await post("in_2", ["support@debutyard.com"])).toEqual({ stored: true });
     expect(await threadOf("in_2")).toBe(threadId);
     expect((await support.getThread(threadId))!.thread).toMatchObject({
       status: "open",
       unread: true,
       messageCount: 3,
     });
+
+    // Older replies to the support+key@ address still find their thread.
+    mail.set("in_2b", inbound({ subject: "Something else", to: [`support+${key}@debutyard.com`] }));
+    await post("in_2b", [`support+${key}@debutyard.com`]);
+    expect(await threadOf("in_2b")).toBe(threadId);
 
     // Sent to the bare address, but answering a message we stored.
     mail.set("in_3", inbound({ subject: "Different words", headers: { "In-Reply-To": "<m1@maker.test>" } }));
@@ -217,8 +230,24 @@ describe.skipIf(!TEST_DB)("support inbox (Postgres)", () => {
       assigneeId: henry.id,
       unread: false,
     });
-    expect((await support.listThreads({ folder: "inbox", me: henry.id, q: "launch" })).rows.map((r) => r.id)).toContain(
+    // Mail we started stays out of the inbox until the customer answers.
+    expect(sent.at(-1)!.headers?.References).toMatch(/^<thread\.[a-z0-9]+@debutyard\.com>$/);
+    expect((await support.listThreads({ folder: "inbox", me: henry.id })).rows.map((r) => r.id)).not.toContain(
       threadId,
     );
+    expect((await support.listThreads({ folder: "sent", me: henry.id, q: "launch" })).rows.map((r) => r.id)).toContain(
+      threadId,
+    );
+    mail.set(
+      "in_8",
+      inbound({
+        from: "someone@new.test",
+        subject: "Re: Your launch",
+        headers: { References: sent.at(-1)!.headers!.References },
+      }),
+    );
+    await post("in_8", ["support@debutyard.com"]);
+    expect(await threadOf("in_8")).toBe(threadId);
+    expect((await support.listThreads({ folder: "inbox", me: henry.id })).rows.map((r) => r.id)).toContain(threadId);
   });
 });
