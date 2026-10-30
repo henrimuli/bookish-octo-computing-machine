@@ -105,7 +105,7 @@ export const TOOLS: Tool[] = [
     name: "check_dr",
     title: "Check Authority Score",
     description:
-      "A domain's Authority Score (0-100, returned as dr), with referring domains when available. Cached for 7 days.",
+      "A domain's Authority Score (0-100, returned as dr), with referring domains when available. Cached for 7 days. Needs a connected account or API token; limited per account and per day.",
     input: drInput,
     readOnly: true,
     openWorld: true,
