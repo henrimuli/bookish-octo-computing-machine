@@ -312,7 +312,13 @@ function SoldOutCard({
             You&apos;re on the waitlist. We&apos;ll email you when a spot opens.
           </p>
         ) : (
-          <Button size="sm" variant="outline" className="w-full" onClick={join} disabled={pending}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-auto min-h-8 w-full whitespace-normal py-1.5 text-center leading-snug"
+            onClick={join}
+            disabled={pending}
+          >
             {pending ? "Adding you…" : "Notify me when one opens"}
           </Button>
         )}
