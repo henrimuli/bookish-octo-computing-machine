@@ -9,8 +9,8 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of service" updated="October 26, 2026">
       <p>
-        These terms govern your use of {site.name} ({site.url}), operated by {site.legalName}, {site.country}. By using
-        the site or buying anything on it, you agree to them.
+        These terms govern your use of {site.name} ({site.url}), operated by DebutYard SaaS Solutions. By using the site
+        or buying anything on it, you agree to them.
       </p>
 
       <h2>What we offer</h2>

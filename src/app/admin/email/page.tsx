@@ -181,12 +181,25 @@ async function ThreadList({ p, me }: { p: Params; me: string }) {
       ) : (
         <ul className="divide-y divide-border border-t border-border">
           {rows.map((r) => (
-            <li key={r.id} className={cn("relative", r.unread ? "bg-card" : "bg-muted/40")}>
+            <li
+              key={r.id}
+              // Unread: full-strength text and a green bar on the left. Read: dimmed text on a
+              // muted background. Text and bar carry the difference, since dark backgrounds barely differ.
+              className={cn(
+                "relative",
+                r.unread ? "bg-card shadow-[inset_3px_0_0_var(--color-primary)]" : "bg-muted/40",
+              )}
+            >
               <Link
                 href={href({ ...p, t: r.id })}
                 className="flex items-start gap-2 py-2.5 pl-11 pr-4 hover:shadow-[inset_0_-1px_0_var(--color-border),0_1px_3px_rgb(0_0_0/0.08)] sm:items-center sm:gap-4"
               >
-                <span className={cn("w-36 shrink-0 truncate text-sm sm:w-48", r.unread && "font-semibold")}>
+                <span
+                  className={cn(
+                    "w-36 shrink-0 truncate text-sm sm:w-48",
+                    r.unread ? "font-semibold text-foreground" : "text-muted-foreground",
+                  )}
+                >
                   {r.contactName || r.contactEmail}
                   {r.messageCount > 1 && (
                     <span className="ml-1 text-xs font-normal text-muted-foreground">{r.messageCount}</span>
@@ -198,17 +211,31 @@ async function ThreadList({ p, me }: { p: Params; me: string }) {
                       Maker
                     </Badge>
                   )}
-                  <span className={cn("truncate text-sm", r.unread && "font-semibold")}>
+                  <span
+                    className={cn(
+                      "truncate text-sm",
+                      r.unread ? "font-semibold text-foreground" : "text-muted-foreground",
+                    )}
+                  >
                     {r.subject || "(no subject)"}
                   </span>
-                  <span className="hidden truncate text-sm text-muted-foreground sm:inline">– {r.snippet}</span>
+                  <span
+                    className={cn(
+                      "hidden truncate text-sm sm:inline",
+                      r.unread ? "text-muted-foreground" : "text-muted-foreground/70",
+                    )}
+                  >
+                    – {r.snippet}
+                  </span>
                 </span>
                 {r.assigneeName && p.folder !== "mine" && (
                   <span className="hidden shrink-0 rounded-full bg-muted px-2 text-xs text-muted-foreground md:inline">
                     {r.assigneeName.split(" ")[0]}
                   </span>
                 )}
-                <time className={cn("shrink-0 text-xs", r.unread ? "font-semibold" : "text-muted-foreground")}>
+                <time
+                  className={cn("shrink-0 text-xs", r.unread ? "font-semibold text-primary" : "text-muted-foreground")}
+                >
                   {shortTime(r.lastMessageAt, now)}
                 </time>
               </Link>
