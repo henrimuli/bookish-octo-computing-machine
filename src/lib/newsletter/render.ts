@@ -45,12 +45,10 @@ export function renderDigest(d: DigestData, unsubscribeUrl: string): { subject: 
     );
   }
   if (d.sponsor) {
-    blocks.push(
-      { section: "Sponsor" },
-      {
-        items: [{ name: d.sponsor.name, detail: d.sponsor.tagline, href: d.sponsor.url, logo: d.sponsor.logoUrl }],
-      },
-    );
+    blocks.push({
+      box: "Sponsor",
+      items: [{ name: d.sponsor.name, detail: d.sponsor.tagline, href: d.sponsor.url, logo: d.sponsor.logoUrl }],
+    });
   }
   if (d.debutingNow.length) {
     blocks.push(

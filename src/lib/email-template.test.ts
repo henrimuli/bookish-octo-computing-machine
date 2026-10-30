@@ -102,6 +102,27 @@ describe("renderDigest", () => {
     expect(html).toMatch(/>V<\/div>/);
   });
 
+  it("highlights the sponsor in a labelled box, keeping its logo tile, name and tagline", () => {
+    const { html, text } = renderDigest(
+      {
+        ...data,
+        sponsor: {
+          bookingId: "b",
+          name: "Formcrate",
+          tagline: "Forms to Notion",
+          url: "https://debutyard.com/api/ads/b/click",
+          logoUrl: "https://formcrate.io/logo.png",
+        },
+      },
+      "",
+    );
+    const box = html.slice(html.indexOf(">Sponsor<") - 400, html.indexOf("Forms to Notion"));
+    expect(box).toContain("border-radius:12px");
+    expect(box).toContain('src="https://formcrate.io/logo.png"');
+    expect(box).toContain("Formcrate");
+    expect(text).toContain("SPONSOR\n- Formcrate: Forms to Notion");
+  });
+
   it("carries the unsubscribe link in both bodies", () => {
     const unsub = "https://debutyard.com/newsletter/unsubscribe?token=t";
     const { html, text } = renderDigest(data, unsub);
