@@ -118,4 +118,70 @@ describe.skipIf(!TEST_DB)("free tools (Postgres)", () => {
     await tools.checkDr("acme.io", web("1.1.1.1"));
     expect(drCalls).toEqual(["acme.io"]);
   });
+
+  it("limits signed-out visitors per IP, hourly and daily, and says how many checks are left", async () => {
+    metrics.setDrProviderForTests(fakeDr);
+    const first = await tools.checkDr("acme.io", web("3.3.3.3"));
+    expect(first.remaining).toEqual({ hour: 4, day: 14 });
+    for (let i = 0; i < 4; i++) await tools.checkDr("acme.io", web("3.3.3.3"));
+    await expect(tools.checkDr("acme.io", web("3.3.3.3"))).rejects.toMatchObject({
+      rateLimited: true,
+      message: expect.stringMatching(/this hour.*Signed-in accounts get more/),
+    });
+
+    // Fifteen spread over earlier hours use up the day.
+    const now = Date.now();
+    for (const hoursAgo of [5, 3, 1.5]) {
+      for (let i = 0; i < 5; i++) await tools.checkDr("acme.io", web("6.6.6.6"), new Date(now - hoursAgo * 3600_000));
+    }
+    await expect(tools.checkDr("acme.io", web("6.6.6.6"))).rejects.toThrow(/for today\. Try again in 19 hours/);
+  });
+
+  it("counts signed-in checks against both the account and the IP", async () => {
+    metrics.setDrProviderForTests(fakeDr);
+    await dbmod
+      .db()
+      .insert(dbmod.schema.user)
+      .values([
+        { id: "dr-u1", name: "One", email: "one@dr.test" },
+        { id: "dr-u2", name: "Two", email: "two@dr.test" },
+      ]);
+    const as = (userId: string, ip: string) => ({ clientKey: ip, userId, source: "web" as const });
+    for (let i = 0; i < 15; i++) await tools.checkDr("acme.io", as("dr-u1", "4.4.4.4"));
+    // A second account on the same IP doesn't get a fresh allowance…
+    await expect(tools.checkDr("acme.io", as("dr-u2", "4.4.4.4"))).rejects.toMatchObject({ rateLimited: true });
+    // …and the first account can't move to another IP either.
+    await expect(tools.checkDr("acme.io", as("dr-u1", "5.5.5.5"))).rejects.toMatchObject({ rateLimited: true });
+    expect((await tools.checkDr("acme.io", as("dr-u2", "5.5.5.5"))).remaining).toEqual({ hour: 14, day: 39 });
+  });
+
+  it("caps provider lookups site-wide without spending the caller's allowance", async () => {
+    metrics.setDrProviderForTests(fakeDr);
+    const env = await import("@/env");
+    const [{ n }] = await dbmod
+      .db()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(dbmod.schema.toolChecks)
+      .where(sql`${dbmod.schema.toolChecks.tool} = 'dr_lookup'`);
+    process.env.DR_DAILY_PROVIDER_CAP = String(n + 1);
+    env.resetEnvForTests();
+    try {
+      await tools.checkDr("fresh-one.io", web("7.7.7.7"));
+      await expect(tools.checkDr("fresh-two.io", web("7.7.7.7"))).rejects.toThrow("limit for today");
+      expect(drCalls).not.toContain("fresh-two.io");
+      // Cached domains still work, and the refused lookup didn't count against the visitor.
+      expect((await tools.checkDr("acme.io", web("7.7.7.7"))).remaining).toEqual({ hour: 3, day: 13 });
+    } finally {
+      delete process.env.DR_DAILY_PROVIDER_CAP;
+      env.resetEnvForTests();
+    }
+  });
+
+  it("needs an API token for the check over the API and MCP", async () => {
+    metrics.setDrProviderForTests(fakeDr);
+    const ops = await import("@/lib/api/operations");
+    await expect(
+      ops.domainRating({ domain: "acme.io" }, { clientKey: "8.8.8.8", user: null, source: "api" }),
+    ).rejects.toMatchObject({ status: 401 });
+  });
 });

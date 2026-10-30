@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { dofollowAction } from "@/app/(site)/tools/dofollow-checker/actions";
 import { drAction } from "@/app/(site)/tools/dr-checker/actions";
 import { AuthorityScore } from "@/components/metrics/authority-score";
+import { useTurnstile } from "@/components/turnstile";
 import { Button } from "@/components/ui/button";
 import { Card, Input, Label } from "@/components/ui/primitives";
 import { providerLabels, type DrProviderId } from "@/lib/metrics/providers";
@@ -74,17 +75,34 @@ export function DofollowChecker() {
   );
 }
 
-export function DrChecker() {
+/** `turnstileSiteKey`: the invisible bot check runs before each check (null in development). */
+export function DrChecker({ turnstileSiteKey }: { turnstileSiteKey: string | null }) {
   const [state, action, pending] = useActionState(drAction, null);
+  const [verifying, setVerifying] = useState(false);
+  const { containerRef: turnstileRef, getToken } = useTurnstile(turnstileSiteKey);
   const r = state?.ok ? state.result : null;
+  const busy = pending || verifying;
   return (
     <div className="space-y-6">
-      <form action={action} className="flex flex-col gap-2 sm:flex-row">
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const form = new FormData(e.currentTarget);
+          setVerifying(true);
+          const token = await getToken();
+          setVerifying(false);
+          if (token) form.set("cf-turnstile-response", token);
+          startTransition(() => action(form));
+        }}
+        className="flex flex-col gap-2 sm:flex-row"
+      >
         <Input name="domain" required placeholder="yourproduct.com" className="min-w-0 flex-1" aria-label="Domain" />
-        <Button type="submit" disabled={pending}>
-          {pending ? "Checking…" : "Check score"}
+        <Button type="submit" disabled={busy}>
+          {busy ? "Checking…" : "Check score"}
         </Button>
       </form>
+      {/* Empty unless Cloudflare needs a click to confirm the visitor. */}
+      <div ref={turnstileRef} />
       {state && !state.ok && <p className="text-sm text-danger">{state.error}</p>}
       {r && (
         <Card className="flex flex-wrap items-center gap-5 p-6">
@@ -103,6 +121,15 @@ export function DrChecker() {
             </p>
           </div>
         </Card>
+      )}
+      {r && (
+        <p className="text-xs text-muted-foreground">
+          {r.remaining.hour > 0
+            ? `${r.remaining.hour} more ${r.remaining.hour === 1 ? "check" : "checks"} this hour, ${r.remaining.day} today.`
+            : r.remaining.day > 0
+              ? `That was your last check this hour. ${r.remaining.day} left today.`
+              : "That was your last check today."}
+        </p>
       )}
     </div>
   );

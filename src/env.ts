@@ -50,6 +50,12 @@ const schema = z.object({
   DR_PROVIDER: z.enum(["dataforseo", "ahrefs", "openpagerank"]).optional().catch(undefined),
   /** DataForSEO: "login:password". Ahrefs: an API v3 key. Open PageRank: its API key. */
   DR_API_KEY: optional,
+  /** Provider lookups the public checker may make per rolling day, across everyone. Default 300. */
+  DR_DAILY_PROVIDER_CAP: z.coerce.number().int().positive().optional().catch(undefined),
+
+  // Cloudflare Turnstile (invisible) on the Authority Score checker. Without the secret, production refuses checks.
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: optional,
+  TURNSTILE_SECRET_KEY: optional,
 
   // Submission ops. Mail to {key}@INBOUND_EMAIL_DOMAIN arrives through Resend receiving and /api/webhooks/resend.
   INBOUND_EMAIL_DOMAIN: optional,

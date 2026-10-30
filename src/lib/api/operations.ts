@@ -147,6 +147,8 @@ export async function domainRating(
   caller: { clientKey: string; user: ApiUser | null; source: "api" | "mcp" },
 ) {
   const { domain } = drInput.parse(raw);
+  // Lookups cost provider credits and agents can't solve the website's bot check, so they need a token.
+  if (!caller.user) throw new ApiError("This needs an API token. Create one at " + site("/dashboard/api"), 401);
   return toolCall(() =>
     checkDr(domain, { clientKey: caller.clientKey, userId: caller.user?.id, source: caller.source }),
   );
