@@ -154,7 +154,7 @@ describe.skipIf(!TEST_DB)("monitoring (Postgres)", () => {
     const row = (id: string) => db().query.directories.findFirst({ where: eq(schema.directories.id, id) });
     expect(await row(down.id)).toMatchObject({ isActive: false, auditFailures: 3, auditError: "HTTP 503" });
     expect(await row(up.id)).toMatchObject({ isActive: true, auditFailures: 0 });
-    expect(sent.find((e) => e.subject.includes("deactivated"))?.text).toContain("Down (https://down.test)");
+    expect(sent.find((e) => e.subject.includes("deactivated"))?.text).toContain("Down: https://down.test (HTTP 503)");
     expect(await audit.auditDirectories(new Date(t0 + 31 * DAY))).toMatchObject({ audited: 1, failed: 0 });
   });
 });

@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { env } from "@/env";
 import { site } from "@/config/site";
 import { sendEmail } from "@/lib/email";
-import { renderEmail } from "@/lib/email-template";
+import { renderEmail, type EmailItem } from "@/lib/email-template";
 import { safeFetchText } from "@/lib/net";
 
 const { directories } = schema;
@@ -47,7 +47,7 @@ export async function auditDirectories(now = new Date(), batch = 40) {
     .limit(batch);
 
   let failed = 0;
-  const retired: Array<{ name: string; detail: string }> = [];
+  const retired: EmailItem[] = [];
   for (const d of due) {
     let error: string | null = null;
     try {
@@ -63,7 +63,7 @@ export async function auditDirectories(now = new Date(), batch = 40) {
       .set({ auditedAt: now, auditFailures: failures, auditError: error, ...(retire ? { isActive: false } : {}) })
       .where(eq(directories.id, d.id));
     if (error) failed++;
-    if (retire) retired.push({ name: d.name, detail: `${d.url}: ${error}` });
+    if (retire) retired.push({ name: d.name, detail: d.url, chip: { label: error!, tone: "bad" as const } });
   }
 
   if (retired.length) {

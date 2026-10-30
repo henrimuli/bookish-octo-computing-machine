@@ -536,16 +536,17 @@ export async function deliverOrder(orderId: string, now = new Date()) {
       facts: [
         ["Live listings", String(s.live)],
         ["Verified dofollow", String(s.dofollow)],
-        ["Link Monitor", `Included for ${months} months`],
       ],
     },
     {
       text: "Your report lists every directory with its live URL and link check, plus the logins of any accounts we created for you.",
     },
-    { button: "Open your report", href: url(`/orders/${order.intakeToken}`) },
     {
-      note: "We re-check every live link and email you if one is removed or turns nofollow. Share the read-only report with your team, or download it as CSV or PDF.",
+      callout: "Link Monitor included",
+      text: `Link Monitor is included for ${months} months: we re-check every live link and email you if one is removed or turns nofollow.`,
     },
+    { button: "Open your report", href: url(`/orders/${order.intakeToken}`) },
+    { note: "Share the read-only report with your team, or download it as CSV or PDF." },
   ]);
   return order;
 }
