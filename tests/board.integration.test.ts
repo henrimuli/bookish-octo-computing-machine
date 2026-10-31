@@ -674,10 +674,11 @@ describe.skipIf(!TEST_DB)("launch board (Postgres)", () => {
 
     const [post] = await dbmod.db().select().from(dbmod.schema.posts);
     expect(post).toMatchObject({ kind: "recap", weekKey: lastWeek, status: "draft" });
-    expect(post.body).toContain("## Debut of the Week");
-    expect(post.body).toContain("## Also debuting");
-    const { renderMarkdown } = await import("@/lib/blog/markdown");
-    const html = renderMarkdown(post.body);
+    // The recap lands in the editor's working copy; check it renders the way it would publish.
+    const doc = (await blog.getStaffPost(post.id))!.fields.content_json;
+    const { renderPostContent } = await import("@/lib/blog/render");
+    const { html, toc } = renderPostContent(doc);
+    expect(toc.map((t) => t.text)).toEqual(expect.arrayContaining(["Debut of the Week", "Also debuting"]));
     expect(html).not.toContain('href="javascript');
     expect(html).toContain("Evil [x](javascript:alert(1))");
     expect(sent.some((e) => e.subject.startsWith("Recap draft ready"))).toBe(true);
